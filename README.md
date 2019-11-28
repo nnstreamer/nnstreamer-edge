@@ -13,3 +13,6 @@ NNStreamer-edge is designed not to depend on GStreamer and targets to be adopted
 - Communication Layers includes:
     - Primary Targets: TCP, UDP, User Plugins.
     - Secondary Targets: Flatbuffers
+
+## License
+- Apache 2.0
