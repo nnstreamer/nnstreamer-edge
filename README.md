@@ -4,6 +4,8 @@ Remote source nodes for NNStreamer pipelines without GStreamer dependencies
 Developers may provide stream inputs to NNStreamer pipelines from remote nodes with nnstreamer-edge.
 NNStreamer-edge is designed not to depend on GStreamer and targets to be adopted by general RTOS as well.
 
+If your system can afford running nnstreamer (gstreamer), don't use nnstreamer-edge. Use nnstreamer and gstreamer.
+
 ## Requirements
 - This should not depend on glib, gstreamer, or nnstreamer
 - This should not depend on other heavy-weighted libraries.
