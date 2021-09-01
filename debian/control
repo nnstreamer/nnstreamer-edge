@@ -1,0 +1,23 @@
+Source: nnstreamer-edge
+Section: libs
+Priority: optional
+Maintainer: MyungJoo Ham <myungjoo.ham@samsung.com>
+Build-Depends: gcc-9 | gcc-8 | gcc-7 | gcc-6 | gcc-5 (>=5.4),
+ cmake, libpaho-mqtt-dev
+Standards-Version: 0.0.1
+Homepage: https://github.com/nnstreamer/nnstreamer-edge
+
+Package: nnstreamer-edge-sensor
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: communication library for edge sensor
+ It is a communication library for edge sensor devices.
+ This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
+
+Package: nnstreamer-edge-sensor-dev
+Architecture: any
+Multi-Arch: same
+Depends: nnstreamer-edge-sensor
+Description: development package for nnstreamer-edge-sensor
+ It is a development package for nnstreamer-edge-sensor.
