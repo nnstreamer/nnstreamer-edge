@@ -16,12 +16,18 @@
  *     videoscale ! videoconvert ! ximagesink qos=0
  *
  *   Client Side:
- *     test_edge_sensor [Image path]
- *     (e.g. ./tests/test_edge_sensor ../tests/res in build directory)
+ *     $ ./test_edge_sensor
+ *     Usage: ./tests/test_edge_sensor [-f jpeg_file] [-d directory] [-c count]
+ *     # Publish single image
+ *     $ ./test_edge_sensor -f ./0.jpg
+ *     # Publish multiple images 10 times
+ *     $ ./tests/test_edge_sensor -d ../tests/res -c 10
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "edge_sensor.h"
 
 /**
@@ -96,18 +102,43 @@ state_change_cb (void *user_data, edge_mqtt_state_t state)
 int
 main(int argc, char* argv[])
 {
-  uint8_t *buf;
-  uint64_t buf_size;
+  int opt;
   edge_h handle;
   edge_mqtt_state_t state = MQTT_CONNECTION_LOST;
   char path[512] = { 0 };
-  int count  = 0;
+  uint8_t *buf;
+  uint64_t buf_size;
+  int curr_count = 1;
+  int max_count = 0;
+  bool flag_single_file = false;
 
-  if (argc != 2) {
-    printf ("Error!: Omit the image directory.\n");
-    return -1;
+  if (argc == 1) {
+    fprintf(stderr, "Usage: %s [-f jpeg_file] [-d directory] [-c count]\n", argv[0]);
+    exit (0);
   }
-  
+
+  while ((opt = getopt(argc, argv, "f:c:d:")) != -1) {
+    switch (opt) {
+      case 'f':
+        /* Single image file */
+        flag_single_file = true;
+        memcpy (path, optarg, strlen (optarg));
+        break;
+      case 'c':
+        /* Max Count */
+        max_count = atoi (optarg);
+        break;
+      case 'd':
+        flag_single_file = false;
+        memcpy (path, optarg, strlen (optarg));
+        break;
+
+      default:
+        fprintf(stderr, "Usage: %s [-f jpeg_file] [-d directory] [-c count]\n", argv[0]);
+        exit (0);
+    }
+  }
+
   int ret = edge_open_connection (&handle, 
       NULL, NULL, "TestTopic",
       0, 0, "", state_change_cb, (void*)&state);
@@ -115,25 +146,25 @@ main(int argc, char* argv[])
       printf ("Error: edge_open_connection() ret: %d\n", ret);
       return -1;
   }
-  
+  usleep(200000L);
+
   while (1) {
-    usleep(200000L);
-
-    if (state != MQTT_CONNECTED)
-      continue;
-
-    snprintf (path, 512, "%s/%d.jpg", argv[1], count++%3);
-    read_jpeg_file (path, &buf, &buf_size);
-
+    if (flag_single_file) {
+      read_jpeg_file (path, &buf, &buf_size);
+    } else {
+      char local_path[1024] = { 0 };
+      snprintf (local_path, 1024, "%s/%d.jpg", path, curr_count%3);
+      read_jpeg_file (local_path, &buf, &buf_size);
+    }
     ret = edge_publish_single_msg (handle, buf, buf_size);
     if (ret != 0) {
       printf ("Error: edge_publish_single_msg() ret: %d\n", ret);
       return -1;
     }
-    free(buf);
 
+    free(buf);
     usleep(200000L);
-    if (count > 10)
+    if (++curr_count > max_count)
       break;
   }
 
@@ -142,7 +173,5 @@ main(int argc, char* argv[])
       printf ("Error: edge_close_connection() ret: %d\n", ret);
       return -1;
   }
-
-  printf ("Success: All %d test topics are sent successfully!\n", count-1);
   return 0;
 }
