@@ -12,6 +12,9 @@ Source1001: nnstreamer-edge.manifest
 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
+%if 0%{?sensor_test}
+BuildRequires:  gtest-devel
+%endif
 
 %description
 nnstreamer-edge provides remote source nodes for NNStreamer pipelines without GStreamer dependencies.
