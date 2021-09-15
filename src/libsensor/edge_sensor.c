@@ -296,6 +296,11 @@ edge_close_connection (edge_h handle)
   EdgeInfo *info = (EdgeInfo *)handle;
   int ret;
 
+  if (!handle) {
+    debug_print("Error: Invalid Param: handle is NULL");
+    return -1;
+  }
+
   /* check the current state */
   if ((info->mqtt_state != MQTT_CONNECTED) &&
       (info->mqtt_state != MQTT_DELIVERY_COMPLETE) &&

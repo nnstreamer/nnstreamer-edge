@@ -10,8 +10,14 @@
  * @author  Sangjung Woo <sangjung.woo@samsung.com>
  * @bug     No known bugs except for NYI items
  */
+#ifndef _EDGE_SENSOR_H__
+#define _EDGE_SENSOR_H__
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 typedef enum _edge_mqtt_state_t {
   MQTT_CONNECTION_LOST = -3,    /**< MQTT connection is lost */
@@ -73,3 +79,8 @@ edge_publish_single_msg (edge_h handle,
  */
 int
 edge_close_connection (edge_h handle);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+#endif /* _EDGE_SENSOR_H__ */
