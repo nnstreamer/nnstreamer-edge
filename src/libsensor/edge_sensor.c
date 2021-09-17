@@ -303,7 +303,7 @@ edge_close_connection (edge_h handle)
   int ret;
 
   if (!handle) {
-    debug_print("Error: Invalid Param: handle is NULL");
+    debug_print ("Error: Invalid Param: handle is NULL");
     return -1;
   }
 
