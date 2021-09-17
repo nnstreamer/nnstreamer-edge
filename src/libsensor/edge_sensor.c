@@ -25,6 +25,9 @@
 
 #define GST_CLOCK_TIME_NONE           ((uint64_t) -1)
 
+/**
+ * @brief Structures for edge info.
+ */
 typedef struct _EdgeInfo
 {
   char *mqtt_host_address;
