@@ -30,6 +30,13 @@ Summary: communication library for edge sensor
 It is a communication library for edge sensor devices.
 This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
 
+%package query
+Summary: query library for edge devices
+%description query
+It is an query library for edge devices.
+This library supports publishing servers' information such as hostname, port number, and state.
+It also supports subscribing to specific topic messages for client devices.
+
 %package sensor-test
 Summary: test program for nnstreamer-edge-sensor library
 %description sensor-test
@@ -42,6 +49,12 @@ Summary: development package for nnstreamer-edge-sensor
 Requires: nnstreamer-edge = %{version}-%{release}
 %description sensor-devel
 It is a development package for nnstreamer-edge-sensor.
+
+%package query-devel
+Summary: development package for nnstreamer-edge-query
+Requires: nnstreamer-edge-query = %{version}-%{release}
+%description query-devel
+It is a development package for nnstreamer-edge-query.
 
 %if 0%{?testcoverage}
 %package unittest-coverage
@@ -126,6 +139,11 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_libdir}/libedge-sensor.so*
 
+%files query
+%manifest nnstreamer-edge.manifest
+%defattr(-,root,root,-)
+%{_libdir}/libnnsquery.so*
+
 %if 0%{?sensor_test}
 %files sensor-test
 %manifest nnstreamer-edge.manifest
@@ -136,6 +154,10 @@ rm -rf %{buildroot}
 %files sensor-devel
 %{_includedir}/edge_sensor.h
 %{_libdir}/pkgconfig/nnstreamer-edge-sensor.pc
+
+%files query-devel
+%{_includedir}/nnsquery.h
+%{_libdir}/pkgconfig/nnsquery.pc
 
 %if 0%{?testcoverage}
 %files unittest-coverage
