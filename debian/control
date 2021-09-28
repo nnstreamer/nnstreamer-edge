@@ -21,3 +21,19 @@ Multi-Arch: same
 Depends: nnstreamer-edge-sensor
 Description: development package for nnstreamer-edge-sensor
  It is a development package for nnstreamer-edge-sensor.
+
+Package: nnstreamer-edge-query
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: query library for edge devices
+ It is an query library for edge devices.
+ This library supports publishing servers' information such as hostname, port number, and state.
+ It also supports subscribing to specific topic messages for client devices.
+
+Package: nnstreamer-edge-query-dev
+Architecture: any
+Multi-Arch: same
+Depends: nnstreamer-edge-query
+Description: development package for nnstreamer-edge-query
+ It is a development package for nnstreamer-edge-query.
