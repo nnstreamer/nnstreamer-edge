@@ -9,11 +9,30 @@
 ret=0
 pushd build
 
+check_mosquitto() {
+    pid=`ps aux | grep mosquitto | grep -v grep | awk '{print $2 }'`
+
+    if [ $pid > 0 ]; then
+        echo "running"
+        return 1
+    fi
+    echo "not running"
+    return 0
+}
+
 run_entry() {
   entry=$1
   ${entry} --gtest_output="xml:${entry##*/}.xml"
   return $?
 }
+
+# Check whether mqtt broker is running or not
+check_mosquitto
+ret=$?
+if [ $ret -ne 1 ]; then
+    echo "Warning! mosquitto is not running so unittest is ignored."
+    exit 0
+fi
 
 if [ -f "$1" ]; then
     echo $1

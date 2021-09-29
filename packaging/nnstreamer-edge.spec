@@ -13,6 +13,7 @@ Source1001: nnstreamer-edge.manifest
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
 %if 0%{?sensor_test}
+BuildRequires:  procps
 BuildRequires:  gtest-devel
 %endif
 
