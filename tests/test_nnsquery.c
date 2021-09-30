@@ -222,6 +222,36 @@ tc_subscribe_raw_message_with_wild_option ()
   return 0;
 }
 
+int
+tc_clear_retained_topic ()
+{
+  query_h handle;
+  int ret = 0;
+
+  ret = query_open_connection (&handle, NULL, NULL, NULL, NULL);
+  if (ret != 0) {
+      printf ("Error: query_open_connection() ret: %d\n", ret);
+      return -1;
+  }
+  sleep(2);
+
+  ret = query_clear_retained_topic (handle, "edge/inference/galaxy_00/object_detection/mobilev3");
+  if (ret != 0) {
+    printf ("Error: tc_clear_retained_topic() ret: %d\n", ret);
+    return -1;
+  }
+  sleep(2);
+
+  ret = query_close_connection (handle);
+  if (ret != 0) {
+      printf ("Error: query_close_connection() ret: %d\n", ret);
+      return -1;
+  }
+  sleep(2);
+
+  return 0;
+}
+
 int main(int argc, char* argv[])
 {
   int ret = 0;
@@ -251,6 +281,10 @@ int main(int argc, char* argv[])
 
     case 5:
       tc_subscribe_raw_message_with_wild_option();
+      break;
+
+    case 6:
+      tc_clear_retained_topic();
       break;
 
     default:

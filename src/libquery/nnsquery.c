@@ -506,3 +506,40 @@ query_subscribe_topic (query_h handle, const char *topic_name,
 
   return 0;
 }
+
+/**
+ * @brief Clear the retained topic in the MQTT broker
+ */
+int
+query_clear_retained_topic (query_h handle, char *topic_name)
+{
+  QueryInfo *info = (QueryInfo *) handle;
+  int ret = 0;
+
+  /* check the input parameters */
+  if (!handle) {
+    debug_print ("Error: Invalid Param: handle is NULL");
+    return -EINVAL;
+  }
+
+  if (!topic_name) {
+    debug_print ("Error: Invalid Param: topic name is NULL");
+    return -EINVAL;
+  }
+
+  /* check the current state */
+  if (info->mqtt_state != MQTT_CONNECTED) {
+    debug_print ("Error: mqtt_state is not connected!: %d", info->mqtt_state);
+    return MQTTASYNC_DISCONNECTED;
+  }
+
+  /* send message to the MQTT broker */
+  ret = MQTTAsync_send (info->mqtt_client,
+      topic_name, 0, NULL, DEFAULT_MQTT_QOS, 1, NULL);
+  if (ret != MQTTASYNC_SUCCESS) {
+    debug_print ("Error: failed MQTTAsync_send()");
+    return ret;
+  }
+
+  return 0;
+}

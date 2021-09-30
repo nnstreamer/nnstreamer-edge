@@ -155,6 +155,15 @@ int
 query_subscribe_topic (query_h handle, const char *topic_name,
     query_msg_received_cb callback, void* msg_user_data);
 
+/**
+ * @brief Clear the retained topic in the MQTT broker
+ * @return @c 0 on success. Otherwise a negative error value.
+ * @param[in] handle MQTT broker handle.
+ * @param[in] topic_name The topic name to clear.
+ */
+int
+query_clear_retained_topic (query_h handle, char *topic_name);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
