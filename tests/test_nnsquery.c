@@ -252,6 +252,66 @@ tc_clear_retained_topic ()
   return 0;
 }
 
+struct app_data {
+  int state;    /**< 0: disconnect, 1: connect*/
+};
+
+static void
+state_change_cb (void *user_data, query_mqtt_state_t state)
+{
+  struct app_data *app = (struct app_data *)user_data;
+
+  switch (state) {
+    case MQTT_CONNECTED:
+      app->state = 1;
+      printf ("state_change_cb(): MQTT_CONNECTED\n");
+      break;
+
+    case MQTT_DISCONNECTED:
+      app->state = 0;
+      printf ("state_change_cb(): MQTT_DISCONNECTED\n");
+      break;
+
+    default:
+      /* Other case: dont care */
+      break;
+  }
+  return;
+}
+
+int
+tc_send_raw_message_with_checking_callback ()
+{
+  struct app_data app = { .state = 0 };
+  query_h handle;
+  int ret = 0;
+  char msg[] = "Raw message test";
+
+  ret = query_open_connection (&handle, NULL, NULL, state_change_cb, &app);
+  if (ret != 0) {
+      printf ("Error: query_open_connection() ret: %d\n", ret);
+      return -1;
+  }
+  while (0 == app.state)
+    usleep (100);
+
+  ret = query_publish_raw_data (handle, "edge/inference/galaxy_00/object_detection/mobilev3", msg, strlen(msg), true);
+  if (ret != 0) {
+    printf ("Error: query_publish_raw_data() ret: %d\n", ret);
+    return -1;
+  }
+
+  ret = query_close_connection (handle);
+  if (ret != 0) {
+      printf ("Error: query_close_connection() ret: %d\n", ret);
+      return -1;
+  }
+  while (1 == app.state)
+    usleep (100);
+
+  return 0;
+}
+
 int main(int argc, char* argv[])
 {
   int ret = 0;
@@ -285,6 +345,10 @@ int main(int argc, char* argv[])
 
     case 6:
       tc_clear_retained_topic();
+      break;
+
+    case 7:
+      tc_send_raw_message_with_checking_callback();
       break;
 
     default:
