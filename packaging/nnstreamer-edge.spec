@@ -12,7 +12,7 @@ Source1001: nnstreamer-edge.manifest
 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
-%if 0%{?sensor_test}
+%if 0%{?check_test}
 BuildRequires:  gtest-devel
 %endif
 
@@ -24,24 +24,25 @@ BuildRequires:	lcov
 nnstreamer-edge provides remote source nodes for NNStreamer pipelines without GStreamer dependencies.
 It also contains communicaton library for sharing server node information & status
 
-%package sensor
-Summary: communication library for edge sensor
-%description sensor
-It is a communication library for edge sensor devices.
-This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
+%package -n ml-edge-mqtt
+Summary: communication library for edge devices
+%description -n ml-edge-mqtt
+It is a communication library for edge devices.
+This library supports publishing the MQTT messages to the GStreamer pipeline without GStreamer / Glib dependency
+and subscribing the MQTT topic message from the broker.
 
-%package sensor-test
-Summary: test program for nnstreamer-edge-sensor library
-%description sensor-test
-It is a test program for nnstreamer-edge-sensor library.
+%package -n ml-edge-mqtt-test
+Summary: test program for ml-edge-mqtt library
+%description -n ml-edge-mqtt-test
+It is a test program for ml-edge-mqtt library.
 It read the jpeg data and publishes it as "TestTopic" topic name 10 times.
 If data is successfully received, then the image is shown on the server-side.
 
-%package sensor-devel
-Summary: development package for nnstreamer-edge-sensor
+%package -n ml-edge-mqtt-devel
+Summary: development package for ml-edge-mqtt-devel
 Requires: nnstreamer-edge = %{version}-%{release}
-%description sensor-devel
-It is a development package for nnstreamer-edge-sensor.
+%description -n ml-edge-mqtt-devel
+It is a development package for ml-edge-mqtt-devel.
 
 %if 0%{?testcoverage}
 %package unittest-coverage
@@ -50,9 +51,9 @@ Summary: Unittest coverage result for nnstreamer-edge
 HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %endif
 
-%define enable_sensor_test -DENABLE_TEST=OFF
-%if 0%{?sensor_test}
-%define enable_sensor_test -DENABLE_TEST=ON
+%define enable_test -DENABLE_TEST=OFF
+%if 0%{?check_test}
+%define enable_test -DENABLE_TEST=ON
 %endif
 
 %prep
@@ -78,7 +79,7 @@ mkdir -p build
 pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-    -DVERSION=%{version} %{enable_sensor_test}
+    -DVERSION=%{version} %{enable_test}
 
 make %{?jobs:-j%jobs}
 popd
@@ -89,7 +90,7 @@ pushd build
 %make_install
 popd
 
-%if 0%{?sensor_test}
+%if 0%{?check_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
 %endif
 
@@ -121,21 +122,21 @@ cp -r result %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
 %clean
 rm -rf %{buildroot}
 
-%files sensor
+%files -n ml-edge-mqtt
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
-%{_libdir}/libedge-sensor.so*
+%{_libdir}/libcapi-edge-mqtt.so*
 
-%if 0%{?sensor_test}
-%files sensor-test
+%if 0%{?check_test}
+%files -n ml-edge-mqtt-test
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/test_edge_sensor
 %endif
 
-%files sensor-devel
-%{_includedir}/edge_sensor.h
-%{_libdir}/pkgconfig/nnstreamer-edge-sensor.pc
+%files -n ml-edge-mqtt-devel
+%{_includedir}/ml-edge-mqtt.h
+%{_libdir}/pkgconfig/ml-edge-mqtt.pc
 
 %if 0%{?testcoverage}
 %files unittest-coverage

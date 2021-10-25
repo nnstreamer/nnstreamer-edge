@@ -11,7 +11,7 @@
  * @bug     No known bugs except for NYI items
  */
 #include "mqttcommon.h"
-#include "edge_sensor.h"
+#include "ml-edge-mqtt.h"
 
 #include <MQTTAsync.h>
 #include <sys/time.h>
@@ -33,7 +33,7 @@ typedef struct _EdgeInfo
   char *mqtt_host_address;
   char *mqtt_host_port;
   char *mqtt_client_id;
-  char *mqtt_topic;
+  // char *mqtt_topic;
 
   edge_mqtt_state_t mqtt_state;
 
@@ -56,7 +56,6 @@ static uint8_t sink_client_id = 0;
 static const char DEFAULT_MQTT_HOST_ADDRESS[] = "tcp://localhost";
 static const char DEFAULT_MQTT_HOST_PORT[] = "1883";
 static const int DEFAULT_MQTT_QOS = 1;
-static const char DEFAULT_MQTT_PUB_TOPIC_FORMAT[] = "%s/topic";
 static const int BUFFER_SIZE = 1024;
 static const unsigned long DEFAULT_MQTT_DISCONNECT_TIMEOUT = 3 * 1000;  /* 3 secs */
 
@@ -229,7 +228,7 @@ init_edge_info (EdgeInfo * info)
   info->mqtt_host_address = NULL;
   info->mqtt_host_port = NULL;
   info->mqtt_client_id = NULL;
-  info->mqtt_topic = NULL;
+  // info->mqtt_topic = NULL;
 
   info->mqtt_state = MQTT_INITIALIZING;
   info->mqtt_msg_buf = NULL;
@@ -280,11 +279,6 @@ finalize_edge_info (EdgeInfo * info)
   if (info->mqtt_client_id) {
     free (info->mqtt_client_id);
     info->mqtt_client_id = NULL;
-  }
-
-  if (info->mqtt_topic) {
-    free (info->mqtt_topic);
-    info->mqtt_topic = NULL;
   }
 
   if (info->mqtt_msg_buf) {
@@ -347,14 +341,12 @@ edge_close_connection (edge_h handle)
  */
 int
 edge_open_connection (edge_h * handle,
-    char *host_address, char *host_port, char *topic_name,
-    int64_t base_time_stamp, uint64_t duration, char *gst_caps_string,
-    edge_state_change_cb callback, void *user_data)
+    char *host_address, char *host_port,
+    int64_t base_time_stamp, edge_state_change_cb callback, void *user_data)
 {
   EdgeInfo *info = NULL;
   char server_url[BUFFER_SIZE];
   char client_id[BUFFER_SIZE];
-  char topic[BUFFER_SIZE];
   int ret = 0;
 
   if (!handle) {
@@ -378,14 +370,6 @@ edge_open_connection (edge_h * handle,
   snprintf (client_id, BUFFER_SIZE, "edge_sensor_%u_%u", getpid (),
       sink_client_id++);
   info->mqtt_client_id = strdup (client_id);
-
-  if (topic_name) {
-    info->mqtt_topic = strdup (topic_name);
-  } else {
-    snprintf (topic, BUFFER_SIZE, DEFAULT_MQTT_PUB_TOPIC_FORMAT,
-        info->mqtt_client_id);
-    info->mqtt_topic = strdup (topic);
-  }
 
   /* Set base time stamp if user is provided. If not, current time stamp is used */
   if (base_time_stamp == 0) {
@@ -430,11 +414,11 @@ error_handling:
 }
 
 /**
- * @brief Publish the single message that contains only one record.
- *
+ * @brief Publish the single message, which is compatable with MqttSrc element.
  */
 int
-edge_publish_single_msg (edge_h handle, void *buffer, uint64_t payload_size)
+edge_publish_msg_for_mqttsrc (edge_h handle,
+    char *topic_name, void *payload, uint64_t payload_size)
 {
   EdgeInfo *info = (EdgeInfo *) handle;
   int ret = 0;
@@ -446,7 +430,12 @@ edge_publish_single_msg (edge_h handle, void *buffer, uint64_t payload_size)
     return -1;
   }
 
-  if (!buffer) {
+  if (!topic_name) {
+    debug_print ("Error: Invalid Param: topic_name is NULL");
+    return -1;
+  }
+
+  if (!payload) {
     debug_print ("Error: Invalid Param: buffer is NULL");
     return -1;
   }
@@ -493,10 +482,10 @@ edge_publish_single_msg (edge_h handle, void *buffer, uint64_t payload_size)
   /* copy header and payload */
   msg_pub = info->mqtt_msg_buf;
   memcpy (msg_pub, &info->mqtt_msg_hdr, sizeof (info->mqtt_msg_hdr));
-  memcpy (&msg_pub[sizeof (info->mqtt_msg_hdr)], buffer, payload_size);
+  memcpy (&msg_pub[sizeof (info->mqtt_msg_hdr)], payload, payload_size);
 
   /* send message to the MQTT server */
-  ret = MQTTAsync_send (info->mqtt_client, info->mqtt_topic,
+  ret = MQTTAsync_send (info->mqtt_client, topic_name,
       info->mqtt_msg_buf_size, info->mqtt_msg_buf,
       DEFAULT_MQTT_QOS, 1, &info->mqtt_respn_opts);
   if (ret != MQTTASYNC_SUCCESS) {

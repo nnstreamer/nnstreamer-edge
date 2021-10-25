@@ -29,7 +29,7 @@ SET(INCLUDE_INSTALL_DIR "${PREFIX}/include")
 
 SET(SOURCE_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(INCLUDE_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/include)
-SET(SENSOR_SRC_DIR  ${SOURCE_DIR}/libsensor)
+SET(EDGE_MQTT_SRC_DIR  ${SOURCE_DIR}/libedge-mqtt)
 
 # Check requires packages
 SET(REQUIRES_LIST
@@ -53,6 +53,6 @@ IF (ENABLE_TEST)
 ENDIF()
 
 # pkgconfig file
-CONFIGURE_FILE(nnstreamer-edge-sensor.pc.in nnstreamer-edge-sensor.pc @ONLY)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/nnstreamer-edge-sensor.pc
+CONFIGURE_FILE(ml-edge-mqtt.pc.in ml-edge-mqtt.pc @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/ml-edge-mqtt.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

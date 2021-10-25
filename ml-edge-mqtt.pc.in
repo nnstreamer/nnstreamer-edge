@@ -1,12 +1,11 @@
 
 prefix=@PREFIX@
-exec_prefix=@EXEC_PREFIX@
 libdir=@LIB_INSTALL_DIR@
 includedir=@INCLUDE_INSTALL_DIR@
 
-Name: nnstreamer-edge-sensor
+Name: ml-edge-mqtt
 Description: NNStreamer edge sensor library
 Version: @VERSION@
 Requires:
-Libs: -L${libdir} -lnnstreamer-edge-sensor
+Libs: -L${libdir} -lcapi-edge-mqtt
 Cflags: -I${includedir}
