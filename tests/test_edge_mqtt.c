@@ -1,9 +1,11 @@
 
 /* SPDX-License-Identifier: Apache-2.0 */
 /**
- * @file	test_edge_sensor.c
- * @date	05 July 2021
- * @brief Publish the jpeg data as "TestTopic" topic name 10 times
+ * @file    test_edge_mqtt.c
+ * @date    05 July 2021
+ * @brief   Publish the jpeg data as "TestTopic" topic name 10 times
+ * @see     https://github.com/nnstreamer/nnstreamer-edge
+ * @author  Sangjung Woo <sangjung.woo@samsung.com>
  *
  * @details Usage examples
  *   This test case publishes the jpeg data as "TestTopic" topic name 10 times.
@@ -16,19 +18,19 @@
  *     videoscale ! videoconvert ! ximagesink qos=0
  *
  *   Client Side:
- *     $ ./test_edge_sensor
- *     Usage: ./tests/test_edge_sensor [-f jpeg_file] [-d directory] [-c count]
+ *     $ ./test_edge_mqtt
+ *     Usage: ./tests/test_edge_mqtt [-f jpeg_file] [-d directory] [-c count]
  *     # Publish single image
- *     $ ./test_edge_sensor -f ./0.jpg
+ *     $ ./test_edge_mqtt -f ./0.jpg
  *     # Publish multiple images 10 times
- *     $ ./tests/test_edge_sensor -d ../tests/res -c 10
+ *     $ ./tests/test_edge_mqtt -d ../tests/res -c 10
  */
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "edge_sensor.h"
+#include "ml-edge-mqtt.h"
 
 /**
  * @brief Get jpeg data and its size from the file path
@@ -36,14 +38,19 @@
  * @param[out] buf image data of the input jpeg file
  * @param[out] buf_size image size of the input jpeg file
  */
-int
+static int
 read_jpeg_file (const char *path, uint8_t **buf, uint64_t *buf_size)
 {
   uint8_t *out_buf;
   uint64_t curr_size = 0;
   uint64_t total_size = 0;
+  int ret = 0;
 
   FILE *fr = fopen(path,"rb");
+  if (!fr) {
+    printf ("Fail to fopen()\n");
+    return -1;
+  }
 
   /* get file size */
   fseek(fr, 0, SEEK_END);
@@ -53,7 +60,8 @@ read_jpeg_file (const char *path, uint8_t **buf, uint64_t *buf_size)
   out_buf = (uint8_t*)malloc(*buf_size);
   if (!out_buf) {
     printf ("Fail to malloc()\n");
-    return -1;
+    ret = -1;
+    goto cleanup;
   }
   
   /* get the data from file */
@@ -64,12 +72,16 @@ read_jpeg_file (const char *path, uint8_t **buf, uint64_t *buf_size)
 
   if (total_size != *buf_size) {
     printf ("Fail to fread(): different size\n");
-    return -1;
+    free (out_buf);
+    out_buf = NULL;
+    ret = -1;
+    goto cleanup;
   }
-
-  fclose (fr);
   *buf = out_buf;
-  return 0;
+
+cleanup:
+  fclose (fr);
+  return ret;
 }
 
 /**
@@ -140,8 +152,8 @@ main(int argc, char* argv[])
   }
 
   int ret = edge_open_connection (&handle, 
-      NULL, NULL, "TestTopic",
-      0, 0, "", state_change_cb, (void*)&state);
+      NULL, NULL,
+      0, state_change_cb, (void*)&state);
   if (ret != 0) {
       printf ("Error: edge_open_connection() ret: %d\n", ret);
       return -1;
@@ -156,9 +168,9 @@ main(int argc, char* argv[])
       snprintf (local_path, 1024, "%s/%d.jpg", path, curr_count%3);
       read_jpeg_file (local_path, &buf, &buf_size);
     }
-    ret = edge_publish_single_msg (handle, buf, buf_size);
+    ret = edge_publish_msg_for_mqttsrc (handle, "TestTopic", buf, buf_size);
     if (ret != 0) {
-      printf ("Error: edge_publish_single_msg() ret: %d\n", ret);
+      printf ("Error: edge_publish_msg_for_mqttsrc() ret: %d\n", ret);
       return -1;
     }
 

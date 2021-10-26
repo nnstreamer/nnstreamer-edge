@@ -1,14 +1,14 @@
 /**
- * @file        unittest_edge_sensor.cc
+ * @file        unittest_edge_mqtt.cc
  * @date        15 Sep 2021
- * @brief       Unit test for edge sensor.
+ * @brief       Unit test for edge mqtt.
  * @see         https://github.com/nnstreamer/nnstreamer-edge
  * @author      Gichan Jang <gichan2.jang@samsung.com>
  * @bug         No known bugs
  */
 
 #include <gtest/gtest.h>
-#include "edge_sensor.h"
+#include "ml-edge-mqtt.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -44,22 +44,30 @@ TEST(edgeSensor, publishSingleMessage0) {
   edge_h handle;
   edge_mqtt_state_t state = MQTT_CONNECTION_LOST;
   char * topic_str = strdup ("TestTopic");
+#if 0
   char * caps_str = strdup ("");
+#endif
   uint64_t buf_size = 10;
   uint8_t * buf = (uint8_t *) malloc (buf_size * sizeof(uint8_t));
 
+#if 0
   ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL, topic_str,
       0, 0, caps_str, state_change_cb, (void*) &state));
+#endif
+  ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL,
+      0, state_change_cb, (void*) &state));
   usleep(200000L);
 
-  EXPECT_EQ (0, edge_publish_single_msg (handle, buf, buf_size));
+  EXPECT_EQ (0, edge_publish_msg_for_mqttsrc (handle, topic_str, buf, buf_size));
   usleep(200000L);
 
   EXPECT_EQ (0, edge_close_connection (handle));
 
   free (buf);
   free (topic_str);
+#if 0
   free (caps_str);
+#endif
 }
 
 /**
@@ -69,7 +77,7 @@ TEST(edgeSensor, publishSingleMessage1_n) {
   uint64_t buf_size = 10;
   uint8_t * buf = (uint8_t *) malloc (buf_size * sizeof(uint8_t));
 
-  EXPECT_NE (0, edge_publish_single_msg (NULL, buf, buf_size));
+  EXPECT_NE (0, edge_publish_msg_for_mqttsrc (NULL, "TestTopic", buf, buf_size));
   usleep(200000L);
 
   free (buf);
@@ -83,8 +91,8 @@ TEST(edgeSensor, openConnection0_n) {
   char * topic_str = strdup ("TestTopic");
   char * caps_str = strdup ("");
 
-  ASSERT_NE (0, edge_open_connection (NULL, NULL, NULL, topic_str,
-      0, 0, caps_str, state_change_cb, (void*) &state));
+  ASSERT_NE (0, edge_open_connection (NULL, NULL, NULL,
+      0, state_change_cb, (void*) &state));
   usleep(200000L);
 
   free (topic_str);
@@ -101,11 +109,11 @@ TEST(edgeSensor, publish2_n) {
   char * caps_str = strdup ("");
   uint64_t buf_size = 10;
 
-  ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL, topic_str,
-      0, 0, caps_str, state_change_cb, (void*) &state));
+  ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL,
+      0, state_change_cb, (void*) &state));
   usleep(200000L);
 
-  EXPECT_NE (0, edge_publish_single_msg (handle, NULL, buf_size));
+  EXPECT_NE (0, edge_publish_msg_for_mqttsrc (handle, "TestTopic", NULL, buf_size));
   usleep(200000L);
 
   EXPECT_EQ (0, edge_close_connection (handle));
@@ -120,22 +128,20 @@ TEST(edgeSensor, publish2_n) {
 TEST(edgeSensor, publish3_n) {
   edge_h handle;
   edge_mqtt_state_t state = MQTT_CONNECTION_LOST;
-  char * topic_str = strdup ("TestTopic");
   char * caps_str = strdup ("");
   uint64_t buf_size = 0;
   uint8_t * buf = (uint8_t *) malloc (buf_size * sizeof(uint8_t));
 
-  ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL, topic_str,
-      0, 0, caps_str, state_change_cb, (void*) &state));
+  ASSERT_EQ (0, edge_open_connection (&handle, NULL, NULL,
+      0, state_change_cb, (void*) &state));
   usleep(200000L);
 
-  EXPECT_NE (0, edge_publish_single_msg (handle, buf, buf_size));
+  EXPECT_NE (0, edge_publish_msg_for_mqttsrc (handle, "TestTopic", buf, buf_size));
   usleep(200000L);
 
   EXPECT_EQ (0, edge_close_connection (handle));
 
   free (buf);
-  free (topic_str);
   free (caps_str);
 }
 

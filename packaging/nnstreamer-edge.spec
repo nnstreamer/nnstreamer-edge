@@ -91,7 +91,7 @@ pushd build
 popd
 
 %if 0%{?check_test}
-LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
+LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_mqtt
 %endif
 
 %if 0%{?testcoverage}
@@ -131,7 +131,7 @@ rm -rf %{buildroot}
 %files -n ml-edge-mqtt-test
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
-%{_bindir}/test_edge_sensor
+%{_bindir}/test_edge_mqtt
 %endif
 
 %files -n ml-edge-mqtt-devel
