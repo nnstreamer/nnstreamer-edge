@@ -12,6 +12,8 @@ Source1001: nnstreamer-edge.manifest
 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
+# TODO remove glib
+BuildRequires:  glib2-devel
 %if 0%{?sensor_test}
 BuildRequires:  gtest-devel
 %endif
@@ -22,7 +24,13 @@ BuildRequires:	lcov
 
 %description
 nnstreamer-edge provides remote source nodes for NNStreamer pipelines without GStreamer dependencies.
-It also contains communicaton library for sharing server node information & status
+It also contains communicaton library for sharing server node information & status.
+
+%package devel
+Summary: development package for nnstreamer-edge
+Requires: nnstreamer-edge = %{version}-%{release}
+%description devel
+It is a development package for nnstreamer-edge.
 
 %package sensor
 Summary: communication library for edge sensor
@@ -120,6 +128,15 @@ cp -r result %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
 
 %clean
 rm -rf %{buildroot}
+
+%files
+%manifest nnstreamer-edge.manifest
+%defattr(-,root,root,-)
+%{_libdir}/libnnstreamer-edge.so*
+
+%files devel
+%{_includedir}/nnstreamer-edge.h
+%{_libdir}/pkgconfig/nnstreamer-edge.pc
 
 %files sensor
 %manifest nnstreamer-edge.manifest

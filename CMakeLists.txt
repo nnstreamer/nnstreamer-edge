@@ -8,9 +8,15 @@ IF (NOT DEFINED VERSION)
     SET(VERSION    0.0.1)
 ENDIF()
 
+# GoogleTest requires at least C++11 and match the nnstreamer cpp version.
+SET(CMAKE_CXX_STANDARD 14)
+
 # Set CFLAGS
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -pthread -fPIE -fPIC -g")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_MQTT=1")
+# TODO FIXME remove glib dependency
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DGLIB_USE_G_MEMDUP2=1")
 
 IF (ENABLE_DEBUG)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DDEBUG=1")
@@ -25,21 +31,22 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--as-needed")
 SET(SO_VERSION    ${VERSION})
 SET(PREFIX        ${CMAKE_INSTALL_PREFIX})
 SET(EXEC_PREFIX   ${PREFIX}/bin)
+SET(LIB_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR})
 SET(INCLUDE_INSTALL_DIR "${PREFIX}/include")
 
 SET(SOURCE_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(INCLUDE_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/include)
+SET(NNS_EDGE_SRC_DIR  ${SOURCE_DIR}/libnnstreamer-edge)
 SET(SENSOR_SRC_DIR  ${SOURCE_DIR}/libsensor)
 
 # Check requires packages
-SET(REQUIRES_LIST
-    paho-mqtt-c
-)
+# TODO FIXME remove glib dependency
+SET(REQUIRES_LIST "paho-mqtt-c glib-2.0 gio-2.0")
 
 INCLUDE(FindPkgConfig)
 PKG_CHECK_MODULES(EDGE_REQUIRE_PKGS REQUIRED ${REQUIRES_LIST})
 
-FOREACH(flag ${EDGE__REQUIRE_PKGS_CFLAGS})
+FOREACH(flag ${EDGE_REQUIRE_PKGS_CFLAGS})
     SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
@@ -53,6 +60,10 @@ IF (ENABLE_TEST)
 ENDIF()
 
 # pkgconfig file
+CONFIGURE_FILE(nnstreamer-edge.pc.in nnstreamer-edge.pc @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/nnstreamer-edge.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
 CONFIGURE_FILE(nnstreamer-edge-sensor.pc.in nnstreamer-edge-sensor.pc @ONLY)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/nnstreamer-edge-sensor.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
