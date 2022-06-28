@@ -14,7 +14,7 @@ BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
 # TODO remove glib
 BuildRequires:  glib2-devel
-%if 0%{?sensor_test}
+%if 0%{?unit_test}
 BuildRequires:  gtest-devel
 %endif
 
@@ -38,18 +38,16 @@ Summary: communication library for edge sensor
 It is a communication library for edge sensor devices.
 This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
 
-%package sensor-test
-Summary: test program for nnstreamer-edge-sensor library
-%description sensor-test
-It is a test program for nnstreamer-edge-sensor library.
-It read the jpeg data and publishes it as "TestTopic" topic name 10 times.
-If data is successfully received, then the image is shown on the server-side.
-
 %package sensor-devel
 Summary: development package for nnstreamer-edge-sensor
 Requires: nnstreamer-edge = %{version}-%{release}
 %description sensor-devel
 It is a development package for nnstreamer-edge-sensor.
+
+%package unittest
+Summary: test program for nnstreamer-edge library
+%description unittest
+It is a test program for nnstreamer-edge library.
 
 %if 0%{?testcoverage}
 %package unittest-coverage
@@ -58,9 +56,11 @@ Summary: Unittest coverage result for nnstreamer-edge
 HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %endif
 
-%define enable_sensor_test -DENABLE_TEST=OFF
-%if 0%{?sensor_test}
-%define enable_sensor_test -DENABLE_TEST=ON
+# TODO FIXME enable unittest after migration
+%if 0%{?unit_test}
+%define enable_unittest -DENABLE_TEST=OFF
+%else
+%define enable_unittest -DENABLE_TEST=OFF
 %endif
 
 %prep
@@ -86,7 +86,7 @@ mkdir -p build
 pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-    -DVERSION=%{version} %{enable_sensor_test}
+    -DVERSION=%{version} %{enable_unittest}
 
 make %{?jobs:-j%jobs}
 popd
@@ -97,7 +97,7 @@ pushd build
 %make_install
 popd
 
-%if 0%{?sensor_test}
+%if 0%{?unit_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
 %endif
 
@@ -143,16 +143,16 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_libdir}/libedge-sensor.so*
 
-%if 0%{?sensor_test}
-%files sensor-test
+%files sensor-devel
+%{_includedir}/edge_sensor.h
+%{_libdir}/pkgconfig/nnstreamer-edge-sensor.pc
+
+%if 0%{?unit_test}
+%files unittest
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/test_edge_sensor
 %endif
-
-%files sensor-devel
-%{_includedir}/edge_sensor.h
-%{_libdir}/pkgconfig/nnstreamer-edge-sensor.pc
 
 %if 0%{?testcoverage}
 %files unittest-coverage
