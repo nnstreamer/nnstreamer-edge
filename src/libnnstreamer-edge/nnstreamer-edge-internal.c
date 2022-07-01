@@ -716,7 +716,7 @@ _nns_edge_message_handler (void *thread_data)
     }
 
     ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
-        data_h, sizeof (data_h), NULL);
+        data_h, sizeof (nns_edge_data_h), NULL);
     if (ret != NNS_EDGE_ERROR_NONE) {
       /* Try to get next request if server does not accept data from client. */
       nns_edge_logw ("The server does not accept data from client.");
