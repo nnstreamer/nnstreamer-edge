@@ -5,7 +5,7 @@ OPTION(ENABLE_TEST      "Enable Test case" OFF)
 OPTION(ENABLE_DEBUG     "Enable Debug" OFF)
 
 IF (NOT DEFINED VERSION)
-    SET(VERSION    0.0.1)
+    SET(VERSION    0.1.0)
 ENDIF()
 
 # GoogleTest requires at least C++11 and match the nnstreamer cpp version.
