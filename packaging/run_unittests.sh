@@ -10,9 +10,9 @@ ret=0
 pushd build
 
 run_entry() {
-  entry=$1
-  ${entry} --gtest_output="xml:${entry##*/}.xml"
-  return $?
+    entry=$1
+    ${entry} --gtest_output="xml:${entry##*/}.xml"
+    return $?
 }
 
 if [ -f "$1" ]; then
