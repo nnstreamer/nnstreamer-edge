@@ -1,3 +1,9 @@
+nnstreamer-edge (0.1.0.0) unstable xenial bionic focal; urgency=medium
+
+  * 0.1.0 development starts after migrating edge interfaces from nnstreamer repogitory.
+
+ -- Sangjung Woo <sangjung.woo@samsung.com>  Fri, 1 Jul 2022 17:00:00 +0900
+
 nnstreamer-edge (0.0.1.0) unstable xenial bionic; urgency=medium
 
   * 0.0.1 development starts

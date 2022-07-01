@@ -2,7 +2,11 @@
 
 Name:       nnstreamer-edge
 Summary:    Common library set for nnstreamer-edge
-Version:    0.0.1
+# Synchronize the version of nnstreamer-edge library.
+# 1. CMake : ./CMakeLists.txt
+# 2. Ubuntu : ./debian/changelog
+# 3. Tizen : ./packaging/nnstreamer-edge.spec
+Version:    0.1.0
 Release:    1
 Group:      Machine Learning/ML Framework
 Packager:   Sangjung Woo <sangjung.woo@samsung.com>
@@ -143,3 +147,10 @@ rm -rf %{buildroot}
 %{_datadir}/nnstreamer-edge/unittest/*
 %endif
 %endif # unittest
+
+%changelog
+* Fri Jul 1 2022 Sangjung Woo <sangjung.woo@samsung.com>
+- Start development of 0.1.0
+
+* Wed Sep 01 2021 Sangjung Woo <sangjung.woo@samsung.com>
+- Start development of 0.0.1
