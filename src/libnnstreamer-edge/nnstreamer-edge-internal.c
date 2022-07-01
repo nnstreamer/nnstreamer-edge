@@ -1387,6 +1387,16 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  if (!key || *key == '\0') {
+    nns_edge_loge ("Invalid param, given key is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!value || *value == '\0') {
+    nns_edge_loge ("Invalid param, given value is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
   nns_edge_lock (eh);
 
   if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {

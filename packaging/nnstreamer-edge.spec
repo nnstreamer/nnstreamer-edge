@@ -51,9 +51,8 @@ HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %endif
 %endif
 
-# TODO FIXME enable unittest after migration
 %if 0%{?unit_test}
-%define enable_unittest -DENABLE_TEST=OFF
+%define enable_unittest -DENABLE_TEST=ON
 %else
 %define enable_unittest -DENABLE_TEST=OFF
 %endif
@@ -95,7 +94,7 @@ pushd build
 popd
 
 %if 0%{?unit_test}
-#LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
+LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
 
 %if 0%{?testcoverage}
 # 'lcov' generates the date format with UTC time zone by default. Let's replace UTC with KST.
@@ -140,7 +139,7 @@ rm -rf %{buildroot}
 %files unittest
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
-#%{_bindir}/test_edge_sensor
+%{_bindir}/unittest_nnstreamer-edge
 
 %if 0%{?testcoverage}
 %files unittest-coverage
