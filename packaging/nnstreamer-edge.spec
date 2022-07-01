@@ -125,6 +125,7 @@ rm -rf %{buildroot}
 %files
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
+%license LICENSE
 %{_libdir}/libnnstreamer-edge.so*
 
 %files devel
