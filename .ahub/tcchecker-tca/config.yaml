@@ -1,6 +1,6 @@
 version: 2
 test:
-  - name: GTEST_EDGE_SENSOR
+  - name: GTEST_NNSTREAMER_EDGE
     testCaseLanguage: CPP
     testFW: GTEST
     testCaseFolder:
