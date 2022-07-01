@@ -20,18 +20,3 @@ Multi-Arch: same
 Depends: nnstreamer-edge
 Description: development package for nnstreamer-edge
  It is a development package for nnstreamer-edge.
-
-Package: nnstreamer-edge-sensor
-Architecture: any
-Multi-Arch: same
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: communication library for edge sensor
- It is a communication library for edge sensor devices.
- This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
-
-Package: nnstreamer-edge-sensor-dev
-Architecture: any
-Multi-Arch: same
-Depends: nnstreamer-edge-sensor
-Description: development package for nnstreamer-edge-sensor
- It is a development package for nnstreamer-edge-sensor.

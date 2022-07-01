@@ -14,12 +14,13 @@ BuildRequires:  cmake
 BuildRequires:  pkgconfig(paho-mqtt-c)
 # TODO remove glib
 BuildRequires:  glib2-devel
+
 %if 0%{?unit_test}
 BuildRequires:  gtest-devel
-%endif
 
 %if 0%{?testcoverage}
 BuildRequires:	lcov
+%endif
 %endif
 
 %description
@@ -32,18 +33,7 @@ Requires: nnstreamer-edge = %{version}-%{release}
 %description devel
 It is a development package for nnstreamer-edge.
 
-%package sensor
-Summary: communication library for edge sensor
-%description sensor
-It is a communication library for edge sensor devices.
-This library supports publishing the sensor data to the GStreamer pipeline without GStreamer / Glib dependency.
-
-%package sensor-devel
-Summary: development package for nnstreamer-edge-sensor
-Requires: nnstreamer-edge = %{version}-%{release}
-%description sensor-devel
-It is a development package for nnstreamer-edge-sensor.
-
+%if 0%{?unit_test}
 %package unittest
 Summary: test program for nnstreamer-edge library
 %description unittest
@@ -54,6 +44,7 @@ It is a test program for nnstreamer-edge library.
 Summary: Unittest coverage result for nnstreamer-edge
 %description unittest-coverage
 HTML pages of lcov results of nnstreamer-edge generated during rpm build
+%endif
 %endif
 
 # TODO FIXME enable unittest after migration
@@ -69,6 +60,7 @@ cp %{SOURCE1001} .
 
 %build
 
+%if 0%{?unit_test}
 %if 0%{?testcoverage}
 # To test coverage, disable optimizations (and should unset _FORTIFY_SOURCE to use -O0)
 CFLAGS=`echo $CFLAGS | sed -e "s|-O[1-9]|-O0|g"`
@@ -81,6 +73,7 @@ export CXXFLAGS+=" -fprofile-arcs -ftest-coverage -g"
 export FFLAGS+=" -fprofile-arcs -ftest-coverage -g"
 export LDFLAGS+=" -lgcov"
 %endif
+%endif # unittest
 
 mkdir -p build
 pushd build
@@ -98,8 +91,7 @@ pushd build
 popd
 
 %if 0%{?unit_test}
-LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
-%endif
+#LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_edge_sensor
 
 %if 0%{?testcoverage}
 # 'lcov' generates the date format with UTC time zone by default. Let's replace UTC with KST.
@@ -124,7 +116,8 @@ genhtml -o result unittest-filtered.info -t "NNStreamer-edge %{version}-%{releas
 
 mkdir -p %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
 cp -r result %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
-%endif # test coverage
+%endif # testcoverage
+%endif # unittest
 
 %clean
 rm -rf %{buildroot}
@@ -138,23 +131,14 @@ rm -rf %{buildroot}
 %{_includedir}/nnstreamer-edge.h
 %{_libdir}/pkgconfig/nnstreamer-edge.pc
 
-%files sensor
-%manifest nnstreamer-edge.manifest
-%defattr(-,root,root,-)
-%{_libdir}/libedge-sensor.so*
-
-%files sensor-devel
-%{_includedir}/edge_sensor.h
-%{_libdir}/pkgconfig/nnstreamer-edge-sensor.pc
-
 %if 0%{?unit_test}
 %files unittest
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/test_edge_sensor
-%endif
 
 %if 0%{?testcoverage}
 %files unittest-coverage
 %{_datadir}/nnstreamer-edge/unittest/*
 %endif
+%endif # unittest
