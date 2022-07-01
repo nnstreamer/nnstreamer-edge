@@ -35,7 +35,6 @@ SET(INCLUDE_INSTALL_DIR "${PREFIX}/include")
 SET(SOURCE_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(INCLUDE_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/include)
 SET(NNS_EDGE_SRC_DIR  ${SOURCE_DIR}/libnnstreamer-edge)
-SET(SENSOR_SRC_DIR  ${SOURCE_DIR}/libsensor)
 
 # Check requires packages
 # TODO FIXME remove glib dependency
@@ -59,7 +58,6 @@ ADD_SUBDIRECTORY(src)
 
 IF (ENABLE_TEST)
     SET(TEST_REQUIRES_LIST gtest)
-    INCLUDE(FindPkgConfig)
     PKG_CHECK_MODULES(TEST_REQUIRE_PKGS REQUIRED ${TEST_REQUIRES_LIST})
     ADD_SUBDIRECTORY(tests)
 ENDIF()
@@ -67,8 +65,4 @@ ENDIF()
 # pkgconfig file
 CONFIGURE_FILE(nnstreamer-edge.pc.in nnstreamer-edge.pc @ONLY)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/nnstreamer-edge.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-
-CONFIGURE_FILE(nnstreamer-edge-sensor.pc.in nnstreamer-edge-sensor.pc @ONLY)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/nnstreamer-edge-sensor.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
