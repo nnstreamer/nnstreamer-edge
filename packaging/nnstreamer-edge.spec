@@ -135,7 +135,7 @@ rm -rf %{buildroot}
 %files unittest
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
-%{_bindir}/test_edge_sensor
+#%{_bindir}/test_edge_sensor
 
 %if 0%{?testcoverage}
 %files unittest-coverage
