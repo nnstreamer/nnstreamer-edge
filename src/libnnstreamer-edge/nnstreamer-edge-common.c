@@ -10,7 +10,77 @@
  * @bug    No known bugs except for NYI items
  */
 
+#define _GNU_SOURCE
+#include <stdio.h>
+
 #include "nnstreamer-edge-common.h"
+
+/**
+ * @brief Allocate new memory and copy bytes.
+ * @note Caller should release newly allocated memory using free().
+ */
+void *
+nns_edge_memdup (const void *data, size_t size)
+{
+  void *mem = NULL;
+
+  if (data && size > 0) {
+    mem = malloc (size);
+
+    if (mem) {
+      memcpy (mem, data, size);
+    } else {
+      nns_edge_loge ("Failed to allocate memory (%zd).", size);
+    }
+  }
+
+  return mem;
+}
+
+/**
+ * @brief Allocate new memory and copy string.
+ * @note Caller should release newly allocated string using free().
+ */
+char *
+nns_edge_strdup (const char *str)
+{
+  char *new_str = NULL;
+  size_t len;
+
+  if (str) {
+    len = strlen (str);
+
+    new_str = (char *) malloc (len + 1);
+    if (new_str) {
+      memcpy (new_str, str, len);
+      new_str[len] = '\0';
+    } else {
+      nns_edge_loge ("Failed to allocate memory (%zd).", len + 1);
+    }
+  }
+
+  return new_str;
+}
+
+/**
+ * @brief Allocate new memory and print formatted string.
+ * @note Caller should release newly allocated string using free().
+ */
+char *
+nns_edge_strdup_printf (const char *format, ...)
+{
+  char *new_str = NULL;
+  va_list args;
+  int len;
+
+  va_start (args, format);
+  len = vasprintf (&new_str, format, args);
+  if (len < 0)
+    new_str = NULL;
+  va_end (args);
+
+  return new_str;
+}
 
 /**
  * @brief Create nnstreamer edge event.
@@ -180,7 +250,7 @@ nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  *capability = g_strdup (ee->data.data);
+  *capability = nns_edge_strdup (ee->data.data);
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -295,14 +365,16 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
 
   copied->num = ed->num;
   for (i = 0; i < ed->num; i++) {
-    copied->data[i].data = _g_memdup (ed->data[i].data, ed->data[i].data_len);
+    copied->data[i].data = nns_edge_memdup (ed->data[i].data,
+        ed->data[i].data_len);
     copied->data[i].data_len = ed->data[i].data_len;
     copied->data[i].destroy_cb = g_free;
   }
 
   g_hash_table_iter_init (&iter, ed->info_table);
   while (g_hash_table_iter_next (&iter, &key, &value)) {
-    g_hash_table_insert (copied->info_table, g_strdup (key), g_strdup (value));
+    g_hash_table_insert (copied->info_table, nns_edge_strdup (key),
+        nns_edge_strdup (value));
   }
 
   return NNS_EDGE_ERROR_NONE;
@@ -429,7 +501,8 @@ nns_edge_data_set_info (nns_edge_data_h data_h, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  g_hash_table_insert (ed->info_table, g_strdup (key), g_strdup (value));
+  g_hash_table_insert (ed->info_table, nns_edge_strdup (key),
+      nns_edge_strdup (value));
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -466,7 +539,7 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  *value = g_strdup (val);
+  *value = nns_edge_strdup (val);
 
   return NNS_EDGE_ERROR_NONE;
 }

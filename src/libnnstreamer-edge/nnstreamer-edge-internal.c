@@ -169,7 +169,7 @@ _parse_host_str (const char *host, char **ip, int *port)
 static void
 _get_host_str (const char *ip, const int port, char **host)
 {
-  *host = g_strdup_printf ("%s:%d", ip, port);
+  *host = nns_edge_strdup_printf ("%s:%d", ip, port);
 }
 
 /**
@@ -618,7 +618,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, const char *ip, int port)
   }
 
   memset (conn, 0, sizeof (nns_edge_conn_s));
-  conn->ip = g_strdup (ip);
+  conn->ip = nns_edge_strdup (ip);
   conn->port = port;
   conn->cancellable = g_cancellable_new ();
 
@@ -748,7 +748,7 @@ _nns_edge_message_handler (void *thread_data)
     }
 
     /* Set client ID in edge data */
-    val = g_strdup_printf ("%ld", (long int) client_id);
+    val = nns_edge_strdup_printf ("%ld", (long int) client_id);
     nns_edge_data_set_info (data_h, "client_id", val);
     g_free (val);
 
@@ -956,11 +956,11 @@ nns_edge_create_handle (const char *id, const char *topic, nns_edge_h * edge_h)
   memset (eh, 0, sizeof (nns_edge_handle_s));
   nns_edge_lock_init (eh);
   eh->magic = NNS_EDGE_MAGIC;
-  eh->id = g_strdup (id);
-  eh->topic = g_strdup (topic);
+  eh->id = nns_edge_strdup (id);
+  eh->topic = nns_edge_strdup (topic);
   eh->protocol = NNS_EDGE_PROTOCOL_TCP;
   eh->is_server = true;
-  eh->recv_ip = g_strdup ("localhost");
+  eh->recv_ip = nns_edge_strdup ("localhost");
   eh->recv_port = 0;
   eh->caps_str = NULL;
 
@@ -1366,7 +1366,7 @@ nns_edge_get_topic (nns_edge_h edge_h, char **topic)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  *topic = g_strdup (eh->topic);
+  *topic = nns_edge_strdup (eh->topic);
 
   nns_edge_unlock (eh);
   return NNS_EDGE_ERROR_NONE;
@@ -1410,17 +1410,17 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
    * @todo Change key-value set as json or hash table.
    */
   if (0 == g_ascii_strcasecmp (key, "CAPS")) {
-    ret_str = g_strdup_printf ("%s%s", _STR_NULL (eh->caps_str), value);
+    ret_str = nns_edge_strdup_printf ("%s%s", _STR_NULL (eh->caps_str), value);
     g_free (eh->caps_str);
     eh->caps_str = ret_str;
   } else if (0 == g_ascii_strcasecmp (key, "IP")) {
     g_free (eh->recv_ip);
-    eh->recv_ip = g_strdup (value);
+    eh->recv_ip = nns_edge_strdup (value);
   } else if (0 == g_ascii_strcasecmp (key, "PORT")) {
     eh->recv_port = g_ascii_strtoll (value, NULL, 10);
   } else if (0 == g_ascii_strcasecmp (key, "TOPIC")) {
     g_free (eh->topic);
-    eh->topic = g_strdup (value);
+    eh->topic = nns_edge_strdup (value);
   } else {
     nns_edge_logw ("Failed to set edge info. Unknown key: %s", key);
   }

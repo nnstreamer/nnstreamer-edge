@@ -29,15 +29,6 @@ extern "C" {
 #define UNUSED(expr) do { (void)(expr); } while (0)
 #endif
 
-/**
- * @brief g_memdup() function replaced by g_memdup2() in glib version >= 2.68
- */
-#if GLIB_USE_G_MEMDUP2
-#define _g_memdup g_memdup2
-#else
-#define _g_memdup g_memdup
-#endif
-
 #define NNS_EDGE_MAGIC 0xfeedfeed
 #define NNS_EDGE_MAGIC_DEAD 0xdeaddead
 #define NNS_EDGE_MAGIC_IS_VALID(h) ((h) && (h)->magic == NNS_EDGE_MAGIC)
@@ -86,6 +77,24 @@ typedef struct {
 #define nns_edge_loge g_critical
 #define nns_edge_logd g_debug
 #define nns_edge_logf g_error
+
+/**
+ * @brief Allocate new memory and copy bytes.
+ * @note Caller should release newly allocated memory using free().
+ */
+void *nns_edge_memdup (const void *data, size_t size);
+
+/**
+ * @brief Allocate new memory and copy string.
+ * @note Caller should release newly allocated string using free().
+ */
+char *nns_edge_strdup (const char *str);
+
+/**
+ * @brief Allocate new memory and print formatted string.
+ * @note Caller should release newly allocated string using free().
+ */
+char *nns_edge_strdup_printf (const char *format, ...);
 
 /**
  * @brief Create nnstreamer edge event.
