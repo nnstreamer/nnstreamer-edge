@@ -184,6 +184,10 @@ _get_available_port (void)
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sock = socket (AF_INET, SOCK_STREAM, 0);
+  if (sock < 0) {
+    nns_edge_loge ("Failed to get available port. Socket creation failure.");
+    return 0;
+  }
   sin.sin_port = port;
   if (bind (sock, (struct sockaddr *) &sin, sizeof (struct sockaddr)) == 0) {
     getsockname (sock, (struct sockaddr *) &sin, &len);
@@ -588,6 +592,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, const char *ip, int port)
   }
 
   /* Get destination capability. */
+  _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, eh->client_id);
   ret = _nns_edge_cmd_receive (conn, &cmd);
   if (ret != NNS_EDGE_ERROR_NONE) {
     nns_edge_loge ("Failed to receive capability.");
@@ -683,6 +688,7 @@ _nns_edge_message_handler (void *thread_data)
       break;
 
     /** Receive data from the client */
+    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, eh->client_id);
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive data from the connected node.");
@@ -957,8 +963,13 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
   }
 
   eh->is_server = is_server;
-  if (!is_server && 0 == eh->recv_port)
+  if (!is_server && 0 == eh->recv_port) {
     eh->recv_port = _get_available_port ();
+    if (eh->recv_port <= 0) {
+      nns_edge_loge ("Failed to start edge. Cannot get available port.");
+      return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+    }
+  }
 
   /** Initialize server src data. */
   eh->cancellable = g_cancellable_new ();
