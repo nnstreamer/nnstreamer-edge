@@ -191,9 +191,12 @@ _get_available_port (void)
   }
   sin.sin_port = port;
   if (bind (sock, (struct sockaddr *) &sin, sizeof (struct sockaddr)) == 0) {
-    getsockname (sock, (struct sockaddr *) &sin, &len);
-    port = ntohs (sin.sin_port);
-    nns_edge_logi ("Available port number: %d", port);
+    if (getsockname (sock, (struct sockaddr *) &sin, &len) == 0) {
+      port = ntohs (sin.sin_port);
+      nns_edge_logi ("Available port number: %d", port);
+    } else {
+      nns_edge_logw ("Failed to read local socket info.");
+    }
   }
   close (sock);
 
