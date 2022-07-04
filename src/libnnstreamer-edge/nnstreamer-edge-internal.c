@@ -34,6 +34,7 @@ typedef enum
  */
 typedef struct
 {
+  unsigned int magic;
   nns_edge_cmd_e cmd;
   int64_t client_id;
 
@@ -209,6 +210,7 @@ _nns_edge_cmd_init (nns_edge_cmd_s * cmd, nns_edge_cmd_e c, int64_t cid)
     return;
 
   memset (cmd, 0, sizeof (nns_edge_cmd_s));
+  cmd->info.magic = NNS_EDGE_MAGIC;
   cmd->info.cmd = c;
   cmd->info.client_id = cid;
 }
@@ -224,11 +226,34 @@ _nns_edge_cmd_clear (nns_edge_cmd_s * cmd)
   if (!cmd)
     return;
 
+  cmd->info.magic = NNS_EDGE_MAGIC_DEAD;
+
   for (i = 0; i < cmd->info.num; i++) {
     if (cmd->mem[i])
       free (cmd->mem[i]);
     cmd->mem[i] = NULL;
   }
+}
+
+/**
+ * @brief Validate edge command.
+ */
+static bool
+_nns_edge_cmd_is_valid (nns_edge_cmd_s * cmd)
+{
+  int command;
+
+  if (!cmd)
+    return false;
+
+  command = (int) cmd->info.cmd;
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (&cmd->info) ||
+      (command < 0 || command >= _NNS_EDGE_CMD_END)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -241,6 +266,11 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 
   if (!conn || !cmd)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  if (!_nns_edge_cmd_is_valid (cmd)) {
+    nns_edge_loge ("Failed to send command, invalid command.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
 
   if (!_send_raw_data (conn->socket, &cmd->info,
           sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
@@ -274,6 +304,11 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   if (!_receive_raw_data (conn->socket, &cmd->info,
           sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
     nns_edge_loge ("Failed to receive command from socket.");
+    return NNS_EDGE_ERROR_IO;
+  }
+
+  if (!_nns_edge_cmd_is_valid (cmd)) {
+    nns_edge_loge ("Failed to receive command, invalid command.");
     return NNS_EDGE_ERROR_IO;
   }
 
