@@ -1002,6 +1002,7 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
     eh->recv_port = _get_available_port ();
     if (eh->recv_port <= 0) {
       nns_edge_loge ("Failed to start edge. Cannot get available port.");
+      nns_edge_unlock (eh);
       return NNS_EDGE_ERROR_CONNECTION_FAILURE;
     }
   }
