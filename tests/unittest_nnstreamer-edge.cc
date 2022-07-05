@@ -1582,6 +1582,478 @@ TEST(edgeData, getInfoInvalidParam05_n) {
 }
 
 /**
+ * @brief Create edge event - invalid param.
+ */
+TEST(edgeEvent, createInvalidParam01_n) {
+  nns_edge_event_h event_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_UNKNOWN, &event_h);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Create edge event - invalid param.
+ */
+TEST(edgeEvent, createInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Destroy edge event - invalid param.
+ */
+TEST(edgeEvent, destroyInvalidParam01_n) {
+  int ret;
+
+  ret = nns_edge_event_destroy (NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Destroy edge event - invalid param.
+ */
+TEST(edgeEvent, destroyInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, data, data_len, free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ee = (nns_edge_event_s *) event_h;
+  ee->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ee->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge event data - invalid param.
+ */
+TEST(edgeEvent, setDataInvalidParam01_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_event_set_data (NULL, data, data_len, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Set edge event data - invalid param.
+ */
+TEST(edgeEvent, setDataInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, NULL, data_len, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Set edge event data - invalid param.
+ */
+TEST(edgeEvent, setDataInvalidParam03_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, data, 0, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Set edge event data - invalid param.
+ */
+TEST(edgeEvent, setDataInvalidParam04_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ee = (nns_edge_event_s *) event_h;
+  ee->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_event_set_data (event_h, data, data_len, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ee->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Get edge event type.
+ */
+TEST(edgeEvent, getType) {
+  nns_edge_event_h event_h;
+  nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_get_type (event_h, &event);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (event, NNS_EDGE_EVENT_CUSTOM);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event type - invalid param.
+ */
+TEST(edgeEvent, getTypeInvalidParam01_n) {
+  nns_edge_event_e event;
+  int ret;
+
+  ret = nns_edge_event_get_type (NULL, &event);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event type - invalid param.
+ */
+TEST(edgeEvent, getTypeInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_get_type (event_h, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event type - invalid param.
+ */
+TEST(edgeEvent, getTypeInvalidParam03_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_e event;
+  nns_edge_event_s *ee;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ee = (nns_edge_event_s *) event_h;
+  ee->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_event_get_type (event_h, &event);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ee->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse new data of edge event.
+ */
+TEST(edgeEvent, parseNewData) {
+  nns_edge_event_h event_h;
+  nns_edge_data_h data_h, result_h;
+  nns_edge_event_s *ee;
+  void *data, *result;
+  size_t data_len, result_len;
+  char *result_value;
+  unsigned int i, count;
+  int ret;
+
+  data_len = 10U * sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  for (i = 0; i < 10U; i++)
+    ((unsigned int *) data)[i] = i;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_add (data_h, data, data_len, free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key1", "temp-data-val1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_set_info (data_h, "temp-key2", "temp-data-val2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_NEW_DATA_RECEIVED, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, data_h, sizeof (nns_edge_data_h), NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_new_data (event_h, &result_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Compare data and info */
+  ret = nns_edge_data_get_count (result_h, &count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (count, 1U);
+
+  ret = nns_edge_data_get (result_h, 0, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  for (i = 0; i < 10U; i++)
+    EXPECT_EQ (((unsigned int *) result)[i], i);
+
+  ret = nns_edge_data_get_info (result_h, "temp-key1", &result_value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (result_value, "temp-data-val1");
+  free (result_value);
+
+  ret = nns_edge_data_get_info (result_h, "temp-key2", &result_value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (result_value, "temp-data-val2");
+  free (result_value);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (result_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse new data of edge event - invalid param.
+ */
+TEST(edgeEvent, parseNewDataInvalidParam01_n) {
+  nns_edge_data_h data_h;
+  int ret;
+
+  ret = nns_edge_event_parse_new_data (NULL, &data_h);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse new data of edge event - invalid param.
+ */
+TEST(edgeEvent, parseNewDataInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_NEW_DATA_RECEIVED, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_new_data (event_h, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse new data of edge event - invalid param.
+ */
+TEST(edgeEvent, parseNewDataInvalidParam03_n) {
+  nns_edge_event_h event_h;
+  nns_edge_data_h data_h;
+  nns_edge_event_s *ee;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_NEW_DATA_RECEIVED, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ee = (nns_edge_event_s *) event_h;
+  ee->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_event_parse_new_data (event_h, &data_h);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ee->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse new data of edge event - invalid param.
+ */
+TEST(edgeEvent, parseNewDataInvalidParam04_n) {
+  nns_edge_event_h event_h;
+  nns_edge_data_h data_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_new_data (event_h, &data_h);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse capability of edge event.
+ */
+TEST(edgeEvent, parseCapability) {
+  const char capability[] = "temp-capability";
+  nns_edge_event_h event_h;
+  char *caps = NULL;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CAPABILITY, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, (void *) capability, strlen (capability), NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_capability (event_h, &caps);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (caps, capability);
+  free (caps);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse capability of edge event - invalid param.
+ */
+TEST(edgeEvent, parseCapabilityInvalidParam01_n) {
+  char *caps = NULL;
+  int ret;
+
+  ret = nns_edge_event_parse_capability (NULL, &caps);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse capability of edge event - invalid param.
+ */
+TEST(edgeEvent, parseCapabilityInvalidParam02_n) {
+  nns_edge_event_h event_h;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CAPABILITY, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_capability (event_h, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse capability of edge event - invalid param.
+ */
+TEST(edgeEvent, parseCapabilityInvalidParam03_n) {
+  nns_edge_event_h event_h;
+  nns_edge_event_s *ee;
+  char *caps = NULL;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CAPABILITY, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ee = (nns_edge_event_s *) event_h;
+  ee->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_event_parse_capability (event_h, &caps);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ee->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Parse capability of edge event - invalid param.
+ */
+TEST(edgeEvent, parseCapabilityInvalidParam04_n) {
+  nns_edge_event_h event_h;
+  char *caps = NULL;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_parse_capability (event_h, &caps);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Main gtest
  */
 int
