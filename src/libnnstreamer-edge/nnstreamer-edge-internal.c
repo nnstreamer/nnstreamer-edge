@@ -874,7 +874,7 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   /* Send capability and info to check compatibility. */
   client_id = eh->is_server ? g_get_monotonic_time () : eh->client_id;
 
-  if (!eh->caps_str || *eh->caps_str == '\0') {
+  if (!STR_IS_VALID (eh->caps_str)) {
     nns_edge_loge ("Cannot accept socket, invalid capability.");
     goto error;
   }
@@ -943,12 +943,12 @@ nns_edge_create_handle (const char *id, const char *topic, nns_edge_h * edge_h)
 {
   nns_edge_handle_s *eh;
 
-  if (!id || *id == '\0') {
+  if (!STR_IS_VALID (id)) {
     nns_edge_loge ("Invalid param, given ID is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!topic || *topic == '\0') {
+  if (!STR_IS_VALID (topic)) {
     nns_edge_loge ("Invalid param, given topic is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -1148,7 +1148,7 @@ nns_edge_connect (nns_edge_h edge_h, nns_edge_protocol_e protocol,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!ip || *ip == '\0') {
+  if (!STR_IS_VALID (ip)) {
     nns_edge_loge ("Invalid param, given IP is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -1402,12 +1402,12 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!key || *key == '\0') {
+  if (!STR_IS_VALID (key)) {
     nns_edge_loge ("Invalid param, given key is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!value || *value == '\0') {
+  if (!STR_IS_VALID (value)) {
     nns_edge_loge ("Invalid param, given value is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }

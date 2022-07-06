@@ -491,12 +491,12 @@ nns_edge_data_set_info (nns_edge_data_h data_h, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!key || *key == '\0') {
+  if (!STR_IS_VALID (key)) {
     nns_edge_loge ("Invalid param, given key is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!value || *value == '\0') {
+  if (!STR_IS_VALID (value)) {
     nns_edge_loge ("Invalid param, given value is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -523,7 +523,7 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!key || *key == '\0') {
+  if (!STR_IS_VALID (key)) {
     nns_edge_loge ("Invalid param, given key is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
