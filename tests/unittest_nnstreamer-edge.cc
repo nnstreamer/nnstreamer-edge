@@ -29,6 +29,11 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
   ne_event_cb_test_s *event_data = (ne_event_cb_test_s *) user_data;
 
+  if (!event_data) {
+    /* Cannot update event status. */
+    return NNS_EDGE_ERROR_NONE;
+  }
+
   nns_edge_event_get_type (event_h, &event);
 
   switch (event) {
@@ -420,7 +425,7 @@ TEST(edge, requestInvalidParam01_n) {
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_request (NULL, data_h, NULL);
+  ret = nns_edge_request (NULL, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_destroy (data_h);
@@ -445,7 +450,7 @@ TEST(edge, requestInvalidParam02_n) {
   eh = (nns_edge_handle_s *) edge_h;
   eh->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_request (edge_h, data_h, NULL);
+  ret = nns_edge_request (edge_h, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   eh->magic = NNS_EDGE_MAGIC;
@@ -467,7 +472,7 @@ TEST(edge, requestInvalidParam03_n) {
   ret = nns_edge_create_handle ("temp-id", "temp-topic", &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_request (edge_h, NULL, NULL);
+  ret = nns_edge_request (edge_h, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
@@ -579,7 +584,7 @@ TEST(edge, subscribeInvalidParam01_n) {
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_subscribe (NULL, data_h, NULL);
+  ret = nns_edge_subscribe (NULL, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_destroy (data_h);
@@ -604,7 +609,7 @@ TEST(edge, subscribeInvalidParam02_n) {
   eh = (nns_edge_handle_s *) edge_h;
   eh->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_subscribe (edge_h, data_h, NULL);
+  ret = nns_edge_subscribe (edge_h, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   eh->magic = NNS_EDGE_MAGIC;
@@ -626,7 +631,7 @@ TEST(edge, subscribeInvalidParam03_n) {
   ret = nns_edge_create_handle ("temp-id", "temp-topic", &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_subscribe (edge_h, NULL, NULL);
+  ret = nns_edge_subscribe (edge_h, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
