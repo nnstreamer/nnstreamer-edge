@@ -267,8 +267,10 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 {
   unsigned int n;
 
-  if (!conn || !cmd)
+  if (!conn) {
+    nns_edge_loge ("Failed to send command, edge connection is null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
 
   if (!_nns_edge_cmd_is_valid (cmd)) {
     nns_edge_loge ("Failed to send command, invalid command.");
@@ -406,6 +408,12 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
   }
 
   if (conn->socket) {
+    nns_edge_cmd_s cmd;
+
+    /* Send error before closing the socket. */
+    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, 0);
+    _nns_edge_cmd_send (conn, &cmd);
+
     if (!g_socket_close (conn->socket, &err)) {
       nns_edge_loge ("Failed to close socket: %s", err->message);
       g_clear_error (&err);
@@ -726,7 +734,7 @@ _nns_edge_message_handler (void *thread_data)
       break;
 
     /** Receive data from the client */
-    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, eh->client_id);
+    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive data from the connected node.");
@@ -865,6 +873,11 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
 
   /* Send capability and info to check compatibility. */
   client_id = eh->is_server ? g_get_monotonic_time () : eh->client_id;
+
+  if (!eh->caps_str || *eh->caps_str == '\0') {
+    nns_edge_loge ("Cannot accept socket, invalid capability.");
+    goto error;
+  }
 
   _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_CAPABILITY, client_id);
   cmd.info.num = 1;
@@ -1232,7 +1245,7 @@ nns_edge_publish (nns_edge_h edge_h, nns_edge_data_h data_h)
  * @brief Request result to the server.
  */
 int
-nns_edge_request (nns_edge_h edge_h, nns_edge_data_h data_h, void *user_data)
+nns_edge_request (nns_edge_h edge_h, nns_edge_data_h data_h)
 {
   nns_edge_handle_s *eh;
   nns_edge_conn_data_s *conn_data;
@@ -1240,7 +1253,6 @@ nns_edge_request (nns_edge_h edge_h, nns_edge_data_h data_h, void *user_data)
   int ret;
   unsigned int i;
 
-  UNUSED (user_data);
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
     nns_edge_loge ("Invalid param, given edge handle is null.");
@@ -1284,11 +1296,10 @@ nns_edge_request (nns_edge_h edge_h, nns_edge_data_h data_h, void *user_data)
  * @brief Subscribe a message to a given topic.
  */
 int
-nns_edge_subscribe (nns_edge_h edge_h, nns_edge_data_h data_h, void *user_data)
+nns_edge_subscribe (nns_edge_h edge_h, nns_edge_data_h data_h)
 {
   nns_edge_handle_s *eh;
 
-  UNUSED (user_data);
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
     nns_edge_loge ("Invalid param, given edge handle is null.");
@@ -1491,6 +1502,8 @@ nns_edge_respond (nns_edge_h edge_h, nns_edge_data_h data_h)
   }
 
   ret = _nns_edge_cmd_send (conn_data->sink_conn, &cmd);
+  if (ret != NNS_EDGE_ERROR_NONE)
+    nns_edge_loge ("Failed to respond, cannot send edge data.");
 
   nns_edge_unlock (eh);
   return ret;
