@@ -29,6 +29,8 @@ extern "C" {
 #define UNUSED(expr) do { (void)(expr); } while (0)
 #endif
 
+#define STR_IS_VALID(s) ((s) && (s)[0] != '\0')
+
 #define NNS_EDGE_MAGIC 0xfeedfeed
 #define NNS_EDGE_MAGIC_DEAD 0xdeaddead
 #define NNS_EDGE_MAGIC_IS_VALID(h) ((h) && (h)->magic == NNS_EDGE_MAGIC)
