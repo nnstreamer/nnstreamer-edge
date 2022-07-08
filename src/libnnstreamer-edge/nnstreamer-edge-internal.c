@@ -220,9 +220,7 @@ _nns_edge_cmd_clear (nns_edge_cmd_s * cmd)
   cmd->info.magic = NNS_EDGE_MAGIC_DEAD;
 
   for (i = 0; i < cmd->info.num; i++) {
-    if (cmd->mem[i])
-      free (cmd->mem[i]);
-    cmd->mem[i] = NULL;
+    SAFE_FREE (cmd->mem[i]);
   }
 }
 
@@ -337,8 +335,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 
   if (ret != NNS_EDGE_ERROR_NONE) {
     for (i = 0; i < n; i++) {
-      free (cmd->mem[i]);
-      cmd->mem[i] = NULL;
+      SAFE_FREE (cmd->mem[i]);
     }
   }
 
@@ -423,8 +420,8 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     g_clear_object (&conn->socket);
   }
 
-  g_free (conn->ip);
-  g_free (conn);
+  SAFE_FREE (conn->ip);
+  SAFE_FREE (conn);
   return true;
 }
 
@@ -488,7 +485,7 @@ _nns_edge_remove_connection (gpointer data)
     _nns_edge_close_connection (cdata->sink_conn);
     cdata->src_conn = cdata->sink_conn = NULL;
 
-    g_free (cdata);
+    SAFE_FREE (cdata);
   }
 }
 
@@ -690,7 +687,7 @@ _nns_edge_message_handler (void *thread_data)
   eh = (nns_edge_handle_s *) _tdata->eh;
   conn = _tdata->conn;
   client_id = _tdata->client_id;
-  g_free (_tdata);
+  SAFE_FREE (_tdata);
 
   conn->running = 1;
   while (conn->running) {
@@ -731,7 +728,7 @@ _nns_edge_message_handler (void *thread_data)
     /* Set client ID in edge data */
     val = nns_edge_strdup_printf ("%ld", (long int) client_id);
     nns_edge_data_set_info (data_h, "client_id", val);
-    g_free (val);
+    SAFE_FREE (val);
 
     for (i = 0; i < cmd.info.num; i++) {
       nns_edge_data_add (data_h, cmd.mem[i], cmd.info.mem_size[i], NULL);
@@ -786,7 +783,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
     nns_edge_loge ("Failed to create message handler thread.");
     conn->running = 0;
     conn->msg_thread = 0;
-    g_free (thread_data);
+    SAFE_FREE (thread_data);
     return NNS_EDGE_ERROR_IO;
   }
 
@@ -909,7 +906,7 @@ error:
     g_socket_listener_accept_socket_async (eh->listener, NULL,
         (GAsyncReadyCallback) _nns_edge_accept_socket_async_cb, eh);
 
-  g_free (connected_ip);
+  SAFE_FREE (connected_ip);
 }
 
 /**
@@ -1060,14 +1057,15 @@ nns_edge_release_handle (nns_edge_h edge_h)
   g_hash_table_destroy (eh->conn_table);
   eh->conn_table = NULL;
 
-  g_free (eh->id);
-  g_free (eh->topic);
-  g_free (eh->ip);
-  g_free (eh->recv_ip);
+  SAFE_FREE (eh->id);
+  SAFE_FREE (eh->topic);
+  SAFE_FREE (eh->ip);
+  SAFE_FREE (eh->recv_ip);
+  SAFE_FREE (eh->caps_str);
 
   nns_edge_unlock (eh);
   nns_edge_lock_destroy (eh);
-  g_free (eh);
+  SAFE_FREE (eh);
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -1406,15 +1404,15 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
    */
   if (0 == g_ascii_strcasecmp (key, "CAPS")) {
     ret_str = nns_edge_strdup_printf ("%s%s", _STR_NULL (eh->caps_str), value);
-    g_free (eh->caps_str);
+    SAFE_FREE (eh->caps_str);
     eh->caps_str = ret_str;
   } else if (0 == g_ascii_strcasecmp (key, "IP")) {
-    g_free (eh->recv_ip);
+    SAFE_FREE (eh->recv_ip);
     eh->recv_ip = nns_edge_strdup (value);
   } else if (0 == g_ascii_strcasecmp (key, "PORT")) {
     eh->recv_port = g_ascii_strtoll (value, NULL, 10);
   } else if (0 == g_ascii_strcasecmp (key, "TOPIC")) {
-    g_free (eh->topic);
+    SAFE_FREE (eh->topic);
     eh->topic = nns_edge_strdup (value);
   } else {
     nns_edge_logw ("Failed to set edge info. Unknown key: %s", key);
@@ -1465,7 +1463,7 @@ nns_edge_respond (nns_edge_h edge_h, nns_edge_data_h data_h)
   }
 
   client_id = g_ascii_strtoll (val, NULL, 10);
-  g_free (val);
+  SAFE_FREE (val);
 
   conn_data = _nns_edge_get_connection (eh, client_id);
   if (!conn_data) {

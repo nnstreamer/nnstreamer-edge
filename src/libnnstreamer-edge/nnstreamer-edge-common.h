@@ -34,6 +34,7 @@ extern "C" {
 #endif
 
 #define STR_IS_VALID(s) ((s) && (s)[0] != '\0')
+#define SAFE_FREE(p) do { if (p) { free (p); (p) = NULL; } } while (0)
 
 #define NNS_EDGE_MAGIC 0xfeedfeed
 #define NNS_EDGE_MAGIC_DEAD 0xdeaddead
@@ -90,20 +91,25 @@ typedef struct {
 int nns_edge_get_available_port (void);
 
 /**
+ * @brief Free allocated memory.
+ */
+void nns_edge_free (void *data);
+
+/**
  * @brief Allocate new memory and copy bytes.
- * @note Caller should release newly allocated memory using free().
+ * @note Caller should release newly allocated memory using nns_edge_free().
  */
 void *nns_edge_memdup (const void *data, size_t size);
 
 /**
  * @brief Allocate new memory and copy string.
- * @note Caller should release newly allocated string using free().
+ * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *nns_edge_strdup (const char *str);
 
 /**
  * @brief Allocate new memory and print formatted string.
- * @note Caller should release newly allocated string using free().
+ * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *nns_edge_strdup_printf (const char *format, ...);
 

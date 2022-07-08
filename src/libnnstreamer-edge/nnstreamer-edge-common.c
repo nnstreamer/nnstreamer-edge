@@ -49,8 +49,18 @@ nns_edge_get_available_port (void)
 }
 
 /**
+ * @brief Free allocated memory.
+ */
+void
+nns_edge_free (void *data)
+{
+  if (data)
+    free (data);
+}
+
+/**
  * @brief Allocate new memory and copy bytes.
- * @note Caller should release newly allocated memory using free().
+ * @note Caller should release newly allocated memory using nns_edge_free().
  */
 void *
 nns_edge_memdup (const void *data, size_t size)
@@ -72,7 +82,7 @@ nns_edge_memdup (const void *data, size_t size)
 
 /**
  * @brief Allocate new memory and copy string.
- * @note Caller should release newly allocated string using free().
+ * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *
 nns_edge_strdup (const char *str)
@@ -97,7 +107,7 @@ nns_edge_strdup (const char *str)
 
 /**
  * @brief Allocate new memory and print formatted string.
- * @note Caller should release newly allocated string using free().
+ * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *
 nns_edge_strdup_printf (const char *format, ...)
@@ -167,7 +177,7 @@ nns_edge_event_destroy (nns_edge_event_h event_h)
   if (ee->data.destroy_cb)
     ee->data.destroy_cb (ee->data.data);
 
-  g_free (ee);
+  SAFE_FREE (ee);
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -309,8 +319,8 @@ nns_edge_data_create (nns_edge_data_h * data_h)
 
   memset (ed, 0, sizeof (nns_edge_data_s));
   ed->magic = NNS_EDGE_MAGIC;
-  ed->info_table =
-      g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  ed->info_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+      nns_edge_free, nns_edge_free);
 
   *data_h = ed;
   return NNS_EDGE_ERROR_NONE;
@@ -341,7 +351,7 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
 
   g_hash_table_destroy (ed->info_table);
 
-  g_free (ed);
+  SAFE_FREE (ed);
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -401,7 +411,7 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
     copied->data[i].data = nns_edge_memdup (ed->data[i].data,
         ed->data[i].data_len);
     copied->data[i].data_len = ed->data[i].data_len;
-    copied->data[i].destroy_cb = g_free;
+    copied->data[i].destroy_cb = nns_edge_free;
   }
 
   g_hash_table_iter_init (&iter, ed->info_table);
