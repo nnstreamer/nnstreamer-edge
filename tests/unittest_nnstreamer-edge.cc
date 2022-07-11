@@ -13,12 +13,54 @@
 #include "nnstreamer-edge-internal.h"
 
 /**
- * @brief Data struct for event callback test.
+ * @brief Data struct for unittest.
  */
 typedef struct
 {
-  bool callback_released;
-} ne_event_cb_test_s;
+  GMainLoop *loop;
+  nns_edge_h handle;
+  bool running;
+  bool is_server;
+  bool event_cb_released;
+  unsigned int received;
+} ne_test_data_s;
+
+/**
+ * @brief Allocate and initialize test data.
+ */
+static ne_test_data_s *
+_get_test_data (bool is_server)
+{
+  ne_test_data_s *_td;
+
+  _td = (ne_test_data_s *) malloc (sizeof (ne_test_data_s));
+  memset (_td, 0, sizeof (ne_test_data_s));
+
+  _td->loop = g_main_loop_new (NULL, FALSE);
+  _td->is_server = is_server;
+
+  return _td;
+}
+
+/**
+ * @brief Release test data.
+ */
+static void
+_free_test_data (ne_test_data_s *_td)
+{
+  if (!_td)
+    return;
+
+  if (_td->loop) {
+    if (g_main_loop_is_running (_td->loop))
+      g_main_loop_quit (_td->loop);
+
+    g_main_loop_unref (_td->loop);
+    _td->loop = NULL;
+  }
+
+  free (_td);
+}
 
 /**
  * @brief Edge event callback for test.
@@ -26,25 +68,204 @@ typedef struct
 static int
 _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 {
+  ne_test_data_s *_td = (ne_test_data_s *) user_data;
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
-  ne_event_cb_test_s *event_data = (ne_event_cb_test_s *) user_data;
+  nns_edge_data_h data_h;
+  void *data;
+  size_t data_len;
+  unsigned int i, count;
+  int ret;
 
-  if (!event_data) {
+  if (!_td) {
     /* Cannot update event status. */
     return NNS_EDGE_ERROR_NONE;
   }
 
-  nns_edge_event_get_type (event_h, &event);
+  ret = nns_edge_event_get_type (event_h, &event);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   switch (event) {
     case NNS_EDGE_EVENT_CALLBACK_RELEASED:
-      event_data->callback_released = true;
+      _td->event_cb_released = true;
+      break;
+    case NNS_EDGE_EVENT_NEW_DATA_RECEIVED:
+      _td->received++;
+
+      ret = nns_edge_event_parse_new_data (event_h, &data_h);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+      if (_td->is_server) {
+        /**
+         * @note This is test code, responding to client.
+         * Recommend not to call edge API in event callback.
+         */
+        ret = nns_edge_respond (_td->handle, data_h);
+        EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      } else {
+        /* Compare received data */
+        ret = nns_edge_data_get_count (data_h, &count);
+        EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+        ret = nns_edge_data_get (data_h, 0, &data, &data_len);
+        EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+        EXPECT_EQ (count, 1U);
+        for (i = 0; i < 10U; i++)
+          EXPECT_EQ (((unsigned int *) data)[i], i);
+      }
+
+      ret = nns_edge_data_destroy (data_h);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       break;
     default:
       break;
   }
 
   return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Edge thread for test.
+ */
+static void *
+_test_edge_thread (void *data)
+{
+  ne_test_data_s *_td = (ne_test_data_s *) data;
+  int ret;
+
+  ret = nns_edge_start (_td->handle, _td->is_server);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _td->running = true;
+  g_main_loop_run (_td->loop);
+  _td->running = false;
+
+  return NULL;
+}
+
+/**
+ * @brief Connect to local host, multiple clients.
+ */
+TEST(edge, connectLocal)
+{
+  nns_edge_h server_h, client1_h, client2_h;
+  ne_test_data_s *_td_server, *_td_client1, *_td_client2;
+  nns_edge_data_h data_h;
+  pthread_t server_thread, client1_thread, client2_thread;
+  pthread_attr_t attr;
+  size_t data_len;
+  void *data;
+  unsigned int i, retry;
+  int ret, port;
+  char *val;
+
+  _td_server = _get_test_data (true);
+  _td_client1 = _get_test_data (false);
+  _td_client2 = _get_test_data (false);
+  port = nns_edge_get_available_port ();
+
+  /* Prepare server (127.0.0.1:port) */
+  val = nns_edge_strdup_printf ("%d", port);
+  nns_edge_create_handle ("temp-server", "temp-topic", &server_h);
+  nns_edge_set_event_callback (server_h, _test_edge_event_cb, _td_server);
+  nns_edge_set_info (server_h, "IP", "127.0.0.1");
+  nns_edge_set_info (server_h, "PORT", val);
+  nns_edge_set_info (server_h, "CAPS", "test server");
+  _td_server->handle = server_h;
+  nns_edge_free (val);
+
+  /* Prepare client */
+  nns_edge_create_handle ("temp-client1", "temp-topic", &client1_h);
+  nns_edge_set_event_callback (client1_h, _test_edge_event_cb, _td_client1);
+  nns_edge_set_info (client1_h, "CAPS", "test client1");
+  _td_client1->handle = client1_h;
+
+  nns_edge_create_handle ("temp-client2", "temp-topic", &client2_h);
+  nns_edge_set_event_callback (client2_h, _test_edge_event_cb, _td_client2);
+  nns_edge_set_info (client2_h, "CAPS", "test client2");
+  _td_client2->handle = client2_h;
+
+  /* Start server/client thread */
+  pthread_attr_init (&attr);
+  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
+  pthread_create (&server_thread, &attr, _test_edge_thread, _td_server);
+  pthread_create (&client1_thread, &attr, _test_edge_thread, _td_client1);
+  pthread_create (&client2_thread, &attr, _test_edge_thread, _td_client2);
+  pthread_attr_destroy (&attr);
+
+  /* Wait for server/client thread */
+  do {
+    usleep (20000);
+  } while (!g_main_loop_is_running (_td_server->loop));
+
+  do {
+    usleep (20000);
+  } while (!g_main_loop_is_running (_td_client1->loop));
+
+  do {
+    usleep (20000);
+  } while (!g_main_loop_is_running (_td_client2->loop));
+
+  ret = nns_edge_connect (client1_h, NNS_EDGE_PROTOCOL_TCP, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  usleep (10000);
+  ret = nns_edge_connect (client2_h, NNS_EDGE_PROTOCOL_TCP, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  sleep (2);
+
+  /* Send request to server */
+  data_len = 10U * sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  for (i = 0; i < 10U; i++)
+    ((unsigned int *) data)[i] = i;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  for (i = 0; i < 5U; i++) {
+    ret = nns_edge_request (client1_h, data_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+    usleep (10000);
+    ret = nns_edge_request (client2_h, data_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    usleep (100000);
+  }
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Wait for responding data (20 seconds) */
+  retry = 0U;
+  do {
+    usleep (100000);
+    if (_td_client1->received > 0 && _td_client2->received > 0)
+      break;
+  } while (retry++ < 200U);
+
+  g_main_loop_quit (_td_server->loop);
+  g_main_loop_quit (_td_client1->loop);
+  g_main_loop_quit (_td_client2->loop);
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_release_handle (client1_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_release_handle (client2_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  EXPECT_TRUE (_td_server->received > 0);
+  EXPECT_TRUE (_td_client1->received > 0);
+  EXPECT_TRUE (_td_client2->received > 0);
+
+  _free_test_data (_td_server);
+  _free_test_data (_td_client1);
+  _free_test_data (_td_client2);
 }
 
 /**
@@ -182,28 +403,27 @@ TEST(edge, releaseHandleInvalidParam02_n)
 TEST(edge, setEventCbSetNullCallback)
 {
   nns_edge_h edge_h;
-  ne_event_cb_test_s *event_data;
+  ne_test_data_s *_td;
   int ret;
 
-  event_data = (ne_event_cb_test_s *) malloc (sizeof (ne_event_cb_test_s));
-  memset (event_data, 0, sizeof (ne_event_cb_test_s));
+  _td = _get_test_data (false);
 
   ret = nns_edge_create_handle ("temp-id", "temp-topic", &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, event_data);
+  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, _td);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* Set null param to clear event callback. */
   ret = nns_edge_set_event_callback (edge_h, NULL, NULL);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  EXPECT_TRUE (event_data->callback_released);
+  EXPECT_TRUE (_td->event_cb_released);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (event_data);
+  _free_test_data (_td);
 }
 
 /**
@@ -224,11 +444,10 @@ TEST(edge, setEventCbInvalidParam02_n)
 {
   nns_edge_h edge_h;
   nns_edge_handle_s *eh;
-  ne_event_cb_test_s *event_data;
+  ne_test_data_s *_td;
   int ret;
 
-  event_data = (ne_event_cb_test_s *) malloc (sizeof (ne_event_cb_test_s));
-  memset (event_data, 0, sizeof (ne_event_cb_test_s));
+  _td = _get_test_data (false);
 
   ret = nns_edge_create_handle ("temp-id", "temp-topic", &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -236,7 +455,7 @@ TEST(edge, setEventCbInvalidParam02_n)
   eh = (nns_edge_handle_s *) edge_h;
   eh->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, event_data);
+  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, _td);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   eh->magic = NNS_EDGE_MAGIC;
@@ -244,7 +463,7 @@ TEST(edge, setEventCbInvalidParam02_n)
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (event_data);
+  _free_test_data (_td);
 }
 
 /**
