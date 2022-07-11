@@ -62,7 +62,6 @@ typedef struct
   int8_t running;
   pthread_t msg_thread;
   GSocket *socket;
-  GCancellable *cancellable;
 } nns_edge_conn_s;
 
 /**
@@ -89,8 +88,7 @@ typedef struct
  * @brief Send data to connected socket.
  */
 static bool
-_send_raw_data (GSocket * socket, void *data, size_t size,
-    GCancellable * cancellable)
+_send_raw_data (GSocket * socket, void *data, size_t size)
 {
   size_t bytes_sent = 0;
   ssize_t rret;
@@ -98,7 +96,7 @@ _send_raw_data (GSocket * socket, void *data, size_t size,
 
   while (bytes_sent < size) {
     rret = g_socket_send (socket, (char *) data + bytes_sent,
-        size - bytes_sent, cancellable, &err);
+        size - bytes_sent, NULL, &err);
 
     if (rret == 0) {
       nns_edge_loge ("Connection closed.");
@@ -121,8 +119,7 @@ _send_raw_data (GSocket * socket, void *data, size_t size,
  * @brief Receive data from connected socket.
  */
 static bool
-_receive_raw_data (GSocket * socket, void *data, size_t size,
-    GCancellable * cancellable)
+_receive_raw_data (GSocket * socket, void *data, size_t size)
 {
   size_t bytes_received = 0;
   ssize_t rret;
@@ -130,7 +127,7 @@ _receive_raw_data (GSocket * socket, void *data, size_t size,
 
   while (bytes_received < size) {
     rret = g_socket_receive (socket, (char *) data + bytes_received,
-        size - bytes_received, cancellable, &err);
+        size - bytes_received, NULL, &err);
 
     if (rret == 0) {
       nns_edge_loge ("Connection closed.");
@@ -304,15 +301,13 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     return NNS_EDGE_ERROR_IO;
   }
 
-  if (!_send_raw_data (conn->socket, &cmd->info,
-          sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
+  if (!_send_raw_data (conn->socket, &cmd->info, sizeof (nns_edge_cmd_info_s))) {
     nns_edge_loge ("Failed to send command to socket.");
     return NNS_EDGE_ERROR_IO;
   }
 
   for (n = 0; n < cmd->info.num; n++) {
-    if (!_send_raw_data (conn->socket, cmd->mem[n],
-            cmd->info.mem_size[n], conn->cancellable)) {
+    if (!_send_raw_data (conn->socket, cmd->mem[n], cmd->info.mem_size[n])) {
       nns_edge_loge ("Failed to send %uth memory to socket.", n);
       return NNS_EDGE_ERROR_IO;
     }
@@ -339,7 +334,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   }
 
   if (!_receive_raw_data (conn->socket, &cmd->info,
-          sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
+          sizeof (nns_edge_cmd_info_s))) {
     nns_edge_loge ("Failed to receive command from socket.");
     return NNS_EDGE_ERROR_IO;
   }
@@ -359,8 +354,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
       break;
     }
 
-    if (!_receive_raw_data (conn->socket, cmd->mem[n],
-            cmd->info.mem_size[n], conn->cancellable)) {
+    if (!_receive_raw_data (conn->socket, cmd->mem[n], cmd->info.mem_size[n])) {
       nns_edge_loge ("Failed to receive %uth memory from socket.", n++);
       ret = NNS_EDGE_ERROR_IO;
       break;
@@ -457,11 +451,6 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     conn->socket = NULL;
   }
 
-  if (conn->cancellable) {
-    g_object_unref (conn->cancellable);
-    conn->cancellable = NULL;
-  }
-
   g_free (conn->ip);
   g_free (conn);
   return true;
@@ -535,8 +524,7 @@ _nns_edge_remove_connection (gpointer data)
  * @brief Get socket address
  */
 static bool
-_nns_edge_get_saddr (const char *ip, const int port,
-    GCancellable * cancellable, GSocketAddress ** saddr)
+_nns_edge_get_saddr (const char *ip, const int port, GSocketAddress ** saddr)
 {
   GError *err = NULL;
   GInetAddress *addr;
@@ -547,7 +535,7 @@ _nns_edge_get_saddr (const char *ip, const int port,
     GList *results;
     GResolver *resolver;
     resolver = g_resolver_get_default ();
-    results = g_resolver_lookup_by_name (resolver, ip, cancellable, &err);
+    results = g_resolver_lookup_by_name (resolver, ip, NULL, &err);
     if (!results) {
       if (g_error_matches (err, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
         nns_edge_loge ("Failed to resolve ip, name resolver is cancelled.");
@@ -580,7 +568,7 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
   GSocketAddress *saddr = NULL;
   bool ret = false;
 
-  if (!_nns_edge_get_saddr (conn->ip, conn->port, conn->cancellable, &saddr)) {
+  if (!_nns_edge_get_saddr (conn->ip, conn->port, &saddr)) {
     nns_edge_loge ("Failed to get socket address");
     return ret;
   }
@@ -601,7 +589,7 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
     goto done;
   }
 
-  if (!g_socket_connect (conn->socket, saddr, conn->cancellable, &err)) {
+  if (!g_socket_connect (conn->socket, saddr, NULL, &err)) {
     if (g_error_matches (err, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
       nns_edge_logd ("Cancelled connecting");
     } else {
@@ -642,7 +630,6 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
   memset (conn, 0, sizeof (nns_edge_conn_s));
   conn->ip = nns_edge_strdup (ip);
   conn->port = port;
-  conn->cancellable = g_cancellable_new ();
 
   if (!_nns_edge_connect_socket (conn)) {
     goto error;
@@ -861,7 +848,7 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   if (!socket) {
     nns_edge_loge ("Failed to get socket: %s", err->message);
     g_clear_error (&err);
-    goto error;
+    return;
   }
   g_socket_set_timeout (socket, DEFAULT_TIMEOUT_SEC);
 
@@ -874,7 +861,6 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
 
   memset (conn, 0, sizeof (nns_edge_conn_s));
   conn->socket = socket;
-  conn->cancellable = g_cancellable_new ();
 
   /* setting TCP_NODELAY to true in order to avoid packet batching as known as Nagle's algorithm */
   if (!g_socket_set_option (socket, IPPROTO_TCP, TCP_NODELAY, true, &err)) {
@@ -947,8 +933,9 @@ error:
     _nns_edge_close_connection (conn);
   }
 
-  g_socket_listener_accept_socket_async (socket_listener, eh->cancellable,
-      (GAsyncReadyCallback) _nns_edge_accept_socket_async_cb, eh);
+  if (eh->listener)
+    g_socket_listener_accept_socket_async (eh->listener, NULL,
+        (GAsyncReadyCallback) _nns_edge_accept_socket_async_cb, eh);
 
   g_free (connected_ip);
 }
@@ -1042,12 +1029,10 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
   }
 
   /** Initialize server src data. */
-  eh->cancellable = g_cancellable_new ();
   eh->listener = g_socket_listener_new ();
   g_socket_listener_set_backlog (eh->listener, N_BACKLOG);
 
-  if (!_nns_edge_get_saddr (eh->recv_ip, eh->recv_port, eh->cancellable,
-          &saddr)) {
+  if (!_nns_edge_get_saddr (eh->recv_ip, eh->recv_port, &saddr)) {
     nns_edge_loge ("Failed to get socket address");
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
     goto error;
@@ -1060,7 +1045,7 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
     goto error;
   }
 
-  g_socket_listener_accept_socket_async (eh->listener, eh->cancellable,
+  g_socket_listener_accept_socket_async (eh->listener, NULL,
       (GAsyncReadyCallback) _nns_edge_accept_socket_async_cb, eh);
 
 error:
@@ -1096,11 +1081,17 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->magic = NNS_EDGE_MAGIC_DEAD;
   eh->event_cb = NULL;
   eh->user_data = NULL;
+
+  if (eh->listener)
+    g_clear_object (&eh->listener);
+
+  g_hash_table_destroy (eh->conn_table);
+  eh->conn_table = NULL;
+
   g_free (eh->id);
   g_free (eh->topic);
   g_free (eh->ip);
   g_free (eh->recv_ip);
-  g_hash_table_destroy (eh->conn_table);
 
   nns_edge_unlock (eh);
   nns_edge_lock_destroy (eh);
