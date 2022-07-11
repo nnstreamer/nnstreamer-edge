@@ -204,6 +204,28 @@ _get_available_port (void)
 }
 
 /**
+ * @brief Internal function to check connection.
+ */
+static bool
+_nns_edge_check_connection (nns_edge_conn_s * conn)
+{
+  GIOCondition condition;
+
+  if (!conn || !conn->socket || g_socket_is_closed (conn->socket))
+    return false;
+
+  condition = g_socket_condition_check (conn->socket,
+      G_IO_IN | G_IO_OUT | G_IO_PRI | G_IO_ERR | G_IO_HUP);
+
+  if (!condition || (condition & (G_IO_ERR | G_IO_HUP))) {
+    nns_edge_logw ("Socket is not available, possibly closed.");
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * @brief initialize edge command.
  */
 static void
@@ -277,6 +299,11 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  if (!_nns_edge_check_connection (conn)) {
+    nns_edge_loge ("Failed to send command, socket has error.");
+    return NNS_EDGE_ERROR_IO;
+  }
+
   if (!_send_raw_data (conn->socket, &cmd->info,
           sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
     nns_edge_loge ("Failed to send command to socket.");
@@ -305,6 +332,11 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 
   if (!conn || !cmd)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  if (!_nns_edge_check_connection (conn)) {
+    nns_edge_loge ("Failed to receive command, socket has error.");
+    return NNS_EDGE_ERROR_IO;
+  }
 
   if (!_receive_raw_data (conn->socket, &cmd->info,
           sizeof (nns_edge_cmd_info_s), conn->cancellable)) {
@@ -494,30 +526,6 @@ _nns_edge_remove_connection (gpointer data)
 
     g_free (cdata);
   }
-}
-
-/**
- * @brief Internal function to check connection.
- */
-static bool
-_nns_edge_check_connection (nns_edge_conn_s * conn)
-{
-  size_t size;
-  GIOCondition condition;
-
-  if (!conn)
-    return false;
-
-  condition = g_socket_condition_check (conn->socket,
-      G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP);
-  size = g_socket_get_available_bytes (conn->socket);
-
-  if (condition && size <= 0) {
-    nns_edge_logw ("Socket is not available, possibly EOS.");
-    return false;
-  }
-
-  return true;
 }
 
 /**
@@ -729,9 +737,6 @@ _nns_edge_message_handler (void *thread_data)
       nns_edge_loge ("The edge handle is invalid, it would be expired.");
       break;
     }
-
-    if (!_nns_edge_check_connection (conn))
-      break;
 
     /** Receive data from the client */
     _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
