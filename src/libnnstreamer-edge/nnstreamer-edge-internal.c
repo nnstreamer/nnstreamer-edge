@@ -675,6 +675,7 @@ _nns_edge_message_handler (void *thread_data)
   nns_edge_handle_s *eh;
   nns_edge_conn_s *conn;
   nns_edge_cmd_s cmd;
+  bool remove_connection = false;
   int64_t client_id;
   char *val;
   int ret;
@@ -705,14 +706,18 @@ _nns_edge_message_handler (void *thread_data)
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive data from the connected node.");
+      remove_connection = true;
       break;
     }
 
     if (cmd.info.cmd == _NNS_EDGE_CMD_ERROR) {
       nns_edge_loge ("Received error, stop msg thread.");
       _nns_edge_cmd_clear (&cmd);
+      remove_connection = true;
       break;
-    } else if (cmd.info.cmd != _NNS_EDGE_CMD_TRANSFER_DATA) {
+    }
+
+    if (cmd.info.cmd != _NNS_EDGE_CMD_TRANSFER_DATA) {
       /** @todo handle other cmd later */
       _nns_edge_cmd_clear (&cmd);
       continue;
@@ -743,6 +748,14 @@ _nns_edge_message_handler (void *thread_data)
 
     nns_edge_data_destroy (data_h);
     _nns_edge_cmd_clear (&cmd);
+  }
+
+  /* Received error message from client, remove connection from table. */
+  if (remove_connection) {
+    nns_edge_logd
+        ("Received error from client, remove connection of client (ID: %ld).",
+        (long int) client_id);
+    g_hash_table_remove (eh->conn_table, GUINT_TO_POINTER (client_id));
   }
 
   conn->running = 0;
