@@ -423,12 +423,11 @@ error:
 static bool
 _nns_edge_close_connection (nns_edge_conn_s * conn)
 {
-  GError *err = NULL;
-
   if (!conn)
     return false;
 
-  if (conn->running && conn->msg_thread) {
+  /* Stop and clear the message thread. */
+  if (conn->msg_thread) {
     conn->running = 0;
     pthread_cancel (conn->msg_thread);
     pthread_join (conn->msg_thread, NULL);
@@ -439,16 +438,15 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     nns_edge_cmd_s cmd;
 
     /* Send error before closing the socket. */
+    nns_edge_logd ("Send error cmd to close connection.");
     _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, 0);
     _nns_edge_cmd_send (conn, &cmd);
 
-    if (!g_socket_close (conn->socket, &err)) {
-      nns_edge_loge ("Failed to close socket: %s", err->message);
-      g_clear_error (&err);
-      return false;
-    }
-    g_object_unref (conn->socket);
-    conn->socket = NULL;
+    /**
+     * Close and release the socket.
+     * Using GSocket, if its last reference is dropped, it will close socket automatically.
+     */
+    g_clear_object (&conn->socket);
   }
 
   g_free (conn->ip);
