@@ -434,9 +434,11 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
   if (!conn)
     return false;
 
-  if (conn->running) {
+  if (conn->running && conn->msg_thread) {
     conn->running = 0;
+    pthread_cancel (conn->msg_thread);
     pthread_join (conn->msg_thread, NULL);
+    conn->msg_thread = 0;
   }
 
   if (conn->socket) {
@@ -807,7 +809,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
 
    /** Create message receving thread */
   pthread_attr_init (&attr);
-  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
+  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
   conn->running = 1;
   thread_data->eh = eh;
   thread_data->conn = conn;
