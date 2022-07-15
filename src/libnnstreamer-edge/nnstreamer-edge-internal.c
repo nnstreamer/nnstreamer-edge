@@ -170,37 +170,6 @@ _get_host_str (const char *ip, const int port, char **host)
 }
 
 /**
- * @brief Get available port number.
- */
-static int
-_get_available_port (void)
-{
-  struct sockaddr_in sin;
-  int port = 0, sock;
-  socklen_t len = sizeof (struct sockaddr);
-
-  sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
-  sock = socket (AF_INET, SOCK_STREAM, 0);
-  if (sock < 0) {
-    nns_edge_loge ("Failed to get available port. Socket creation failure.");
-    return 0;
-  }
-  sin.sin_port = port;
-  if (bind (sock, (struct sockaddr *) &sin, sizeof (struct sockaddr)) == 0) {
-    if (getsockname (sock, (struct sockaddr *) &sin, &len) == 0) {
-      port = ntohs (sin.sin_port);
-      nns_edge_logi ("Available port number: %d", port);
-    } else {
-      nns_edge_logw ("Failed to read local socket info.");
-    }
-  }
-  close (sock);
-
-  return port;
-}
-
-/**
  * @brief Internal function to check connection.
  */
 static bool
@@ -1020,7 +989,7 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
 
   eh->is_server = is_server;
   if (!is_server && 0 == eh->recv_port) {
-    eh->recv_port = _get_available_port ();
+    eh->recv_port = nns_edge_get_available_port ();
     if (eh->recv_port <= 0) {
       nns_edge_loge ("Failed to start edge. Cannot get available port.");
       nns_edge_unlock (eh);
