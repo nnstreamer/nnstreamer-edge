@@ -20,8 +20,6 @@ extern "C" {
 
 #include "nnstreamer-edge.h"
 #include <gio/gio.h>
-#include <netinet/tcp.h>
-#include <netinet/in.h>
 
 /**
  * @brief Data structure for edge handle.
