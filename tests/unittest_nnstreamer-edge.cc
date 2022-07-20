@@ -73,6 +73,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
   nns_edge_data_h data_h;
   void *data;
   size_t data_len;
+  char *val;
   unsigned int i, count;
   int ret;
 
@@ -93,6 +94,16 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 
       ret = nns_edge_event_parse_new_data (event_h, &data_h);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+      /* Compare metadata */
+      ret = nns_edge_data_get_info (data_h, "test-key1", &val);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      EXPECT_STREQ (val, "test-value1");
+      nns_edge_free (val);
+      ret = nns_edge_data_get_info (data_h, "test-key2", &val);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      EXPECT_STREQ (val, "test-value2");
+      nns_edge_free (val);
 
       if (_td->is_server) {
         /**
@@ -235,6 +246,11 @@ TEST(edge, connectLocal)
 
   ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  /* For metadata test */
+  ret = nns_edge_data_set_info (data_h, "test-key1", "test-value1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_set_info (data_h, "test-key2", "test-value2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   for (i = 0; i < 5U; i++) {
     ret = nns_edge_data_set_info (data_h, "client_id", client1_id);
@@ -264,6 +280,9 @@ TEST(edge, connectLocal)
   g_main_loop_quit (_td_server->loop);
   g_main_loop_quit (_td_client1->loop);
   g_main_loop_quit (_td_client2->loop);
+
+  ret = nns_edge_disconnect (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (server_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -963,6 +982,149 @@ TEST(edge, setInfoInvalidParam08_n)
   ret = nns_edge_set_info (edge_h, "port", "0");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "port", "77777");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info.
+ */
+TEST(edge, getInfo)
+{
+  nns_edge_h edge_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_info (edge_h, "temp-key1", "temp-value1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "temp-key2", "temp-value2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_get_info (edge_h, "ID", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-id");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "temp-key1", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value1");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "temp-key2", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value2");
+  nns_edge_free (value);
+
+  /* Replace old value */
+  ret = nns_edge_set_info (edge_h, "temp-key2", "temp-value2-replaced");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_get_info (edge_h, "temp-key2", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value2-replaced");
+  nns_edge_free (value);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam01_n)
+{
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_get_info (NULL, "temp-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam02_n)
+{
+  nns_edge_h edge_h;
+  nns_edge_handle_s *eh;
+  char *value;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  eh = (nns_edge_handle_s *) edge_h;
+  eh->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_get_info (edge_h, "temp-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  eh->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam03_n)
+{
+  nns_edge_h edge_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_get_info (edge_h, NULL, &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam04_n)
+{
+  nns_edge_h edge_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_get_info (edge_h, "", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam05_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_get_info (edge_h, "temp-key", NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
@@ -2225,6 +2387,432 @@ TEST(edgeEvent, parseCapabilityInvalidParam04_n)
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Initialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, initInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_metadata_init (NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Release resources of edge metadata - invalid param.
+ */
+TEST(edgeMeta, freeInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_metadata_free (NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge metadata - invalid param.
+ */
+TEST(edgeMeta, setInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_metadata_set (NULL, "temp-key", "temp-value");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge metadata - invalid param.
+ */
+TEST(edgeMeta, setInvalidParam02_n)
+{
+  nns_edge_metadata_s meta;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&meta, NULL, "temp-value");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge metadata - invalid param.
+ */
+TEST(edgeMeta, setInvalidParam03_n)
+{
+  nns_edge_metadata_s meta;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&meta, "", "temp-value");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge metadata - invalid param.
+ */
+TEST(edgeMeta, setInvalidParam04_n)
+{
+  nns_edge_metadata_s meta;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&meta, "temp-key", NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set edge metadata - invalid param.
+ */
+TEST(edgeMeta, setInvalidParam05_n)
+{
+  nns_edge_metadata_s meta;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&meta, "temp-key", "");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge metadata - invalid param.
+ */
+TEST(edgeMeta, getInvalidParam01_n)
+{
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_metadata_get (NULL, "temp-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge metadata - invalid param.
+ */
+TEST(edgeMeta, getInvalidParam02_n)
+{
+  nns_edge_metadata_s meta;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (&meta, NULL, &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge metadata - invalid param.
+ */
+TEST(edgeMeta, getInvalidParam03_n)
+{
+  nns_edge_metadata_s meta;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (&meta, "", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge metadata - invalid param.
+ */
+TEST(edgeMeta, getInvalidParam04_n)
+{
+  nns_edge_metadata_s meta;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (&meta, "temp-key", NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Copy edge metadata.
+ */
+TEST(edgeMeta, copy)
+{
+  nns_edge_metadata_s src, desc;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_metadata_init (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_init (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&src, "temp-key1", "temp-value1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_set (&src, "temp-key2", "temp-value2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Replace old value */
+  ret = nns_edge_metadata_set (&src, "temp-key2", "temp-value2-replaced");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_copy (&desc, &src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (&desc, "temp-key1", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value1");
+  nns_edge_free (value);
+
+  ret = nns_edge_metadata_get (&desc, "temp-key2", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value2-replaced");
+  nns_edge_free (value);
+
+  ret = nns_edge_metadata_free (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_free (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Copy edge metadata - invalid param.
+ */
+TEST(edgeMeta, copyInvalidParam01_n)
+{
+  nns_edge_metadata_s src;
+  int ret;
+
+  ret = nns_edge_metadata_init (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_copy (NULL, &src);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Copy edge metadata - invalid param.
+ */
+TEST(edgeMeta, copyInvalidParam02_n)
+{
+  nns_edge_metadata_s desc;
+  int ret;
+
+  ret = nns_edge_metadata_init (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_copy (&desc, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize edge metadata.
+ */
+TEST(edgeMeta, serialize)
+{
+  nns_edge_metadata_s src, desc;
+  char *value;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_metadata_init (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_init (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (&src, "temp-key1", "temp-value1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_set (&src, "temp-key2", "temp-value2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_set (&src, "temp-key3", "temp-value3");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  EXPECT_EQ (src.list_len, 3U);
+  EXPECT_EQ (desc.list_len, 0U);
+
+  ret = nns_edge_metadata_serialize (&src, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (&desc, data, data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (desc.list_len, 3U);
+
+  ret = nns_edge_metadata_get (&desc, "temp-key1", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value1");
+  nns_edge_free (value);
+
+  ret = nns_edge_metadata_get (&desc, "temp-key2", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value2");
+  nns_edge_free (value);
+
+  ret = nns_edge_metadata_get (&desc, "temp-key3", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value3");
+  nns_edge_free (value);
+
+  ret = nns_edge_metadata_free (&src);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_free (&desc);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Serialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, serializeInvalidParam01_n)
+{
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_metadata_serialize (NULL, &data, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, serializeInvalidParam02_n)
+{
+  nns_edge_metadata_s meta;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_serialize (&meta, NULL, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, serializeInvalidParam03_n)
+{
+  nns_edge_metadata_s meta;
+  void *data;
+  int ret;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_serialize (&meta, &data, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, deserializeInvalidParam01_n)
+{
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U + sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+  ((unsigned int *) data)[0] = 0U;
+
+  ret = nns_edge_metadata_deserialize (NULL, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, deserializeInvalidParam02_n)
+{
+  nns_edge_metadata_s meta;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U + sizeof (unsigned int);
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (&meta, NULL, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param.
+ */
+TEST(edgeMeta, deserializeInvalidParam03_n)
+{
+  nns_edge_metadata_s meta;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  data_len = 10U + sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+  ((unsigned int *) data)[0] = 0U;
+
+  ret = nns_edge_metadata_init (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (&meta, data, 0);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_free (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  free (data);
 }
 
 /**
