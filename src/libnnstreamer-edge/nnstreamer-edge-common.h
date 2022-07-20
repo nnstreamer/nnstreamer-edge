@@ -83,7 +83,7 @@ typedef struct {
   unsigned int magic;
   unsigned int num;
   nns_edge_raw_data_s data[NNS_EDGE_DATA_LIMIT];
-  GHashTable *info_table;
+  nns_edge_metadata_s metadata;
 } nns_edge_data_s;
 
 /**

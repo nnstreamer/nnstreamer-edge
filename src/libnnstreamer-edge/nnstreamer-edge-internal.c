@@ -968,6 +968,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->host = nns_edge_strdup ("localhost");
   eh->port = 0;
   eh->flags = flags;
+  nns_edge_metadata_init (&eh->meta);
 
   /* Connection data for each client ID. */
   eh->conn_table = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
@@ -1071,6 +1072,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   g_hash_table_destroy (eh->conn_table);
   eh->conn_table = NULL;
 
+  nns_edge_metadata_free (&eh->meta);
   SAFE_FREE (eh->id);
   SAFE_FREE (eh->topic);
   SAFE_FREE (eh->host);
@@ -1412,8 +1414,7 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     nns_edge_loge ("Cannot update %s.", key);
     ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   } else {
-    nns_edge_logw ("Failed to set edge info. Unknown key: %s", key);
-    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    ret = nns_edge_metadata_set (&eh->meta, key, value);
   }
 
   nns_edge_unlock (eh);
@@ -1475,8 +1476,7 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
       *value = nns_edge_strdup_printf ("%ld", (long int) eh->client_id);
     }
   } else {
-    nns_edge_logw ("Failed to get edge info. Unknown key: %s", key);
-    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    ret = nns_edge_metadata_get (&eh->meta, key, value);
   }
 
   nns_edge_unlock (eh);

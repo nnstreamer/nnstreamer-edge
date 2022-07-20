@@ -36,6 +36,7 @@ typedef struct {
   char *dest_host; /**< destination IP address (broker or target device) */
   int dest_port; /**< destination port number (broker or target device) */
   int flags;
+  nns_edge_metadata_s meta;
 
   /* Edge event callback and user data */
   nns_edge_event_cb event_cb;
