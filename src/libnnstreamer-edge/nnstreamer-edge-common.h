@@ -46,6 +46,28 @@ extern "C" {
 #define nns_edge_unlock(h) do { pthread_mutex_unlock (&(h)->lock); } while (0)
 
 /**
+ * @brief Internal data structure for metadata.
+ */
+typedef struct _nns_edge_metadata_node_s nns_edge_metadata_node_s;
+
+/**
+ * @brief Internal data structure for metadata.
+ */
+struct _nns_edge_metadata_node_s {
+  char *key;
+  char *value;
+  nns_edge_metadata_node_s *next;
+};
+
+/**
+ * @brief Internal data structure to handle metadata. This struct should be managed in the handle.
+ */
+typedef struct {
+  unsigned int list_len;
+  nns_edge_metadata_node_s *list;
+} nns_edge_metadata_s;
+
+/**
  * @brief Internal data structure for raw data.
  */
 typedef struct {
@@ -181,6 +203,41 @@ char *nns_edge_strndup (const char *str, size_t len);
  * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *nns_edge_strdup_printf (const char *format, ...);
+
+/**
+ * @brief Internal function to initialize metadata structure.
+ */
+int nns_edge_metadata_init (nns_edge_metadata_s *meta);
+
+/**
+ * @brief Internal function to free the list and items in metadata structure.
+ */
+int nns_edge_metadata_free (nns_edge_metadata_s *meta);
+
+/**
+ * @brief Internal function to set the metadata.
+ */
+int nns_edge_metadata_set (nns_edge_metadata_s *meta, const char *key, const char *value);
+
+/**
+ * @brief Internal function to get the metadata in the list. Caller should release the returned value using free().
+ */
+int nns_edge_metadata_get (nns_edge_metadata_s *meta, const char *key, char **value);
+
+/**
+ * @brief Internal function to copy the metadata.
+ */
+int nns_edge_metadata_copy (nns_edge_metadata_s *dest, nns_edge_metadata_s *src);
+
+/**
+ * @brief Internal function to serialize the metadata. Caller should release the returned value using free().
+ */
+int nns_edge_metadata_serialize (nns_edge_metadata_s *meta, void **data, size_t *data_len);
+
+/**
+ * @brief Internal function to deserialize memory into metadata.
+ */
+int nns_edge_metadata_deserialize (nns_edge_metadata_s *meta, void *data, size_t data_len);
 
 /**
  * @brief Create nnstreamer edge event.
