@@ -629,8 +629,7 @@ nns_edge_data_create (nns_edge_data_h * data_h)
 
   memset (ed, 0, sizeof (nns_edge_data_s));
   ed->magic = NNS_EDGE_MAGIC;
-  ed->info_table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      nns_edge_free, nns_edge_free);
+  nns_edge_metadata_init (&ed->metadata);
 
   *data_h = ed;
   return NNS_EDGE_ERROR_NONE;
@@ -659,7 +658,7 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
       ed->data[i].destroy_cb (ed->data[i].data);
   }
 
-  g_hash_table_destroy (ed->info_table);
+  nns_edge_metadata_free (&ed->metadata);
 
   SAFE_FREE (ed);
   return NNS_EDGE_ERROR_NONE;
@@ -691,8 +690,6 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
 {
   nns_edge_data_s *ed;
   nns_edge_data_s *copied;
-  GHashTableIter iter;
-  gpointer key, value;
   unsigned int i;
   int ret;
 
@@ -724,13 +721,7 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
     copied->data[i].destroy_cb = nns_edge_free;
   }
 
-  g_hash_table_iter_init (&iter, ed->info_table);
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
-    g_hash_table_insert (copied->info_table, nns_edge_strdup (key),
-        nns_edge_strdup (value));
-  }
-
-  return NNS_EDGE_ERROR_NONE;
+  return nns_edge_metadata_copy (&copied->metadata, &ed->metadata);
 }
 
 /**
@@ -854,10 +845,7 @@ nns_edge_data_set_info (nns_edge_data_h data_h, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  g_hash_table_insert (ed->info_table, nns_edge_strdup (key),
-      nns_edge_strdup (value));
-
-  return NNS_EDGE_ERROR_NONE;
+  return nns_edge_metadata_set (&ed->metadata, key, value);
 }
 
 /**
@@ -867,7 +855,6 @@ int
 nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
 {
   nns_edge_data_s *ed;
-  char *val;
 
   ed = (nns_edge_data_s *) data_h;
 
@@ -886,13 +873,5 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  val = g_hash_table_lookup (ed->info_table, key);
-  if (!val) {
-    nns_edge_loge ("Invalid param, cannot find info about '%s'.", key);
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
-
-  *value = nns_edge_strdup (val);
-
-  return NNS_EDGE_ERROR_NONE;
+  return nns_edge_metadata_get (&ed->metadata, key, value);
 }
