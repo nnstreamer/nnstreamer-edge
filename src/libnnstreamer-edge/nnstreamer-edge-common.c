@@ -875,3 +875,43 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
 
   return nns_edge_metadata_get (&ed->metadata, key, value);
 }
+
+/**
+ * @brief Serialize metadata in edge data.
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
+    size_t *data_len)
+{
+  nns_edge_data_s *ed;
+
+  ed = (nns_edge_data_s *) data_h;
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  return nns_edge_metadata_serialize (&ed->metadata, data, data_len);
+}
+
+/**
+ * @brief Deserialize metadata in edge data.
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
+    size_t data_len)
+{
+  nns_edge_data_s *ed;
+
+  ed = (nns_edge_data_s *) data_h;
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  return nns_edge_metadata_deserialize (&ed->metadata, data, data_len);
+}
