@@ -19,6 +19,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "nnstreamer-edge.h"
+#include "nnstreamer-edge-common.h"
 #include <gio/gio.h>
 
 /**
@@ -30,8 +31,8 @@ typedef struct {
   char *id;
   char *topic;
   nns_edge_protocol_e protocol;
-  char *ip;
-  int port;
+  char *ip; /**< host IP */
+  int port; /**< host port */
 
   /* Edge event callback and user data */
   nns_edge_event_cb event_cb;
@@ -40,8 +41,7 @@ typedef struct {
   bool is_server;
   int64_t client_id;
   char *caps_str;
-  char *recv_ip;
-  int recv_port;
+
   GHashTable *conn_table;
   GSocketListener *listener;
 

@@ -633,7 +633,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
       /* Send ip and port to destination. */
       _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_HOST_INFO, client_id);
 
-      _get_host_str (eh->recv_ip, eh->recv_port, &host);
+      _get_host_str (eh->ip, eh->port, &host);
       cmd.info.num = 1;
       cmd.info.mem_size[0] = strlen (host) + 1;
       cmd.mem[0] = host;
@@ -949,9 +949,9 @@ nns_edge_create_handle (const char *id, const char *topic, nns_edge_h * edge_h)
   eh->id = nns_edge_strdup (id);
   eh->topic = nns_edge_strdup (topic);
   eh->protocol = NNS_EDGE_PROTOCOL_TCP;
-  eh->is_server = true;
-  eh->recv_ip = nns_edge_strdup ("localhost");
-  eh->recv_port = 0;
+  eh->is_server = false;
+  eh->ip = nns_edge_strdup ("localhost");
+  eh->port = 0;
   eh->caps_str = NULL;
 
   /* Connection data for each client ID. */
@@ -988,9 +988,9 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
   }
 
   eh->is_server = is_server;
-  if (!is_server && 0 == eh->recv_port) {
-    eh->recv_port = nns_edge_get_available_port ();
-    if (eh->recv_port <= 0) {
+  if (!is_server && 0 == eh->port) {
+    eh->port = nns_edge_get_available_port ();
+    if (eh->port <= 0) {
       nns_edge_loge ("Failed to start edge. Cannot get available port.");
       nns_edge_unlock (eh);
       return NNS_EDGE_ERROR_CONNECTION_FAILURE;
@@ -1001,7 +1001,7 @@ nns_edge_start (nns_edge_h edge_h, bool is_server)
   eh->listener = g_socket_listener_new ();
   g_socket_listener_set_backlog (eh->listener, N_BACKLOG);
 
-  if (!_nns_edge_get_saddr (eh->recv_ip, eh->recv_port, &saddr)) {
+  if (!_nns_edge_get_saddr (eh->ip, eh->port, &saddr)) {
     nns_edge_loge ("Failed to get socket address");
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
     goto error;
@@ -1060,7 +1060,6 @@ nns_edge_release_handle (nns_edge_h edge_h)
   SAFE_FREE (eh->id);
   SAFE_FREE (eh->topic);
   SAFE_FREE (eh->ip);
-  SAFE_FREE (eh->recv_ip);
   SAFE_FREE (eh->caps_str);
 
   nns_edge_unlock (eh);
@@ -1401,15 +1400,15 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
    * @todo User handles (replace or append) the capability of edge handle.
    * @todo Change key-value set as json or hash table.
    */
-  if (0 == g_ascii_strcasecmp (key, "CAPS")) {
+  if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     SAFE_FREE (eh->caps_str);
     eh->caps_str = nns_edge_strdup (value);
-  } else if (0 == g_ascii_strcasecmp (key, "IP")) {
-    SAFE_FREE (eh->recv_ip);
-    eh->recv_ip = nns_edge_strdup (value);
-  } else if (0 == g_ascii_strcasecmp (key, "PORT")) {
-    eh->recv_port = g_ascii_strtoll (value, NULL, 10);
-  } else if (0 == g_ascii_strcasecmp (key, "TOPIC")) {
+  } else if (0 == strcasecmp (key, "IP")) {
+    SAFE_FREE (eh->ip);
+    eh->ip = nns_edge_strdup (value);
+  } else if (0 == strcasecmp (key, "PORT")) {
+    eh->port = g_ascii_strtoll (value, NULL, 10);
+  } else if (0 == strcasecmp (key, "TOPIC")) {
     SAFE_FREE (eh->topic);
     eh->topic = nns_edge_strdup (value);
   } else {
@@ -1419,7 +1418,6 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
   nns_edge_unlock (eh);
   return NNS_EDGE_ERROR_NONE;
 }
-
 
 /**
  * @brief Get nnstreamer edge info.
@@ -1441,7 +1439,7 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
   }
 
   if (!value) {
-    nns_edge_loge ("Invalid param, given value is invalid.");
+    nns_edge_loge ("Invalid param, value should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -1457,13 +1455,13 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
    * @todo User handles (replace or append) the capability of edge handle.
    * @todo Change key-value set as json or hash table.
    */
-  if (0 == g_ascii_strcasecmp (key, "CAPS")) {
+  if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     *value = nns_edge_strdup (eh->caps_str);
-  } else if (0 == g_ascii_strcasecmp (key, "IP")) {
-    *value = nns_edge_strdup (eh->recv_ip);
-  } else if (0 == g_ascii_strcasecmp (key, "PORT")) {
-    *value = nns_edge_strdup_printf ("%d", eh->recv_port);
-  } else if (0 == g_ascii_strcasecmp (key, "TOPIC")) {
+  } else if (0 == strcasecmp (key, "IP")) {
+    *value = nns_edge_strdup (eh->ip);
+  } else if (0 == strcasecmp (key, "PORT")) {
+    *value = nns_edge_strdup_printf ("%d", eh->port);
+  } else if (0 == strcasecmp (key, "TOPIC")) {
     *value = nns_edge_strdup (eh->topic);
   } else {
     nns_edge_logw ("Failed to get edge info. Unknown key: %s", key);
