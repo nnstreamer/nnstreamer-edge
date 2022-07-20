@@ -40,6 +40,7 @@ typedef struct
   /* memory info */
   uint32_t num;
   size_t mem_size[NNS_EDGE_DATA_LIMIT];
+  size_t meta_size;
 } nns_edge_cmd_info_s;
 
 /**
@@ -49,6 +50,7 @@ typedef struct
 {
   nns_edge_cmd_info_s info;
   void *mem[NNS_EDGE_DATA_LIMIT];
+  void *meta;
 } nns_edge_cmd_s;
 
 /**
@@ -197,7 +199,13 @@ _nns_edge_cmd_clear (nns_edge_cmd_s * cmd)
 
   for (i = 0; i < cmd->info.num; i++) {
     SAFE_FREE (cmd->mem[i]);
+    cmd->info.mem_size[i] = 0U;
   }
+
+  SAFE_FREE (cmd->meta);
+
+  cmd->info.num = 0U;
+  cmd->info.meta_size = 0U;
 }
 
 /**
@@ -256,16 +264,24 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     }
   }
 
+  if (cmd->info.meta_size > 0) {
+    if (!_send_raw_data (conn->socket, cmd->meta, cmd->info.meta_size)) {
+      nns_edge_loge ("Failed to send metadata to socket.");
+      return NNS_EDGE_ERROR_IO;
+    }
+  }
+
   return NNS_EDGE_ERROR_NONE;
 }
 
 /**
  * @brief Receive edge command from connected device.
+ * @note Before calling this function, you should initialize edge-cmd by using _nns_edge_cmd_init().
  */
 static int
 _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 {
-  unsigned int i, n;
+  unsigned int n;
   int ret = NNS_EDGE_ERROR_NONE;
 
   if (!conn || !cmd)
@@ -299,22 +315,35 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     if (!cmd->mem[n]) {
       nns_edge_loge ("Failed to allocate memory to receive data from socket.");
       ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
-      break;
+      goto error;
     }
 
     if (!_receive_raw_data (conn->socket, cmd->mem[n], cmd->info.mem_size[n])) {
       nns_edge_loge ("Failed to receive %uth memory from socket.", n++);
       ret = NNS_EDGE_ERROR_IO;
-      break;
+      goto error;
     }
   }
 
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    for (i = 0; i < n; i++) {
-      SAFE_FREE (cmd->mem[i]);
+  if (cmd->info.meta_size > 0) {
+    cmd->meta = malloc (cmd->info.meta_size);
+    if (!cmd->meta) {
+      nns_edge_loge ("Failed to allocate memory to receive meta from socket.");
+      ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+      goto error;
+    }
+
+    if (!_receive_raw_data (conn->socket, cmd->meta, cmd->info.meta_size)) {
+      nns_edge_loge ("Failed to receive metadata from socket.");
+      ret = NNS_EDGE_ERROR_IO;
+      goto error;
     }
   }
 
+  return NNS_EDGE_ERROR_NONE;
+
+error:
+  _nns_edge_cmd_clear (cmd);
   return ret;
 }
 
@@ -335,7 +364,10 @@ _nns_edge_transfer_data (nns_edge_conn_s * conn, nns_edge_data_h data_h,
   for (i = 0; i < cmd.info.num; i++)
     nns_edge_data_get (data_h, i, &cmd.mem[i], &cmd.info.mem_size[i]);
 
+  nns_edge_data_serialize_meta (data_h, &cmd.meta, &cmd.info.meta_size);
+
   ret = _nns_edge_cmd_send (conn, &cmd);
+  SAFE_FREE (cmd.meta);
 
   return ret;
 }
@@ -730,6 +762,9 @@ _nns_edge_message_handler (void *thread_data)
 
     for (i = 0; i < cmd.info.num; i++)
       nns_edge_data_add (data_h, cmd.mem[i], cmd.info.mem_size[i], NULL);
+
+    if (cmd.info.meta_size > 0)
+      nns_edge_data_deserialize_meta (data_h, cmd.meta, cmd.info.meta_size);
 
     /* Set client ID in edge data */
     val = nns_edge_strdup_printf ("%ld", (long int) client_id);

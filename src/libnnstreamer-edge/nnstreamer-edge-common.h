@@ -263,6 +263,18 @@ int nns_edge_event_set_data (nns_edge_event_h event_h, void *data, size_t data_l
  */
 int nns_edge_data_is_valid (nns_edge_data_h data_h);
 
+/**
+ * @brief Serialize metadata in edge data.
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data, size_t *data_len);
+
+/**
+ * @brief Deserialize metadata in edge data.
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data, size_t data_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
