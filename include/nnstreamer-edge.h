@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -146,11 +147,13 @@ int nns_edge_get_topic (nns_edge_h edge_h, char **topic);
 
 /**
  * @brief Set nnstreamer edge info.
+ * @note The param key is case-insensitive. If same key string already exists, it will replace the old value.
  */
 int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
 
 /**
  * @brief Get nnstreamer edge info.
+ * @note The param key is case-insensitive. Caller should release returned string using free().
  */
 int nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value);
 
@@ -209,11 +212,13 @@ int nns_edge_data_get_count (nns_edge_data_h data_h, unsigned int *count);
 
 /**
  * @brief Set the information of edge data.
+ * @note The param key is case-insensitive. If same key string already exists, it will replace old value.
  */
 int nns_edge_data_set_info (nns_edge_data_h data_h, const char *key, const char *value);
 
 /**
- * @brief Get the information of edge data. Caller should release the returned value using free().
+ * @brief Get the information of edge data.
+ * @note The param key is case-insensitive. Caller should release the returned value using free().
  */
 int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value);
 
