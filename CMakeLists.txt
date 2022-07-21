@@ -38,7 +38,7 @@ SET(NNS_EDGE_SRC_DIR  ${SOURCE_DIR}/libnnstreamer-edge)
 
 # Check requires packages
 # TODO FIXME remove glib dependency
-SET(REQUIRES_LIST "paho-mqtt-c glib-2.0 gio-2.0")
+SET(REQUIRES_LIST "glib-2.0 gio-2.0")
 
 INCLUDE(FindPkgConfig)
 PKG_CHECK_MODULES(EDGE_REQUIRE_PKGS REQUIRED ${REQUIRES_LIST})
