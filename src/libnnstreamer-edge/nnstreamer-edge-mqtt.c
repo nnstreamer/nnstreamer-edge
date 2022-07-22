@@ -181,8 +181,8 @@ nns_edge_mqtt_connect (nns_edge_h edge_h)
   nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
       eh->id, eh->ip, eh->port);
 
-  url = g_strdup_printf ("%s:%d", eh->ip, eh->port);
-  client_id = g_strdup_printf ("nns_edge_%s_%u", eh->id, getpid ());
+  url = nns_edge_strdup_printf ("%s:%d", eh->ip, eh->port);
+  client_id = nns_edge_strdup_printf ("nns_edge_%s_%u", eh->id, getpid ());
 
   ret = MQTTAsync_create (&handle, url, client_id,
       MQTTCLIENT_PERSISTENCE_NONE, NULL);
@@ -212,8 +212,8 @@ nns_edge_mqtt_connect (nns_edge_h edge_h)
   ret = NNS_EDGE_ERROR_NONE;
 
 error:
-  g_free (url);
-  g_free (client_id);
+  nns_edge_free (url);
+  nns_edge_free (client_id);
   return ret;
 }
 

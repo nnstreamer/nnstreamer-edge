@@ -88,14 +88,27 @@ char *
 nns_edge_strdup (const char *str)
 {
   char *new_str = NULL;
-  size_t len;
+
+  if (str)
+    new_str = nns_edge_strndup (str, strlen (str));
+
+  return new_str;
+}
+
+/**
+ * @brief Allocate new memory and copy bytes of string.
+ * @note Caller should release newly allocated string using nns_edge_free().
+ */
+char *
+nns_edge_strndup (const char *str, size_t len)
+{
+  char *new_str = NULL;
 
   if (str) {
-    len = strlen (str);
-
     new_str = (char *) malloc (len + 1);
+
     if (new_str) {
-      memcpy (new_str, str, len);
+      strncpy (new_str, str, len);
       new_str[len] = '\0';
     } else {
       nns_edge_loge ("Failed to allocate memory (%zd).", len + 1);
