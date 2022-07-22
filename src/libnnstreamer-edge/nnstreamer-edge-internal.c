@@ -152,11 +152,11 @@ _receive_raw_data (GSocket * socket, void *data, size_t size)
 static void
 _parse_host_str (const char *host, char **ip, int *port)
 {
-  char *p = g_strrstr (host, ":");
+  char *p = strchr (host, ':');
 
   if (p) {
-    *ip = g_strndup (host, (p - host));
-    *port = (int) g_ascii_strtoll (p + 1, NULL, 10);
+    *ip = nns_edge_strndup (host, (p - host));
+    *port = (int) strtoll (p + 1, NULL, 10);
   }
 }
 
@@ -1511,7 +1511,7 @@ nns_edge_respond (nns_edge_h edge_h, nns_edge_data_h data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  client_id = g_ascii_strtoll (val, NULL, 10);
+  client_id = strtoll (val, NULL, 10);
   SAFE_FREE (val);
 
   conn_data = _nns_edge_get_connection (eh, client_id);
