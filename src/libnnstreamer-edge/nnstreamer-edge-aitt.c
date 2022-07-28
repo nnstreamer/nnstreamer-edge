@@ -23,7 +23,7 @@ typedef void *nns_edge_aitt_sub_h;
  */
 typedef struct
 {
-  nns_edge_protocol_e protocol;
+  nns_edge_connect_type_e connect_type;
   struct
   {
     nns_edge_aitt_h aitt_h;
