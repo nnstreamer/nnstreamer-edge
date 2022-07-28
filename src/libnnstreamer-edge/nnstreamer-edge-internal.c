@@ -1261,7 +1261,7 @@ nns_edge_request (nns_edge_h edge_h, nns_edge_data_h data_h)
   }
 
   conn_data = _nns_edge_get_connection (eh, eh->client_id);
-  if (!_nns_edge_check_connection (conn_data->sink_conn)) {
+  if (!conn_data || !_nns_edge_check_connection (conn_data->sink_conn)) {
     nns_edge_loge ("Failed to request, connection failure.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_CONNECTION_FAILURE;
@@ -1529,7 +1529,8 @@ nns_edge_respond (nns_edge_h edge_h, nns_edge_data_h data_h)
 
   conn_data = _nns_edge_get_connection (eh, client_id);
   if (!conn_data) {
-    nns_edge_loge ("Cannot find connection, invalid client ID.");
+    nns_edge_loge
+        ("Cannot find connection, invalid client ID or connection closed.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
