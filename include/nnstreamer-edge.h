@@ -185,17 +185,18 @@ int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
 
 /**
  * @brief Add raw data into nnstreamer edge data.
+ * @note See NNS_EDGE_DATA_LIMIT, the maximum number of edge data in handle.
  */
 int nns_edge_data_add (nns_edge_data_h data_h, void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb);
 
 /**
- * @brief Get the nnstreamer edge data.
+ * @brief Get the n'th edge data.
  * @note DO NOT release returned data. You should copy the data to another buffer if the returned data is necessary.
  */
 int nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data, size_t *data_len);
 
 /**
- * @brief Get the number of nnstreamer edge data.
+ * @brief Get the number of edge data in handle.
  */
 int nns_edge_data_get_count (nns_edge_data_h data_h, unsigned int *count);
 

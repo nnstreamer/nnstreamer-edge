@@ -81,6 +81,7 @@ typedef struct {
  */
 typedef struct {
   unsigned int magic;
+  pthread_mutex_t lock;
   unsigned int num;
   nns_edge_raw_data_s data[NNS_EDGE_DATA_LIMIT];
   nns_edge_metadata_s metadata;
