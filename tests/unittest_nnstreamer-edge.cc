@@ -575,6 +575,33 @@ TEST(edge, connectInvalidParam04_n)
 }
 
 /**
+ * @brief Connect - invalid param.
+ */
+TEST(edge, connectInvalidParam05_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Invalid port number */
+  ret = nns_edge_connect (edge_h, "127.0.0.1", -1);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", 0);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", 77777);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Disconnect - invalid param.
  */
 TEST(edge, disconnectInvalidParam01_n)
@@ -912,6 +939,30 @@ TEST(edge, setInfoInvalidParam07_n)
   ret = nns_edge_set_info (edge_h, "id", "temp-id2");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "client_id", "temp-cid");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set info - invalid param.
+ */
+TEST(edge, setInfoInvalidParam08_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Invalid port number */
+  ret = nns_edge_set_info (edge_h, "port", "-1");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "port", "0");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "port", "77777");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
