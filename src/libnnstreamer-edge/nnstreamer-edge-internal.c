@@ -56,7 +56,7 @@ typedef struct
  */
 typedef struct
 {
-  char *ip;
+  char *host;
   int port;
   int8_t running;
   pthread_t msg_thread;
@@ -143,29 +143,6 @@ _receive_raw_data (GSocket * socket, void *data, size_t size)
   }
 
   return true;
-}
-
-/**
- * @brief Parse string and get host IP:port.
- */
-static void
-_parse_host_str (const char *host, char **ip, int *port)
-{
-  char *p = strchr (host, ':');
-
-  if (p) {
-    *ip = nns_edge_strndup (host, (p - host));
-    *port = (int) strtoll (p + 1, NULL, 10);
-  }
-}
-
-/**
- * @brief Get host string (IP:port).
- */
-static void
-_get_host_str (const char *ip, const int port, char **host)
-{
-  *host = nns_edge_strdup_printf ("%s:%d", ip, port);
 }
 
 /**
@@ -441,7 +418,7 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     g_clear_object (&conn->socket);
   }
 
-  SAFE_FREE (conn->ip);
+  SAFE_FREE (conn->host);
   SAFE_FREE (conn);
   return true;
 }
@@ -514,23 +491,23 @@ _nns_edge_remove_connection (gpointer data)
  * @brief Get socket address
  */
 static bool
-_nns_edge_get_saddr (const char *ip, const int port, GSocketAddress ** saddr)
+_nns_edge_get_saddr (const char *host, const int port, GSocketAddress ** saddr)
 {
   GError *err = NULL;
   GInetAddress *addr;
 
   /* look up name if we need to */
-  addr = g_inet_address_new_from_string (ip);
+  addr = g_inet_address_new_from_string (host);
   if (!addr) {
     GList *results;
     GResolver *resolver;
     resolver = g_resolver_get_default ();
-    results = g_resolver_lookup_by_name (resolver, ip, NULL, &err);
+    results = g_resolver_lookup_by_name (resolver, host, NULL, &err);
     if (!results) {
       if (g_error_matches (err, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-        nns_edge_loge ("Failed to resolve ip, name resolver is cancelled.");
+        nns_edge_loge ("Failed to resolve host, name resolver is cancelled.");
       } else {
-        nns_edge_loge ("Failed to resolve ip '%s': %s", ip, err->message);
+        nns_edge_loge ("Failed to resolve host '%s': %s", host, err->message);
       }
       g_clear_error (&err);
       g_object_unref (resolver);
@@ -558,7 +535,7 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
   GSocketAddress *saddr = NULL;
   bool ret = false;
 
-  if (!_nns_edge_get_saddr (conn->ip, conn->port, &saddr)) {
+  if (!_nns_edge_get_saddr (conn->host, conn->port, &saddr)) {
     nns_edge_loge ("Failed to get socket address");
     return ret;
   }
@@ -581,9 +558,9 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
 
   if (!g_socket_connect (conn->socket, saddr, NULL, &err)) {
     if (g_error_matches (err, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-      nns_edge_logd ("Cancelled connecting");
+      nns_edge_logd ("Connection cancelled (%s:%d).", conn->host, conn->port);
     } else {
-      nns_edge_loge ("Failed to connect to host, %s:%d", conn->ip, conn->port);
+      nns_edge_loge ("Failed to connect host %s:%d.", conn->host, conn->port);
     }
     goto done;
   }
@@ -602,12 +579,12 @@ done:
  */
 static int
 _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
-    const char *ip, int port)
+    const char *host, int port)
 {
   nns_edge_conn_s *conn = NULL;
   nns_edge_conn_data_s *conn_data;
   nns_edge_cmd_s cmd;
-  char *host;
+  char *host_str;
   bool done = false;
   int ret;
 
@@ -618,7 +595,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
   }
 
   memset (conn, 0, sizeof (nns_edge_conn_s));
-  conn->ip = nns_edge_strdup (ip);
+  conn->host = nns_edge_strdup (host);
   conn->port = port;
 
   if (!_nns_edge_connect_socket (conn)) {
@@ -651,13 +628,13 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
       nns_edge_loge ("The event returns error, capability is not acceptable.");
       _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
     } else {
-      /* Send ip and port to destination. */
+      /* Send host and port to destination. */
       _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_HOST_INFO, client_id);
 
-      _get_host_str (eh->ip, eh->port, &host);
+      host_str = nns_edge_get_host_string (eh->host, eh->port);
       cmd.info.num = 1;
-      cmd.info.mem_size[0] = strlen (host) + 1;
-      cmd.mem[0] = host;
+      cmd.info.mem_size[0] = strlen (host_str) + 1;
+      cmd.mem[0] = host_str;
     }
 
     ret = _nns_edge_cmd_send (conn, &cmd);
@@ -837,8 +814,8 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   nns_edge_conn_s *conn = NULL;
   nns_edge_cmd_s cmd;
   bool done = false;
-  char *connected_ip = NULL;
-  int connected_port = 0;
+  char *dest_host = NULL;
+  int dest_port = 0;
   nns_edge_conn_data_s *conn_data = NULL;
   int64_t client_id;
   int ret;
@@ -894,7 +871,7 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
       goto error;
     }
 
-    /* Receive ip and port from destination. */
+    /* Receive host info from destination. */
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive node info.");
@@ -907,14 +884,13 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
       goto error;
     }
 
-    _parse_host_str (cmd.mem[0], &connected_ip, &connected_port);
+    nns_edge_parse_host_string (cmd.mem[0], &dest_host, &dest_port);
     _nns_edge_cmd_clear (&cmd);
 
     /* Connect to client listener. */
-    ret = _nns_edge_connect_to (eh, client_id, connected_ip, connected_port);
+    ret = _nns_edge_connect_to (eh, client_id, dest_host, dest_port);
     if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to connect host %s:%d.",
-          connected_ip, connected_port);
+      nns_edge_loge ("Failed to connect host %s:%d.", dest_host, dest_port);
       goto error;
     }
   }
@@ -942,7 +918,7 @@ error:
     g_socket_listener_accept_socket_async (eh->listener, NULL,
         (GAsyncReadyCallback) _nns_edge_accept_socket_async_cb, eh);
 
-  SAFE_FREE (connected_ip);
+  SAFE_FREE (dest_host);
 }
 
 /**
@@ -989,7 +965,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->magic = NNS_EDGE_MAGIC;
   eh->id = nns_edge_strdup (id);
   eh->connect_type = connect_type;
-  eh->ip = nns_edge_strdup ("localhost");
+  eh->host = nns_edge_strdup ("localhost");
   eh->port = 0;
   eh->flags = flags;
 
@@ -1039,7 +1015,7 @@ nns_edge_start (nns_edge_h edge_h)
   eh->listener = g_socket_listener_new ();
   g_socket_listener_set_backlog (eh->listener, N_BACKLOG);
 
-  if (!_nns_edge_get_saddr (eh->ip, eh->port, &saddr)) {
+  if (!_nns_edge_get_saddr (eh->host, eh->port, &saddr)) {
     nns_edge_loge ("Failed to get socket address");
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
     goto error;
@@ -1097,8 +1073,8 @@ nns_edge_release_handle (nns_edge_h edge_h)
 
   SAFE_FREE (eh->id);
   SAFE_FREE (eh->topic);
-  SAFE_FREE (eh->ip);
-  SAFE_FREE (eh->dest_ip);
+  SAFE_FREE (eh->host);
+  SAFE_FREE (eh->dest_host);
   SAFE_FREE (eh->caps_str);
 
   nns_edge_unlock (eh);
@@ -1151,7 +1127,7 @@ nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb,
  * @brief Connect to the destination node.
  */
 int
-nns_edge_connect (nns_edge_h edge_h, const char *dest_ip, int dest_port)
+nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 {
   nns_edge_handle_s *eh;
   int ret;
@@ -1162,8 +1138,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_ip, int dest_port)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!STR_IS_VALID (dest_ip)) {
-    nns_edge_loge ("Invalid param, given IP is invalid.");
+  if (!STR_IS_VALID (dest_host)) {
+    nns_edge_loge ("Invalid param, given host is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -1182,12 +1158,12 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_ip, int dest_port)
   }
 
   /* Connect to info channel. */
-  ret = _nns_edge_connect_to (eh, eh->client_id, dest_ip, dest_port);
+  ret = _nns_edge_connect_to (eh, eh->client_id, dest_host, dest_port);
   if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to connect to %s:%d", dest_ip, dest_port);
+    nns_edge_loge ("Failed to connect host %s:%d.", dest_host, dest_port);
   } else {
-    SAFE_FREE (eh->dest_ip);
-    eh->dest_ip = nns_edge_strdup (dest_ip);
+    SAFE_FREE (eh->dest_host);
+    eh->dest_host = nns_edge_strdup (dest_host);
     eh->dest_port = dest_port;
   }
 
@@ -1411,9 +1387,9 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     SAFE_FREE (eh->caps_str);
     eh->caps_str = nns_edge_strdup (value);
-  } else if (0 == strcasecmp (key, "IP")) {
-    SAFE_FREE (eh->ip);
-    eh->ip = nns_edge_strdup (value);
+  } else if (0 == strcasecmp (key, "IP") || 0 == strcasecmp (key, "HOST")) {
+    SAFE_FREE (eh->host);
+    eh->host = nns_edge_strdup (value);
   } else if (0 == strcasecmp (key, "PORT")) {
     eh->port = (int) strtoll (value, NULL, 10);
   } else if (0 == strcasecmp (key, "TOPIC")) {
@@ -1471,8 +1447,8 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
    */
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     *value = nns_edge_strdup (eh->caps_str);
-  } else if (0 == strcasecmp (key, "IP")) {
-    *value = nns_edge_strdup (eh->ip);
+  } else if (0 == strcasecmp (key, "IP") || 0 == strcasecmp (key, "HOST")) {
+    *value = nns_edge_strdup (eh->host);
   } else if (0 == strcasecmp (key, "PORT")) {
     *value = nns_edge_strdup_printf ("%d", eh->port);
   } else if (0 == strcasecmp (key, "TOPIC")) {

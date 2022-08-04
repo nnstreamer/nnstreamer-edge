@@ -117,7 +117,7 @@ int nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb, void *
 /**
  * @brief Connect to the destination node.
  */
-int nns_edge_connect (nns_edge_h edge_h, const char *dest_ip, int dest_port);
+int nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port);
 
 /**
  * @brief Disconnect from the destination node.
@@ -177,11 +177,6 @@ int nns_edge_data_create (nns_edge_data_h *data_h);
  * @brief Destroy nnstreamer edge data.
  */
 int nns_edge_data_destroy (nns_edge_data_h data_h);
-
-/**
- * @brief Validate edge data handle.
- */
-int nns_edge_data_is_valid (nns_edge_data_h data_h);
 
 /**
  * @brief Copy edge data and return new handle.

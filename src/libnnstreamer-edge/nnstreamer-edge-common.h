@@ -144,6 +144,16 @@ nns_edge_print_log (nns_edge_log_level_e level, const char *fmt, ...)
 int nns_edge_get_available_port (void);
 
 /**
+ * @brief Get host string (host:port). Caller should release returned string using nns_edge_free().
+ */
+char *nns_edge_get_host_string (const char *host, const int port);
+
+/**
+ * @brief Parse string and get host string (host:port).
+ */
+void nns_edge_parse_host_string (const char *host_str, char **host, int *port);
+
+/**
  * @brief Free allocated memory.
  */
 void nns_edge_free (void *data);
@@ -189,6 +199,12 @@ int nns_edge_event_destroy (nns_edge_event_h event_h);
  * @note This is internal function for edge event.
  */
 int nns_edge_event_set_data (nns_edge_event_h event_h, void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb);
+
+/**
+ * @brief Validate edge data handle.
+ * @note This is internal function, DO NOT export this.
+ */
+int nns_edge_data_is_valid (nns_edge_data_h data_h);
 
 #ifdef __cplusplus
 }

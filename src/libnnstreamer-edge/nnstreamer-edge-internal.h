@@ -20,7 +20,7 @@ extern "C" {
 
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-common.h"
-#include <gio/gio.h>
+#include <gio/gio.h> /** @todo remove glib */
 
 /**
  * @brief Data structure for edge handle.
@@ -31,10 +31,10 @@ typedef struct {
   char *id;
   char *topic;
   nns_edge_connect_type_e connect_type;
-  char *ip; /**< host IP */
-  int port; /**< host port */
-  char *dest_ip; /**< destination IP (broker or target device) */
-  int dest_port; /**< destination port (broker or target device) */
+  char *host; /**< host name or IP address */
+  int port; /**< port number (0~65535, default 0 to get available port.) */
+  char *dest_host; /**< destination IP address (broker or target device) */
+  int dest_port; /**< destination port number (broker or target device) */
   int flags;
 
   /* Edge event callback and user data */
