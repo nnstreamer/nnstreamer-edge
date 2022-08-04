@@ -49,6 +49,29 @@ nns_edge_get_available_port (void)
 }
 
 /**
+ * @brief Get host string (host:port). Caller should release returned string using nns_edge_free().
+ */
+char *
+nns_edge_get_host_string (const char *host, const int port)
+{
+  return nns_edge_strdup_printf ("%s:%d", host, port);
+}
+
+/**
+ * @brief Parse string and get host string (host:port).
+ */
+void
+nns_edge_parse_host_string (const char *host_str, char **host, int *port)
+{
+  char *p = strchr (host_str, ':');
+
+  if (p) {
+    *host = nns_edge_strndup (host_str, (p - host_str));
+    *port = (int) strtoll (p + 1, NULL, 10);
+  }
+}
+
+/**
  * @brief Free allocated memory.
  */
 void
