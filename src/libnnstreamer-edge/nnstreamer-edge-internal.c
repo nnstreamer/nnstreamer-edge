@@ -1002,7 +1002,10 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->connect_type = connect_type;
   eh->host = nns_edge_strdup ("localhost");
   eh->port = 0;
+  eh->dest_host = nns_edge_strdup ("localhost");
+  eh->dest_port = 0;
   eh->flags = flags;
+  eh->broker_h = NULL;
   nns_edge_metadata_init (&eh->meta);
 
   /* Connection data for each client ID. */
@@ -1044,6 +1047,39 @@ nns_edge_start (nns_edge_h edge_h)
       nns_edge_loge ("Failed to start edge. Cannot get available port.");
       nns_edge_unlock (eh);
       return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+    }
+  }
+
+  if (eh->flags & NNS_EDGE_FLAG_SERVER) {
+    if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+      gchar *device, *topic, *msg;
+
+      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_connect (eh)) {
+        nns_edge_loge
+            ("Failed to start nnstreamer-edge. Connection failure to broker.");
+        ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
+        goto error;
+      }
+
+      /** @todo Set unique device name.
+       * Device name should be unique. Consider using MAC address later.
+       * Now, use ID received from the user.
+      */
+      device = g_strdup_printf ("device-%s", eh->id);
+      topic = g_strdup_printf ("edge/inference/%s/%s/", device, eh->topic);
+
+      g_free (device);
+      g_free (eh->topic);
+      eh->topic = topic;
+      msg = nns_edge_strdup_printf ("%s:%d", eh->host, eh->port);
+
+      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_publish (eh, msg,
+              strlen (msg) + 1)) {
+        nns_edge_loge ("Failed to publish the meesage: %s", msg);
+        ret = NNS_EDGE_ERROR_IO;
+        goto error;
+      }
+      nns_edge_free (msg);
     }
   }
 
@@ -1095,6 +1131,12 @@ nns_edge_release_handle (nns_edge_h edge_h)
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (nns_edge_mqtt_is_connected (eh)) {
+    if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh)) {
+      nns_edge_logw ("Failed to close mqtt connection.");
+    }
   }
 
   eh->magic = NNS_EDGE_MAGIC_DEAD;
@@ -1168,6 +1210,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 {
   nns_edge_handle_s *eh;
   int ret;
+  char *server_ip = NULL;
+  int server_port;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -1199,16 +1243,59 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
     return NNS_EDGE_ERROR_CONNECTION_FAILURE;
   }
 
-  /* Connect to info channel. */
-  ret = _nns_edge_connect_to (eh, eh->client_id, dest_host, dest_port);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to connect host %s:%d.", dest_host, dest_port);
-  } else {
-    SAFE_FREE (eh->dest_host);
-    eh->dest_host = nns_edge_strdup (dest_host);
-    eh->dest_port = dest_port;
+  SAFE_FREE (eh->dest_host);
+  eh->dest_host = nns_edge_strdup (dest_host);
+  eh->dest_port = dest_port;
+
+  if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+    gchar *topic, *msg = NULL;
+
+    if (!nns_edge_mqtt_is_connected (eh)) {
+      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_connect (eh)) {
+        nns_edge_loge ("Connection failure to broker.");
+        nns_edge_unlock (eh);
+        return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+      }
+      topic = g_strdup_printf ("edge/inference/+/%s/#", eh->topic);
+      g_free (eh->topic);
+      eh->topic = topic;
+
+      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_subscribe (eh)) {
+        nns_edge_loge ("Failed to subscribe to topic: %s.", eh->topic);
+        nns_edge_unlock (eh);
+        return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+      }
+    }
+
+    ret = nns_edge_mqtt_get_message (eh, &msg);
+    while (NNS_EDGE_ERROR_NONE == ret) {
+      gchar **splits;
+      splits = g_strsplit (msg, ":", -1);
+      server_ip = g_strdup (splits[0]);
+      server_port = g_ascii_strtoull (splits[1], NULL, 10);
+      nns_edge_logd ("[DEBUG] Parsed server info: Server [%s:%d] ", server_ip,
+          server_port);
+
+      g_strfreev (splits);
+      g_free (msg);
+
+      ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
+      if (NNS_EDGE_ERROR_NONE == ret) {
+        break;
+      }
+      SAFE_FREE (server_ip);
+      ret = nns_edge_mqtt_get_message (eh, &msg);
+    }
+  } else { /** case for NNS_EDGE_CONNECT_TYPE_TCP == eh->protocol */
+    server_ip = nns_edge_strdup (dest_host);
+    server_port = dest_port;
+    ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to connect to %s:%d", server_ip, server_port);
+    }
   }
 
+  SAFE_FREE (server_ip);
   nns_edge_unlock (eh);
   return ret;
 }
@@ -1441,6 +1528,19 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     } else {
       eh->port = port;
     }
+  } else if (0 == strcasecmp (key, "DEST_IP")
+      || 0 == strcasecmp (key, "DEST_HOST")) {
+    SAFE_FREE (eh->dest_host);
+    eh->dest_host = nns_edge_strdup (value);
+  } else if (0 == strcasecmp (key, "DEST_PORT")) {
+    int port = (int) strtoll (value, NULL, 10);
+
+    if (port <= 0 || port > 65535) {
+      nns_edge_loge ("Invalid port number %d.", port);
+      ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    } else {
+      eh->dest_port = port;
+    }
   } else if (0 == strcasecmp (key, "TOPIC")) {
     SAFE_FREE (eh->topic);
     eh->topic = nns_edge_strdup (value);
@@ -1503,6 +1603,11 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
     *value = nns_edge_strdup (eh->topic);
   } else if (0 == strcasecmp (key, "ID")) {
     *value = nns_edge_strdup (eh->id);
+  } else if (0 == strcasecmp (key, "DEST_IP")
+      || 0 == strcasecmp (key, "DEST_HOST")) {
+    *value = nns_edge_strdup (eh->dest_host);
+  } else if (0 == strcasecmp (key, "DEST_PORT")) {
+    *value = nns_edge_strdup_printf ("%d", eh->dest_port);
   } else if (0 == strcasecmp (key, "CLIENT_ID")) {
     if (eh->flags & NNS_EDGE_FLAG_SERVER) {
       nns_edge_loge ("Cannot get the client ID, it was started as a server.");
