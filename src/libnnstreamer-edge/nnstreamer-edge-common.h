@@ -45,6 +45,8 @@ extern "C" {
 #define nns_edge_lock(h) do { pthread_mutex_lock (&(h)->lock); } while (0)
 #define nns_edge_unlock(h) do { pthread_mutex_unlock (&(h)->lock); } while (0)
 
+typedef void *nns_edge_broker_h;
+
 /**
  * @brief Internal data structure for metadata.
  */
