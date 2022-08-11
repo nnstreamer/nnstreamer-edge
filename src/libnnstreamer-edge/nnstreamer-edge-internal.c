@@ -1520,10 +1520,9 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     SAFE_FREE (eh->host);
     eh->host = nns_edge_strdup (value);
   } else if (0 == strcasecmp (key, "PORT")) {
-    int port = (int) strtoll (value, NULL, 10);
+    int port = nns_edge_parse_port_number (value);
 
-    if (port <= 0 || port > 65535) {
-      nns_edge_loge ("Invalid port number %d.", port);
+    if (port < 0) {
       ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
     } else {
       eh->port = port;
@@ -1533,10 +1532,9 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     SAFE_FREE (eh->dest_host);
     eh->dest_host = nns_edge_strdup (value);
   } else if (0 == strcasecmp (key, "DEST_PORT")) {
-    int port = (int) strtoll (value, NULL, 10);
+    int port = nns_edge_parse_port_number (value);
 
-    if (port <= 0 || port > 65535) {
-      nns_edge_loge ("Invalid port number %d.", port);
+    if (port < 0) {
       ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
     } else {
       eh->dest_port = port;

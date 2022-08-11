@@ -72,6 +72,27 @@ nns_edge_parse_host_string (const char *host_str, char **host, int *port)
 }
 
 /**
+ * @brief Parse string and get port number. Return negative value when failed to get port number.
+ */
+int
+nns_edge_parse_port_number (const char *port_str)
+{
+  int port;
+
+  if (!port_str)
+    return -1;
+
+  port = (int) strtoll (port_str, NULL, 10);
+
+  if (port <= 0 || port > 65535) {
+    nns_edge_loge ("Invalid port number %d.", port);
+    port = -1;
+  }
+
+  return port;
+}
+
+/**
  * @brief Free allocated memory.
  */
 void
