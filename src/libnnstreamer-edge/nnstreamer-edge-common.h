@@ -179,6 +179,11 @@ char *nns_edge_get_host_string (const char *host, const int port);
 void nns_edge_parse_host_string (const char *host_str, char **host, int *port);
 
 /**
+ * @brief Parse string and get port number. Return negative value when failed to get port number.
+ */
+int nns_edge_parse_port_number (const char *port_str);
+
+/**
  * @brief Free allocated memory.
  */
 void nns_edge_free (void *data);
