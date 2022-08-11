@@ -268,6 +268,7 @@ nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
       g_mutex_unlock (&bh->mqtt_mutex);
       nns_edge_loge ("Failed to connect to MQTT broker."
           "Please check broker is running status or broker host address.");
+      ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
       goto error;
     }
   }
@@ -472,6 +473,11 @@ nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg)
 
   if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!msg) {
+    nns_edge_loge ("Invalid param, given msg param is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
