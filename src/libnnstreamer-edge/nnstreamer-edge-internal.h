@@ -57,7 +57,7 @@ typedef struct {
  * @brief Connect to MQTT.
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
-int nns_edge_mqtt_connect (nns_edge_h edge_h);
+int nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic);
 
 /**
  * @brief Close the connection to MQTT.
@@ -101,7 +101,7 @@ int nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg);
 #define nns_edge_mqtt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_mqtt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_mqtt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_mqtt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_mqtt_is_connected(...) (false)
 #define nns_edge_mqtt_get_message(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #endif
 
