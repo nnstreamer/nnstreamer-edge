@@ -1052,34 +1052,33 @@ nns_edge_start (nns_edge_h edge_h)
 
   if (eh->flags & NNS_EDGE_FLAG_SERVER) {
     if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
-      gchar *device, *topic, *msg;
-
-      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_connect (eh)) {
-        nns_edge_loge
-            ("Failed to start nnstreamer-edge. Connection failure to broker.");
-        ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
-        goto error;
-      }
+      char *topic, *msg;
 
       /** @todo Set unique device name.
        * Device name should be unique. Consider using MAC address later.
        * Now, use ID received from the user.
-      */
-      device = g_strdup_printf ("device-%s", eh->id);
-      topic = g_strdup_printf ("edge/inference/%s/%s/", device, eh->topic);
+       */
+      topic = nns_edge_strdup_printf ("edge/inference/device-%s/%s/",
+          eh->id, eh->topic);
 
-      g_free (device);
-      g_free (eh->topic);
-      eh->topic = topic;
-      msg = nns_edge_strdup_printf ("%s:%d", eh->host, eh->port);
+      ret = nns_edge_mqtt_connect (eh, topic);
+      SAFE_FREE (topic);
 
-      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_publish (eh, msg,
-              strlen (msg) + 1)) {
-        nns_edge_loge ("Failed to publish the meesage: %s", msg);
-        ret = NNS_EDGE_ERROR_IO;
+      if (NNS_EDGE_ERROR_NONE != ret) {
+        nns_edge_loge
+            ("Failed to start nnstreamer-edge. Connection failure to broker.");
         goto error;
       }
-      nns_edge_free (msg);
+
+      msg = nns_edge_get_host_string (eh->host, eh->port);
+
+      ret = nns_edge_mqtt_publish (eh, msg, strlen (msg) + 1);
+      SAFE_FREE (msg);
+
+      if (NNS_EDGE_ERROR_NONE != ret) {
+        nns_edge_loge ("Failed to publish the meesage to broker.");
+        goto error;
+      }
     }
   }
 
@@ -1210,8 +1209,6 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 {
   nns_edge_handle_s *eh;
   int ret;
-  char *server_ip = NULL;
-  int server_port;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -1248,54 +1245,51 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
   eh->dest_port = dest_port;
 
   if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
-    gchar *topic, *msg = NULL;
+    char *topic, *msg = NULL;
+    char *server_ip = NULL;
+    int server_port;
 
     if (!nns_edge_mqtt_is_connected (eh)) {
-      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_connect (eh)) {
+      topic = nns_edge_strdup_printf ("edge/inference/+/%s/#", eh->topic);
+
+      ret = nns_edge_mqtt_connect (eh, topic);
+      SAFE_FREE (topic);
+
+      if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Connection failure to broker.");
         nns_edge_unlock (eh);
-        return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+        return ret;
       }
-      topic = g_strdup_printf ("edge/inference/+/%s/#", eh->topic);
-      g_free (eh->topic);
-      eh->topic = topic;
 
-      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_subscribe (eh)) {
+      ret = nns_edge_mqtt_subscribe (eh);
+      if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Failed to subscribe to topic: %s.", eh->topic);
         nns_edge_unlock (eh);
-        return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+        return ret;
       }
     }
 
-    ret = nns_edge_mqtt_get_message (eh, &msg);
-    while (NNS_EDGE_ERROR_NONE == ret) {
-      gchar **splits;
-      splits = g_strsplit (msg, ":", -1);
-      server_ip = g_strdup (splits[0]);
-      server_port = g_ascii_strtoull (splits[1], NULL, 10);
+    while ((ret = nns_edge_mqtt_get_message (eh, &msg)) == NNS_EDGE_ERROR_NONE) {
+      nns_edge_parse_host_string (msg, &server_ip, &server_port);
+      SAFE_FREE (msg);
+
       nns_edge_logd ("[DEBUG] Parsed server info: Server [%s:%d] ", server_ip,
           server_port);
 
-      g_strfreev (splits);
-      g_free (msg);
-
       ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
+      SAFE_FREE (server_ip);
+
       if (NNS_EDGE_ERROR_NONE == ret) {
         break;
       }
-      SAFE_FREE (server_ip);
-      ret = nns_edge_mqtt_get_message (eh, &msg);
     }
-  } else { /** case for NNS_EDGE_CONNECT_TYPE_TCP == eh->protocol */
-    server_ip = nns_edge_strdup (dest_host);
-    server_port = dest_port;
-    ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
+  } else {
+    ret = _nns_edge_connect_to (eh, eh->client_id, dest_host, dest_port);
     if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to connect to %s:%d", server_ip, server_port);
+      nns_edge_loge ("Failed to connect to %s:%d", dest_host, dest_port);
     }
   }
 
-  SAFE_FREE (server_ip);
   nns_edge_unlock (eh);
   return ret;
 }

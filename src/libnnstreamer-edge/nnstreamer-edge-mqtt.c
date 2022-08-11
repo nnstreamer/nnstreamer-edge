@@ -29,7 +29,8 @@ typedef struct
   GAsyncQueue *server_list;
   GMutex mqtt_mutex;
   GCond mqtt_gcond;
-  gboolean mqtt_is_connected;
+  bool mqtt_is_connected;
+  char *topic;
 } nns_edge_broker_s;
 
 /**
@@ -51,13 +52,9 @@ mqtt_cb_connection_lost (void *context, char *cause)
   bh = (nns_edge_broker_s *) eh->broker_h;
   nns_edge_logw ("MQTT connection is lost (ID:%s, Cause:%s).", eh->id, cause);
   g_mutex_lock (&bh->mqtt_mutex);
-  bh->mqtt_is_connected = FALSE;
+  bh->mqtt_is_connected = false;
   g_cond_broadcast (&bh->mqtt_gcond);
   g_mutex_unlock (&bh->mqtt_mutex);
-
-  if (eh->event_cb) {
-    /** @todo send new event (MQTT disconnected) */
-  }
 }
 
 /**
@@ -80,13 +77,9 @@ mqtt_cb_connection_success (void *context, MQTTAsync_successData * response)
   bh = (nns_edge_broker_s *) eh->broker_h;
 
   g_mutex_lock (&bh->mqtt_mutex);
-  bh->mqtt_is_connected = TRUE;
+  bh->mqtt_is_connected = true;
   g_cond_broadcast (&bh->mqtt_gcond);
   g_mutex_unlock (&bh->mqtt_mutex);
-
-  if (eh->event_cb) {
-    /** @todo send new event (MQTT connected) */
-  }
 }
 
 /**
@@ -110,13 +103,9 @@ mqtt_cb_connection_failure (void *context, MQTTAsync_failureData * response)
 
   nns_edge_logw ("MQTT connection is failed (ID:%s).", eh->id);
   g_mutex_lock (&bh->mqtt_mutex);
-  bh->mqtt_is_connected = FALSE;
+  bh->mqtt_is_connected = false;
   g_cond_broadcast (&bh->mqtt_gcond);
   g_mutex_unlock (&bh->mqtt_mutex);
-
-  if (eh->event_cb) {
-    /** @todo send new event (MQTT connection failure) */
-  }
 }
 
 /**
@@ -140,13 +129,9 @@ mqtt_cb_disconnection_success (void *context, MQTTAsync_successData * response)
 
   nns_edge_logi ("MQTT disconnection is completed (ID:%s).", eh->id);
   g_mutex_lock (&bh->mqtt_mutex);
-  bh->mqtt_is_connected = FALSE;
+  bh->mqtt_is_connected = false;
   g_cond_broadcast (&bh->mqtt_gcond);
   g_mutex_unlock (&bh->mqtt_mutex);
-
-  if (eh->event_cb) {
-    /** @todo send new event (MQTT disconnected) */
-  }
 }
 
 /**
@@ -166,9 +151,6 @@ mqtt_cb_disconnection_failure (void *context, MQTTAsync_failureData * response)
   }
 
   nns_edge_logw ("MQTT disconnection is failed (ID:%s).", eh->id);
-  if (eh->event_cb) {
-    /** @todo send new event (MQTT disconnection failure) */
-  }
 }
 
 /**
@@ -203,13 +185,8 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   nns_edge_logd ("MQTT message is arrived (ID:%s, Topic:%s).",
       eh->id, eh->topic);
 
-  msg = (char *) malloc (message->payloadlen);
-  memcpy (msg, message->payload, message->payloadlen);
+  msg = nns_edge_memdup (message->payload, message->payloadlen);
   g_async_queue_push (bh->server_list, msg);
-
-  if (eh->event_cb) {
-    /** @todo send new event (message arrived) */
-  }
 
   return TRUE;
 }
@@ -219,7 +196,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
 int
-nns_edge_mqtt_connect (nns_edge_h edge_h)
+nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
 {
   nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
@@ -237,17 +214,23 @@ nns_edge_mqtt_connect (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  bh = (nns_edge_broker_s *) malloc (sizeof (nns_edge_broker_s));
+  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
+      eh->id, eh->dest_host, eh->dest_port);
+
+  bh = (nns_edge_broker_s *) calloc (1, sizeof (nns_edge_broker_s));
   if (!bh) {
     nns_edge_loge ("Failed to allocate memory for broker handle.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  url = nns_edge_strdup_printf ("%s:%d", eh->dest_host, eh->dest_port);
+  url = nns_edge_get_host_string (eh->dest_host, eh->dest_port);
   client_id = nns_edge_strdup_printf ("nns_edge_%s_%u", eh->id, getpid ());
 
   ret = MQTTAsync_create (&handle, url, client_id,
       MQTTCLIENT_PERSISTENCE_NONE, NULL);
+  SAFE_FREE (url);
+  SAFE_FREE (client_id);
+
   if (MQTTASYNC_SUCCESS != ret) {
     nns_edge_loge ("Failed to create MQTT handle.");
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
@@ -256,21 +239,11 @@ nns_edge_mqtt_connect (nns_edge_h edge_h)
 
   g_cond_init (&bh->mqtt_gcond);
   g_mutex_init (&bh->mqtt_mutex);
-  bh->mqtt_is_connected = FALSE;
+  bh->topic = nns_edge_strdup (topic);
+  bh->mqtt_is_connected = false;
   bh->mqtt_h = handle;
   bh->server_list = g_async_queue_new ();
   eh->broker_h = bh;
-
-  bh = (nns_edge_broker_s *) eh->broker_h;
-  if (!bh->mqtt_h) {
-    nns_edge_loge ("Invalid state, MQTT connection was not completed.");
-    ret = NNS_EDGE_ERROR_IO;
-    goto error;
-  }
-  handle = bh->mqtt_h;
-
-  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
-      eh->id, eh->dest_host, eh->dest_port);
 
   MQTTAsync_setCallbacks (handle, edge_h,
       mqtt_cb_connection_lost, mqtt_cb_message_arrived, NULL);
@@ -327,42 +300,43 @@ nns_edge_mqtt_close (nns_edge_h edge_h)
   }
 
   bh = (nns_edge_broker_s *) eh->broker_h;
-
-  if (!bh->mqtt_h) {
-    nns_edge_loge ("Invalid state, MQTT connection was not completed.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
   handle = bh->mqtt_h;
 
-  nns_edge_logi ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
-      eh->id, eh->dest_host, eh->dest_port);
+  if (handle) {
+    nns_edge_logi ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
+        eh->id, eh->dest_host, eh->dest_port);
 
-  options.onSuccess = mqtt_cb_disconnection_success;
-  options.onFailure = mqtt_cb_disconnection_failure;
-  options.context = edge_h;
+    options.onSuccess = mqtt_cb_disconnection_success;
+    options.onFailure = mqtt_cb_disconnection_failure;
+    options.context = edge_h;
 
-  /** Clear retained message */
-  MQTTAsync_send (handle, eh->topic, 0, NULL, 1, 1, NULL);
+    /* Clear retained message */
+    MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, NULL);
 
-  while (MQTTAsync_isConnected (handle)) {
-    if (MQTTAsync_disconnect (handle, &options) != MQTTASYNC_SUCCESS) {
-      nns_edge_loge ("Failed to disconnect MQTT.");
-      return NNS_EDGE_ERROR_IO;
+    while (MQTTAsync_isConnected (handle)) {
+      if (MQTTAsync_disconnect (handle, &options) != MQTTASYNC_SUCCESS) {
+        nns_edge_loge ("Failed to disconnect MQTT.");
+        return NNS_EDGE_ERROR_IO;
+      }
+      g_usleep (10000);
     }
-    g_usleep (10000);
+
+    MQTTAsync_destroy (&handle);
   }
+
   g_cond_clear (&bh->mqtt_gcond);
   g_mutex_clear (&bh->mqtt_mutex);
-
-  MQTTAsync_destroy (&handle);
 
   while ((msg = g_async_queue_try_pop (bh->server_list))) {
     SAFE_FREE (msg);
   }
   g_async_queue_unref (bh->server_list);
   bh->server_list = NULL;
+
+  SAFE_FREE (bh->topic);
   SAFE_FREE (bh);
 
+  eh->broker_h = NULL;
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -403,7 +377,7 @@ nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
   }
 
   /* Publish a message (default QoS 1 - at least once and retained true). */
-  ret = MQTTAsync_send (handle, eh->topic, length, data, 1, 1, NULL);
+  ret = MQTTAsync_send (handle, bh->topic, length, data, 1, 1, NULL);
   if (ret != MQTTASYNC_SUCCESS) {
     nns_edge_loge ("Failed to publish a message (ID:%s, Topic:%s).",
         eh->id, eh->topic);
@@ -445,7 +419,7 @@ nns_edge_mqtt_subscribe (nns_edge_h edge_h)
   }
 
   /* Subscribe a topic (default QoS 1 - at least once). */
-  ret = MQTTAsync_subscribe (handle, eh->topic, 1, NULL);
+  ret = MQTTAsync_subscribe (handle, bh->topic, 1, NULL);
   if (ret != MQTTASYNC_SUCCESS) {
     nns_edge_loge ("Failed to subscribe a topic (ID:%s, Topic:%s).",
         eh->id, eh->topic);
@@ -505,7 +479,7 @@ nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg)
 
   *msg = g_async_queue_timeout_pop (bh->server_list, DEFAULT_SUB_TIMEOUT);
   if (!*msg) {
-    nns_edge_loge ("Failed to get message from mqtt broker within timeout");
+    nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }
 
