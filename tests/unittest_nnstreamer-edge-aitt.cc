@@ -154,7 +154,7 @@ TEST(edgeAitt, connectLocal)
   /* Prepare server (127.0.0.1:port) */
   val = nns_edge_strdup_printf ("%d", port);
   nns_edge_create_handle ("temp-sender", NNS_EDGE_CONNECT_TYPE_AITT,
-      (NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER), &server_h);
+      NNS_EDGE_NODE_TYPE_PUB, &server_h);
   nns_edge_set_info (server_h, "IP", "127.0.0.1");
   nns_edge_set_info (server_h, "PORT", val);
   nns_edge_set_info (server_h, "DEST_IP", "127.0.0.1");
@@ -165,13 +165,13 @@ TEST(edgeAitt, connectLocal)
 
   /* Prepare client */
   nns_edge_create_handle ("temp-receiver", NNS_EDGE_CONNECT_TYPE_AITT,
-      (NNS_EDGE_FLAG_RECV), &client1_h);
+      NNS_EDGE_NODE_TYPE_SUB, &client1_h);
   nns_edge_set_event_callback (client1_h, _test_edge_event_cb, _td_client1);
   nns_edge_set_info (client1_h, "TOPIC", "AITT_TEST_TOPIC");
   _td_client1->handle = client1_h;
 
   nns_edge_create_handle ("temp-client2", NNS_EDGE_CONNECT_TYPE_AITT,
-      (NNS_EDGE_FLAG_RECV), &client2_h);
+      NNS_EDGE_NODE_TYPE_SUB, &client2_h);
   nns_edge_set_event_callback (client2_h, _test_edge_event_cb, _td_client2);
   nns_edge_set_info (client2_h, "TOPIC", "AITT_TEST_TOPIC");
   _td_client2->handle = client2_h;
@@ -278,7 +278,7 @@ TEST(edgeAitt, connectInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_IP", "f.a.i.l");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -303,7 +303,7 @@ TEST(edgeAitt, connectInvalidParam3_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_IP", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "0");
@@ -343,7 +343,7 @@ TEST(edgeAitt, closeInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_aitt_close (edge_h);
@@ -381,7 +381,7 @@ TEST(edgeAitt, publishInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -411,7 +411,7 @@ TEST(edgeAitt, publishInvalidParam3_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -441,7 +441,7 @@ TEST(edgeAitt, publishInvalidParam4_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_PUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -479,7 +479,7 @@ TEST(edgeAitt, subscribeInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_AITT,
-      NNS_EDGE_FLAG_RECV, &edge_h);
+      NNS_EDGE_NODE_TYPE_SUB, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");

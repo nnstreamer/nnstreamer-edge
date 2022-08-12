@@ -152,7 +152,7 @@ TEST(edge, connectLocal)
   /* Prepare server (127.0.0.1:port) */
   val = nns_edge_strdup_printf ("%d", port);
   nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER), &server_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &server_h);
   nns_edge_set_event_callback (server_h, _test_edge_event_cb, _td_server);
   nns_edge_set_info (server_h, "IP", "127.0.0.1");
   nns_edge_set_info (server_h, "PORT", val);
@@ -162,13 +162,13 @@ TEST(edge, connectLocal)
 
   /* Prepare client */
   nns_edge_create_handle ("temp-client1", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &client1_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client1_h);
   nns_edge_set_event_callback (client1_h, _test_edge_event_cb, _td_client1);
   nns_edge_set_info (client1_h, "CAPS", "test client1");
   _td_client1->handle = client1_h;
 
   nns_edge_create_handle ("temp-client2", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &client2_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client2_h);
   nns_edge_set_event_callback (client2_h, _test_edge_event_cb, _td_client2);
   nns_edge_set_info (client2_h, "CAPS", "test client2");
   _td_client2->handle = client2_h;
@@ -271,7 +271,7 @@ TEST(edge, createHandleInvalidParam01_n)
   int ret;
 
   ret = nns_edge_create_handle (NULL, NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -284,7 +284,7 @@ TEST(edge, createHandleInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_UNKNOWN,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -296,7 +296,7 @@ TEST(edge, createHandleInvalidParam03_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), NULL);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -309,7 +309,7 @@ TEST(edge, createHandleInvalidParam04_n)
   int ret;
 
   ret = nns_edge_create_handle ("", NNS_EDGE_CONNECT_TYPE_MQTT,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -322,7 +322,7 @@ TEST(edge, createHandleInvalidParam05_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_NONE, &edge_h);
+      NNS_EDGE_NODE_TYPE_UNKNOWN, &edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -347,7 +347,7 @@ TEST(edge, startInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -383,7 +383,7 @@ TEST(edge, releaseHandleInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -411,7 +411,7 @@ TEST(edge, setEventCbSetNullCallback)
   ASSERT_TRUE (_td != NULL);
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, _td);
@@ -454,7 +454,7 @@ TEST(edge, setEventCbInvalidParam02_n)
   ASSERT_TRUE (_td != NULL);
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -492,7 +492,7 @@ TEST(edge, connectInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
@@ -519,7 +519,7 @@ TEST(edge, connectInvalidParam03_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
@@ -541,7 +541,7 @@ TEST(edge, connectInvalidParam04_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
@@ -563,7 +563,7 @@ TEST(edge, connectInvalidParam05_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
@@ -602,7 +602,7 @@ TEST(edge, disconnectInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -649,7 +649,7 @@ TEST(edge, sendInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_create (&data_h);
@@ -682,7 +682,7 @@ TEST(edge, sendInvalidParam03_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_send (edge_h, NULL);
@@ -713,7 +713,7 @@ TEST(edge, setInfoInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -737,7 +737,7 @@ TEST(edge, setInfoInvalidParam03_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_info (edge_h, NULL, "temp-caps");
@@ -756,7 +756,7 @@ TEST(edge, setInfoInvalidParam04_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_info (edge_h, "", "temp-caps");
@@ -775,7 +775,7 @@ TEST(edge, setInfoInvalidParam05_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_info (edge_h, "caps", NULL);
@@ -794,7 +794,7 @@ TEST(edge, setInfoInvalidParam06_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_info (edge_h, "caps", "");
@@ -813,7 +813,7 @@ TEST(edge, setInfoInvalidParam07_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* Not allowed key */
@@ -835,7 +835,7 @@ TEST(edge, setInfoInvalidParam08_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* Invalid port number */
@@ -860,7 +860,7 @@ TEST(edge, getInfo)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_set_info (edge_h, "capability", "capa-for-test");
@@ -961,7 +961,7 @@ TEST(edge, getInfoInvalidParam02_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   eh = (nns_edge_handle_s *) edge_h;
@@ -986,7 +986,7 @@ TEST(edge, getInfoInvalidParam03_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_get_info (edge_h, NULL, &value);
@@ -1006,7 +1006,7 @@ TEST(edge, getInfoInvalidParam04_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_get_info (edge_h, "", &value);
@@ -1025,7 +1025,7 @@ TEST(edge, getInfoInvalidParam05_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_get_info (edge_h, "temp-key", NULL);
@@ -1044,7 +1044,7 @@ TEST(edge, getInfoInvalidParam06_n)
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER), &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* Cannot get the client ID if handle is server */
@@ -3538,7 +3538,7 @@ TEST(edgeMqtt, connectLocal)
 
   /* Prepare server (127.0.0.1:port) */
   nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &server_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &server_h);
   nns_edge_set_event_callback (server_h, _test_edge_hybrid_event_cb, _td_server);
   nns_edge_set_info (server_h, "HOST", "localhost");
   nns_edge_set_info (server_h, "PORT", "0");
@@ -3550,7 +3550,7 @@ TEST(edgeMqtt, connectLocal)
 
   /* Prepare client */
   nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND, &client_h);
+     NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
   nns_edge_set_event_callback (client_h, _test_edge_hybrid_event_cb, _td_client);
   nns_edge_set_info (client_h, "CAPS", "test client");
   nns_edge_set_info (client_h, "HOST", "localhost");
@@ -3647,7 +3647,7 @@ TEST(edgeMqtt, connectInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3671,7 +3671,7 @@ TEST(edgeMqtt, connectInvalidParam3_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3695,7 +3695,7 @@ TEST(edgeMqtt, connectInvalidParam4_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://none");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3733,7 +3733,7 @@ TEST(edgeMqtt, closeInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_close (edge_h);
@@ -3771,7 +3771,7 @@ TEST(edgeMqtt, publishInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3800,7 +3800,7 @@ TEST(edgeMqtt, publishInvalidParam3_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3829,7 +3829,7 @@ TEST(edgeMqtt, publishInvalidParam4_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3867,7 +3867,7 @@ TEST(edgeMqtt, subscribeInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_subscribe (edge_h);
@@ -3904,7 +3904,7 @@ TEST(edgeMqtt, getMessageInvalidParam2_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
@@ -3932,7 +3932,7 @@ TEST(edgeMqtt, getMessageWithinTimeout_n)
     return;
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
-      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");

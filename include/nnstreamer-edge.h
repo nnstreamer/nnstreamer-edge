@@ -63,13 +63,13 @@ typedef enum {
 } nns_edge_connect_type_e;
 
 typedef enum {
-  NNS_EDGE_FLAG_NONE = 0,
-  NNS_EDGE_FLAG_RECV = (1 << 0),
-  NNS_EDGE_FLAG_SEND = (1 << 1),
-  NNS_EDGE_FLAG_SERVER = (1 << 2),
+  NNS_EDGE_NODE_TYPE_QUERY_CLIENT = 0,
+  NNS_EDGE_NODE_TYPE_QUERY_SERVER,
+  NNS_EDGE_NODE_TYPE_PUB,
+  NNS_EDGE_NODE_TYPE_SUB,
 
-  NNS_EDGE_FLAG_ALL = (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER)
-} nns_edge_flag_e;
+  NNS_EDGE_NODE_TYPE_UNKNOWN,
+} nns_edge_node_type_e;
 
 /**
  * @brief Callback for the nnstreamer edge event.
@@ -172,7 +172,7 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * // Release edge handle.
  * nns_edge_release_handle (edge_h);
  */
-int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type, int flags, nns_edge_h *edge_h);
+int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type, nns_edge_node_type_e node_type, nns_edge_h *edge_h);
 
 /**
  * @brief Start the nnstreamer edge. After the start, the edge can accept a new connection or request a connection.

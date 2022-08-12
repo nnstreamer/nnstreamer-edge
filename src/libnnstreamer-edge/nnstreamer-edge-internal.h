@@ -76,7 +76,7 @@ typedef struct {
   int port; /**< port number (0~65535, default 0 to get available port.) */
   char *dest_host; /**< destination IP address (broker or target device) */
   int dest_port; /**< destination port number (broker or target device) */
-  int flags;
+  nns_edge_node_type_e node_type;
   nns_edge_metadata_s meta;
 
   /* Edge event callback and user data */

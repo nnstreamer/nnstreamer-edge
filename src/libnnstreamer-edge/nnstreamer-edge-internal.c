@@ -99,6 +99,12 @@ typedef struct
 } nns_edge_thread_data_s;
 
 /**
+ * @brief Create message handle thread.
+ */
+static int
+_nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
+    int64_t client_id);
+/**
  * @brief Set socket option.
  * @todo handle connection type (TCP/UDP).
  */
@@ -148,7 +154,7 @@ _send_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
   ssize_t rret;
 
   while (sent < size) {
-    rret = send (conn->sockfd, (char *) data + sent, size - sent, 0);
+    rret = send (conn->sockfd, (char *) data + sent, size - sent, MSG_NOSIGNAL);
 
     if (rret <= 0) {
       nns_edge_loge ("Failed to send raw data.");
@@ -619,6 +625,34 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
       _nns_edge_release_connection_data (cdata);
       return;
     }
+    prev = cdata;
+    cdata = cdata->next;
+  }
+}
+
+/**
+ * @brief Remove nnstreamer-edge connection data.
+ * @note This function should be called with handle lock.
+ */
+static void
+_nns_edge_remove_connection_by_conn (nns_edge_handle_s * eh,
+    nns_edge_conn_s * conn)
+{
+  nns_edge_conn_data_s *cdata, *prev;
+
+  cdata = (nns_edge_conn_data_s *) eh->connections;
+  prev = NULL;
+
+  while (cdata) {
+    if (cdata->sink_conn == conn || cdata->src_conn == conn) {
+      if (prev)
+        prev->next = cdata->next;
+      else
+        eh->connections = cdata->next;
+
+      _nns_edge_release_connection_data (cdata);
+      return;
+    }
 
     prev = cdata;
     cdata = cdata->next;
@@ -674,95 +708,6 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
   }
 
   return true;
-}
-
-/**
- * @brief Connect to the destination node. (host:sender(sink) - dest:receiver(listener, src))
- */
-static int
-_nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
-    const char *host, int port)
-{
-  nns_edge_conn_s *conn = NULL;
-  nns_edge_conn_data_s *conn_data;
-  nns_edge_cmd_s cmd;
-  char *host_str;
-  bool done = false;
-  int ret;
-
-  conn = (nns_edge_conn_s *) calloc (1, sizeof (nns_edge_conn_s));
-  if (!conn) {
-    nns_edge_loge ("Failed to allocate client data.");
-    goto error;
-  }
-
-  conn->host = nns_edge_strdup (host);
-  conn->port = port;
-  conn->sockfd = -1;
-
-  if (!_nns_edge_connect_socket (conn)) {
-    goto error;
-  }
-
-  if (!(eh->flags & NNS_EDGE_FLAG_SERVER)) {
-    /* Receive capability and client ID from server. */
-    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
-    ret = _nns_edge_cmd_receive (conn, &cmd);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to receive capability.");
-      goto error;
-    }
-
-    if (cmd.info.cmd != _NNS_EDGE_CMD_CAPABILITY) {
-      nns_edge_loge ("Failed to get capability.");
-      _nns_edge_cmd_clear (&cmd);
-      goto error;
-    }
-
-    client_id = eh->client_id = cmd.info.client_id;
-
-    /* Check compatibility. */
-    ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CAPABILITY,
-        cmd.mem[0], cmd.info.mem_size[0], NULL);
-    _nns_edge_cmd_clear (&cmd);
-
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("The event returns error, capability is not acceptable.");
-      _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
-    } else {
-      /* Send host and port to destination. */
-      _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_HOST_INFO, client_id);
-
-      host_str = nns_edge_get_host_string (eh->host, eh->port);
-      cmd.info.num = 1;
-      cmd.info.mem_size[0] = strlen (host_str) + 1;
-      cmd.mem[0] = host_str;
-    }
-
-    ret = _nns_edge_cmd_send (conn, &cmd);
-    _nns_edge_cmd_clear (&cmd);
-
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to send host info.");
-      goto error;
-    }
-  }
-
-  conn_data = _nns_edge_add_connection (eh, client_id);
-  if (conn_data) {
-    /* Close old connection and set new one. */
-    _nns_edge_close_connection (conn_data->sink_conn);
-    conn_data->sink_conn = conn;
-    done = true;
-  }
-
-error:
-  if (!done) {
-    _nns_edge_close_connection (conn);
-    return NNS_EDGE_ERROR_CONNECTION_FAILURE;
-  }
-
-  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
@@ -931,10 +876,12 @@ _nns_edge_send_thread (void *thread_data)
 
           conn_data = (nns_edge_conn_data_s *) eh->connections;
           while (conn_data) {
-            /** @todo update code for each connect type */
             conn = conn_data->sink_conn;
-            _nns_edge_transfer_data (conn, data_h, conn_data->id);
-
+            ret = _nns_edge_transfer_data (conn, data_h, conn_data->id);
+            if (NNS_EDGE_ERROR_NONE != ret) {
+              nns_edge_loge ("Failed to transfer data. Close the connection.");
+              _nns_edge_remove_connection_by_conn (eh, conn);
+            }
             conn_data = conn_data->next;
           }
         } else {
@@ -959,7 +906,6 @@ _nns_edge_send_thread (void *thread_data)
     }
     nns_edge_data_destroy (data_h);
   }
-
   return NULL;
 }
 
@@ -982,6 +928,104 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
     nns_edge_loge ("Failed to create sender thread.");
     eh->send_thread = 0;
     return NNS_EDGE_ERROR_IO;
+  }
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Connect to the destination node. (host:sender(sink) - dest:receiver(listener, src))
+ */
+static int
+_nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
+    const char *host, int port)
+{
+  nns_edge_conn_s *conn = NULL;
+  nns_edge_conn_data_s *conn_data;
+  nns_edge_cmd_s cmd;
+  char *host_str;
+  bool done = false;
+  int ret;
+
+  conn = (nns_edge_conn_s *) calloc (1, sizeof (nns_edge_conn_s));
+  if (!conn) {
+    nns_edge_loge ("Failed to allocate client data.");
+    goto error;
+  }
+
+  conn->host = nns_edge_strdup (host);
+  conn->port = port;
+  conn->sockfd = -1;
+
+  if (!_nns_edge_connect_socket (conn)) {
+    goto error;
+  }
+
+  if ((NNS_EDGE_NODE_TYPE_QUERY_CLIENT == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_SUB == eh->node_type)) {
+    /* Receive capability and client ID from server. */
+    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
+    ret = _nns_edge_cmd_receive (conn, &cmd);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to receive capability.");
+      goto error;
+    }
+
+    if (cmd.info.cmd != _NNS_EDGE_CMD_CAPABILITY) {
+      nns_edge_loge ("Failed to get capability.");
+      _nns_edge_cmd_clear (&cmd);
+      goto error;
+    }
+
+    client_id = eh->client_id = cmd.info.client_id;
+
+    /* Check compatibility. */
+    ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CAPABILITY,
+        cmd.mem[0], cmd.info.mem_size[0], NULL);
+    _nns_edge_cmd_clear (&cmd);
+
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("The event returns error, capability is not acceptable.");
+      _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
+    } else {
+      /* Send host and port to destination. */
+      _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_HOST_INFO, client_id);
+
+      host_str = nns_edge_get_host_string (eh->host, eh->port);
+      cmd.info.num = 1;
+      cmd.info.mem_size[0] = strlen (host_str) + 1;
+      cmd.mem[0] = host_str;
+    }
+
+    ret = _nns_edge_cmd_send (conn, &cmd);
+    _nns_edge_cmd_clear (&cmd);
+
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to send host info.");
+      goto error;
+    }
+  }
+
+  conn_data = _nns_edge_add_connection (eh, client_id);
+  if (conn_data) {
+    /* Close old connection and set new one. */
+    _nns_edge_close_connection (conn_data->sink_conn);
+    conn_data->sink_conn = conn;
+    done = true;
+  }
+
+  if (NNS_EDGE_NODE_TYPE_SUB == eh->node_type) {
+    ret = _nns_edge_create_message_thread (eh, conn, client_id);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to create message handle thread.");
+      goto error;
+    }
+  }
+
+error:
+  if (!done) {
+    _nns_edge_close_connection (conn);
+    return NNS_EDGE_ERROR_CONNECTION_FAILURE;
   }
 
   return NNS_EDGE_ERROR_NONE;
@@ -1015,13 +1059,16 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
 
   _set_socket_option (conn->sockfd);
 
-  if (eh->flags & NNS_EDGE_FLAG_SERVER)
+  if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
     client_id = nns_edge_generate_client_id ();
-  else
+  } else {
     client_id = eh->client_id;
+  }
 
   /* Send capability and info to check compatibility. */
-  if (eh->flags & NNS_EDGE_FLAG_SERVER) {
+  if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
     if (!STR_IS_VALID (eh->caps_str)) {
       nns_edge_loge ("Cannot accept socket, invalid server capability.");
       goto error;
@@ -1037,7 +1084,9 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
       nns_edge_loge ("Failed to send capability.");
       goto error;
     }
+  }
 
+  if (NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type) {
     /* Receive host info from destination. */
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -1062,17 +1111,22 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
     }
   }
 
-  ret = _nns_edge_create_message_thread (eh, conn, client_id);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to create message handle thread.");
-    goto error;
-  }
-
   conn_data = _nns_edge_add_connection (eh, client_id);
-  if (conn_data) {
-    /* Close old connection and set new one. */
+
+  if (eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_CLIENT ||
+      eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_SERVER) {
+    ret = _nns_edge_create_message_thread (eh, conn, client_id);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to create message handle thread.");
+      goto error;
+    }
     _nns_edge_close_connection (conn_data->src_conn);
     conn_data->src_conn = conn;
+    done = true;
+  } else {
+    /* Close old connection and set new one. */
+    _nns_edge_close_connection (conn_data->sink_conn);
+    conn_data->sink_conn = conn;
     done = true;
   }
 
@@ -1177,7 +1231,7 @@ error:
  */
 int
 nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
-    int flags, nns_edge_h * edge_h)
+    nns_edge_node_type_e node_type, nns_edge_h * edge_h)
 {
   nns_edge_handle_s *eh;
 
@@ -1195,8 +1249,8 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
    * @todo handle flag (receive | send)
    * e.g., send only case: listener is unnecessary.
    */
-  if (flags <= 0 || !(flags & NNS_EDGE_FLAG_ALL)) {
-    nns_edge_loge ("Invalid param, set exact edge flags.");
+  if (node_type < 0 || node_type >= NNS_EDGE_NODE_TYPE_UNKNOWN) {
+    nns_edge_loge ("Invalid param, set exact node type.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -1219,7 +1273,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->port = 0;
   eh->dest_host = nns_edge_strdup ("localhost");
   eh->dest_port = 0;
-  eh->flags = flags;
+  eh->node_type = node_type;
   eh->broker_h = NULL;
   eh->connections = NULL;
   nns_edge_metadata_init (&eh->meta);
@@ -1263,7 +1317,8 @@ nns_edge_start (nns_edge_h edge_h)
     }
   }
 
-  if (eh->flags & NNS_EDGE_FLAG_SERVER) {
+  if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
     if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
       char *topic, *msg;
 
@@ -1301,17 +1356,18 @@ nns_edge_start (nns_edge_h edge_h)
     }
   }
 
-  /* Start listener thread to accept socket. */
-  if (NNS_EDGE_CONNECT_TYPE_TCP == eh->connect_type ||
-      NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+  if ((NNS_EDGE_NODE_TYPE_QUERY_CLIENT == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
+      || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
+    /* Start listener thread to accept socket. */
     if (!_nns_edge_create_socket_listener (eh)) {
       nns_edge_loge ("Failed to create socket listener.");
       ret = NNS_EDGE_ERROR_IO;
       goto done;
     }
-  }
 
-  ret = _nns_edge_create_send_thread (eh);
+    ret = _nns_edge_create_send_thread (eh);
+  }
 
 done:
   nns_edge_unlock (eh);
@@ -1331,7 +1387,6 @@ nns_edge_release_handle (nns_edge_h edge_h)
     nns_edge_loge ("Invalid param, given edge handle is null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
-
   nns_edge_lock (eh);
 
   if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
@@ -1744,7 +1799,8 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
   } else if (0 == strcasecmp (key, "DEST_PORT")) {
     *value = nns_edge_strdup_printf ("%d", eh->dest_port);
   } else if (0 == strcasecmp (key, "CLIENT_ID")) {
-    if (eh->flags & NNS_EDGE_FLAG_SERVER) {
+    if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
+        || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
       nns_edge_loge ("Cannot get the client ID, it was started as a server.");
       ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
     } else {
