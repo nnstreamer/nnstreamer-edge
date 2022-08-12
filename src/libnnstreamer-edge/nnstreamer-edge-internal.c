@@ -182,6 +182,8 @@ _nns_edge_cmd_init (nns_edge_cmd_s * cmd, nns_edge_cmd_e c, int64_t cid)
   cmd->info.magic = NNS_EDGE_MAGIC;
   cmd->info.cmd = c;
   cmd->info.client_id = cid;
+  cmd->info.num = 0;
+  cmd->info.meta_size = 0;
 }
 
 /**
