@@ -3100,7 +3100,6 @@ TEST(edgeMqtt, connectInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
-  char *msg = NULL;
 
   if (!_check_mqtt_broker ())
     return;
@@ -3125,7 +3124,6 @@ TEST(edgeMqtt, connectInvalidParam3_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
-  char *msg = NULL;
 
   if (!_check_mqtt_broker ())
     return;
