@@ -1001,6 +1001,18 @@ TEST(edge, getInfo)
       (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
+  ret = nns_edge_set_info (edge_h, "capability", "capa-for-test");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "topic", "topic-for-test");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "ip", "165.213.201.100");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "port", "2000");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "dest_ip", "165.213.201.101");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "dest_port", "2001");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "temp-key1", "temp-value1");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "temp-key2", "temp-value2");
@@ -1009,6 +1021,36 @@ TEST(edge, getInfo)
   ret = nns_edge_get_info (edge_h, "ID", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-id");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "capability", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "capa-for-test");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "topic", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "topic-for-test");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "ip", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "165.213.201.100");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "port", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "2000");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "dest_ip", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "165.213.201.101");
+  nns_edge_free (value);
+
+  ret = nns_edge_get_info (edge_h, "dest_port", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "2001");
   nns_edge_free (value);
 
   ret = nns_edge_get_info (edge_h, "temp-key1", &value);
@@ -1125,6 +1167,26 @@ TEST(edge, getInfoInvalidParam05_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_get_info (edge_h, "temp-key", NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - invalid param.
+ */
+TEST(edge, getInfoInvalidParam06_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER), &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Cannot get the client ID if handle is server */
+  ret = nns_edge_get_info (edge_h, "client_id", NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
