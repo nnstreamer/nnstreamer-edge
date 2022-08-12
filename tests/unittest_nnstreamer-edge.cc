@@ -2815,6 +2815,7 @@ TEST(edgeMeta, deserializeInvalidParam03_n)
   free (data);
 }
 
+#if defined(ENABLE_MQTT)
 /**
  * @brief Edge event callback for test.
  */
@@ -2883,18 +2884,18 @@ _test_edge_hybrid_event_cb (nns_edge_event_h event_h, void *user_data)
 /**
  * @brief Check whether MQTT broker is running or not.
  */
-static int
+static bool
 _check_mqtt_broker ()
 {
   int ret = 0;
 
   ret = system ("ps aux | grep mosquitto | grep -v grep");
   if (0 != ret) {
-    nns_edge_loge ("MQTT broker is not running. Skip query hybrid test.");
-    ret = -1;
+    nns_edge_logw ("MQTT broker is not running. Skip query hybrid test.");
+    return false;
   }
 
-  return ret;
+  return true;
 }
 
 /**
@@ -2913,14 +2914,15 @@ TEST(edgeMqtt, connectLocal)
   int ret = 0;
   char *val;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
   _td_server = _get_test_data (true);
   _td_client = _get_test_data (false);
 
   /* Prepare server (127.0.0.1:port) */
-  nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &server_h);
+  nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &server_h);
   nns_edge_set_event_callback (server_h, _test_edge_hybrid_event_cb, _td_server);
   nns_edge_set_info (server_h, "HOST", "localhost");
   nns_edge_set_info (server_h, "PORT", "0");
@@ -2931,7 +2933,8 @@ TEST(edgeMqtt, connectLocal)
   _td_server->handle = server_h;
 
   /* Prepare client */
-  nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND, &client_h);
+  nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND, &client_h);
   nns_edge_set_event_callback (client_h, _test_edge_hybrid_event_cb, _td_client);
   nns_edge_set_info (client_h, "CAPS", "test client");
   nns_edge_set_info (client_h, "HOST", "localhost");
@@ -3014,37 +3017,88 @@ TEST(edgeMqtt, connectLocal)
   _free_test_data (_td_client);
 }
 
-
 /**
  * @brief Connect to the mqtt broker with invalid param.
  */
-TEST(edgeMqtt, connectInvalidParam_n)
+TEST(edgeMqtt, connectInvalidParam1_n)
 {
   int ret = -1;
-  if (0 != _check_mqtt_broker ())
+
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect (NULL);
+  ret = nns_edge_mqtt_connect (NULL, "temp-mqtt-topic");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
- * @brief Connect to the mqtt broker with invalid hostaddress.
+ * @brief Connect to the mqtt broker with invalid param.
  */
 TEST(edgeMqtt, connectInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
+  char *msg = NULL;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
+
+  ret = nns_edge_mqtt_connect (edge_h, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Connect to the mqtt broker with invalid param.
+ */
+TEST(edgeMqtt, connectInvalidParam3_n)
+{
+  int ret = -1;
+  nns_edge_h edge_h;
+  char *msg = NULL;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
+
+  ret = nns_edge_mqtt_connect (edge_h, "");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Connect to the mqtt broker with invalid hostaddress.
+ */
+TEST(edgeMqtt, connectInvalidParam4_n)
+{
+  int ret = -1;
+  nns_edge_h edge_h;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://none");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
-  ret = nns_edge_mqtt_connect (edge_h);
+  ret = nns_edge_mqtt_connect (edge_h, "temp-mqtt-topic");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
@@ -3057,7 +3111,8 @@ TEST(edgeMqtt, connectInvalidParam2_n)
 TEST(edgeMqtt, closeInvalidParam_n)
 {
   int ret = -1;
-  if (0 != _check_mqtt_broker ())
+
+  if (!_check_mqtt_broker ())
     return;
 
   ret = nns_edge_mqtt_close (NULL);
@@ -3072,10 +3127,11 @@ TEST(edgeMqtt, closeInvalidParam2_n)
   int ret = -1;
   nns_edge_h edge_h;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_close (edge_h);
@@ -3091,9 +3147,9 @@ TEST(edgeMqtt, closeInvalidParam2_n)
 TEST(edgeMqtt, publishInvalidParam_n)
 {
   int ret = -1;
-  const char* msg = "TEMP_MESSAGE";
+  const char *msg = "TEMP_MESSAGE";
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
   ret = nns_edge_mqtt_publish (NULL, msg, strlen (msg) + 1);
@@ -3107,12 +3163,13 @@ TEST(edgeMqtt, publishInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
-  const char* msg = "TEMP_MESSAGE";
+  const char *msg = "TEMP_MESSAGE";
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_publish (edge_h, NULL, strlen (msg) + 1);
@@ -3122,7 +3179,6 @@ TEST(edgeMqtt, publishInvalidParam2_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
-
 /**
  * @brief Publish with invalid param.
  */
@@ -3130,12 +3186,13 @@ TEST(edgeMqtt, publishInvalidParam3_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
-  const char* msg = "TEMP_MESSAGE";
+  const char *msg = "TEMP_MESSAGE";
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_publish (edge_h, msg, 0);
@@ -3152,12 +3209,13 @@ TEST(edgeMqtt, publishInvalidParam4_n)
 {
   int ret = -1;
   nns_edge_h edge_h;
-  const char* msg = "TEMP_MESSAGE";
+  const char *msg = "TEMP_MESSAGE";
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_publish (edge_h, msg, strlen (msg) + 1);
@@ -3173,7 +3231,8 @@ TEST(edgeMqtt, publishInvalidParam4_n)
 TEST(edgeMqtt, subscribeInvalidParam_n)
 {
   int ret = -1;
-  if (0 != _check_mqtt_broker ())
+
+  if (!_check_mqtt_broker ())
     return;
 
   ret = nns_edge_mqtt_subscribe (NULL);
@@ -3188,10 +3247,11 @@ TEST(edgeMqtt, subscribeInvalidParam2_n)
   int ret = -1;
   nns_edge_h edge_h;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_subscribe (edge_h);
@@ -3209,7 +3269,7 @@ TEST(edgeMqtt, getMessageInvalidParam_n)
   int ret = -1;
   char *msg = NULL;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
   ret = nns_edge_mqtt_get_message (NULL, &msg);
@@ -3224,10 +3284,11 @@ TEST(edgeMqtt, getMessageInvalidParam2_n)
   int ret = -1;
   nns_edge_h edge_h;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (edge_h, NULL);
@@ -3246,15 +3307,16 @@ TEST(edgeMqtt, getMessageWithinTimeout_n)
   nns_edge_h edge_h;
   char *msg = NULL;
 
-  if (0 != _check_mqtt_broker ())
+  if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID, NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
+      NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
-  ret = nns_edge_mqtt_connect (edge_h);
+  ret = nns_edge_mqtt_connect (edge_h, "temp-mqtt-topic");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (edge_h, &msg);
@@ -3266,6 +3328,7 @@ TEST(edgeMqtt, getMessageWithinTimeout_n)
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
+#endif /* ENABLE_MQTT */
 
 /**
  * @brief Main gtest

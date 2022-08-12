@@ -207,6 +207,11 @@ nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
   char *url;
   char *client_id;
 
+  if (!STR_IS_VALID (topic)) {
+    nns_edge_loge ("Invalid param, given topic is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
   eh = (nns_edge_handle_s *) edge_h;
 
   if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
