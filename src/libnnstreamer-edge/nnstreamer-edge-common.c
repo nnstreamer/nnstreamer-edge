@@ -764,11 +764,25 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
   for (i = 0; i < ed->num; i++) {
     copied->data[i].data = nns_edge_memdup (ed->data[i].data,
         ed->data[i].data_len);
+
+    if (!copied->data[i].data) {
+      nns_edge_loge ("Failed to copy data, error while allocating new memory.");
+      copied->num = i;
+      ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+      goto done;
+    }
+
     copied->data[i].data_len = ed->data[i].data_len;
     copied->data[i].destroy_cb = nns_edge_free;
   }
 
   ret = nns_edge_metadata_copy (&copied->metadata, &ed->metadata);
+
+done:
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_data_destroy (*new_data_h);
+    *new_data_h = NULL;
+  }
 
   nns_edge_unlock (ed);
   return ret;

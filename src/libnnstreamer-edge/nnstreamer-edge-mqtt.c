@@ -186,7 +186,8 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
       eh->id, eh->topic);
 
   msg = nns_edge_memdup (message->payload, message->payloadlen);
-  g_async_queue_push (bh->server_list, msg);
+  if (msg)
+    g_async_queue_push (bh->server_list, msg);
 
   return TRUE;
 }
