@@ -48,7 +48,7 @@ IF(PAHO_MQTT_PKG_FOUND)
 ELSE()
     FIND_LIBRARY(PAHO_MQTT_LIB NAMES paho-mqtt3a paho-mqtt3c paho-mqtt3as paho-mqtt3cs)
 
-    IF(PAHO_MQTT_LIB-NOTFOUND)
+    IF(NOT PAHO_MQTT_LIB)
         MESSAGE("Cannot find Paho MQTT library." )
     ELSE()
         MESSAGE("Found Paho MQTT library.")

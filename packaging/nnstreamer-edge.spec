@@ -1,5 +1,10 @@
 %define     test_script $(pwd)/packaging/run_unittests.sh
 
+# Default features for Tizen releases
+%define		mqtt_support 1
+
+%bcond_with tizen
+
 Name:       nnstreamer-edge
 Summary:    Common library set for nnstreamer-edge
 # Synchronize the version of nnstreamer-edge library.
@@ -15,7 +20,15 @@ Source0:    %{name}-%{version}.tar.gz
 Source1001: nnstreamer-edge.manifest
 
 BuildRequires:  cmake
+
+%if %{with tizen}
+BuildRequires:  pkgconfig(dlog)
+%endif
+
+%if 0%{?mqtt_support}
 BuildRequires:  pkgconfig(paho-mqtt-c)
+%endif
+
 # TODO remove glib
 BuildRequires:  glib2-devel
 
