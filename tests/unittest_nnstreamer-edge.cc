@@ -1733,6 +1733,7 @@ TEST(edgeData, getCountInvalidParam02_n)
   nns_edge_data_s *ed;
   void *data;
   size_t data_len;
+  unsigned int count;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1748,7 +1749,7 @@ TEST(edgeData, getCountInvalidParam02_n)
   ed = (nns_edge_data_s *) data_h;
   ed->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_data_get_count (data_h, NULL);
+  ret = nns_edge_data_get_count (data_h, &count);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ed->magic = NNS_EDGE_MAGIC;
@@ -1961,6 +1962,210 @@ TEST(edgeData, getInfoInvalidParam05_n)
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize meta in edge-data - invalid param.
+ */
+TEST(edgeData, serializeInvalidParam01_n)
+{
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_serialize_meta (NULL, &data, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize meta in edge-data - invalid param.
+ */
+TEST(edgeData, serializeInvalidParam02_n)
+{
+  nns_edge_data_h data_h;
+  nns_edge_data_s *ed;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ed = (nns_edge_data_s *) data_h;
+  ed->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ed->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize meta in edge-data - invalid param.
+ */
+TEST(edgeData, serializeInvalidParam03_n)
+{
+  nns_edge_data_h data_h;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, NULL, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Serialize meta in edge-data - invalid param.
+ */
+TEST(edgeData, serializeInvalidParam04_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Derialize meta to edge-data - invalid param.
+ */
+TEST(edgeData, deserializeInvalidParam01_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize_meta (NULL, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
+ * @brief Derialize meta to edge-data - invalid param.
+ */
+TEST(edgeData, deserializeInvalidParam02_n)
+{
+  nns_edge_data_h data_h;
+  nns_edge_data_s *ed;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ed = (nns_edge_data_s *) data_h;
+  ed->magic = NNS_EDGE_MAGIC_DEAD;
+
+  ret = nns_edge_data_deserialize_meta (data_h, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ed->magic = NNS_EDGE_MAGIC;
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
+ * @brief Derialize meta to edge-data - invalid param.
+ */
+TEST(edgeData, deserializeInvalidParam03_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize_meta (data_h, NULL, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
+ * @brief Derialize meta to edge-data - invalid param.
+ */
+TEST(edgeData, deserializeInvalidParam04_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize_meta (data_h, data, 0);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
 }
 
 /**
