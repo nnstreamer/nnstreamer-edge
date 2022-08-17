@@ -474,13 +474,12 @@ nns_edge_event_create (nns_edge_event_e event, nns_edge_event_h * event_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ee = (nns_edge_event_s *) malloc (sizeof (nns_edge_event_s));
+  ee = (nns_edge_event_s *) calloc (1, sizeof (nns_edge_event_s));
   if (!ee) {
     nns_edge_loge ("Failed to allocate memory for edge event.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  memset (ee, 0, sizeof (nns_edge_event_s));
   ee->magic = NNS_EDGE_MAGIC;
   ee->event = event;
 
@@ -642,13 +641,12 @@ nns_edge_data_create (nns_edge_data_h * data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ed = (nns_edge_data_s *) malloc (sizeof (nns_edge_data_s));
+  ed = (nns_edge_data_s *) calloc (1, sizeof (nns_edge_data_s));
   if (!ed) {
     nns_edge_loge ("Failed to allocate memory for edge data.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  memset (ed, 0, sizeof (nns_edge_data_s));
   nns_edge_lock_init (ed);
   ed->magic = NNS_EDGE_MAGIC;
   nns_edge_metadata_init (&ed->metadata);

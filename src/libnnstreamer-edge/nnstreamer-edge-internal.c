@@ -89,15 +89,15 @@ typedef struct
  * @brief Send data to connected socket.
  */
 static bool
-_send_raw_data (GSocket * socket, void *data, size_t size)
+_send_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
 {
-  size_t bytes_sent = 0;
+  size_t sent = 0;
   ssize_t rret;
   GError *err = NULL;
 
-  while (bytes_sent < size) {
-    rret = g_socket_send (socket, (char *) data + bytes_sent,
-        size - bytes_sent, NULL, &err);
+  while (sent < size) {
+    rret = g_socket_send (conn->socket, (char *) data + sent, size - sent,
+        NULL, &err);
 
     if (rret == 0) {
       nns_edge_loge ("Connection closed.");
@@ -110,7 +110,7 @@ _send_raw_data (GSocket * socket, void *data, size_t size)
       return false;
     }
 
-    bytes_sent += rret;
+    sent += rret;
   }
 
   return true;
@@ -120,15 +120,15 @@ _send_raw_data (GSocket * socket, void *data, size_t size)
  * @brief Receive data from connected socket.
  */
 static bool
-_receive_raw_data (GSocket * socket, void *data, size_t size)
+_receive_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
 {
-  size_t bytes_received = 0;
+  size_t received = 0;
   ssize_t rret;
   GError *err = NULL;
 
-  while (bytes_received < size) {
-    rret = g_socket_receive (socket, (char *) data + bytes_received,
-        size - bytes_received, NULL, &err);
+  while (received < size) {
+    rret = g_socket_receive (conn->socket, (char *) data + received,
+        size - received, NULL, &err);
 
     if (rret == 0) {
       nns_edge_loge ("Connection closed.");
@@ -141,7 +141,7 @@ _receive_raw_data (GSocket * socket, void *data, size_t size)
       return false;
     }
 
-    bytes_received += rret;
+    received += rret;
   }
 
   return true;
@@ -254,20 +254,20 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     return NNS_EDGE_ERROR_IO;
   }
 
-  if (!_send_raw_data (conn->socket, &cmd->info, sizeof (nns_edge_cmd_info_s))) {
+  if (!_send_raw_data (conn, &cmd->info, sizeof (nns_edge_cmd_info_s))) {
     nns_edge_loge ("Failed to send command to socket.");
     return NNS_EDGE_ERROR_IO;
   }
 
   for (n = 0; n < cmd->info.num; n++) {
-    if (!_send_raw_data (conn->socket, cmd->mem[n], cmd->info.mem_size[n])) {
+    if (!_send_raw_data (conn, cmd->mem[n], cmd->info.mem_size[n])) {
       nns_edge_loge ("Failed to send %uth memory to socket.", n);
       return NNS_EDGE_ERROR_IO;
     }
   }
 
   if (cmd->info.meta_size > 0) {
-    if (!_send_raw_data (conn->socket, cmd->meta, cmd->info.meta_size)) {
+    if (!_send_raw_data (conn, cmd->meta, cmd->info.meta_size)) {
       nns_edge_loge ("Failed to send metadata to socket.");
       return NNS_EDGE_ERROR_IO;
     }
@@ -294,8 +294,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     return NNS_EDGE_ERROR_IO;
   }
 
-  if (!_receive_raw_data (conn->socket, &cmd->info,
-          sizeof (nns_edge_cmd_info_s))) {
+  if (!_receive_raw_data (conn, &cmd->info, sizeof (nns_edge_cmd_info_s))) {
     nns_edge_loge ("Failed to receive command from socket.");
     return NNS_EDGE_ERROR_IO;
   }
@@ -320,7 +319,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
       goto error;
     }
 
-    if (!_receive_raw_data (conn->socket, cmd->mem[n], cmd->info.mem_size[n])) {
+    if (!_receive_raw_data (conn, cmd->mem[n], cmd->info.mem_size[n])) {
       nns_edge_loge ("Failed to receive %uth memory from socket.", n++);
       ret = NNS_EDGE_ERROR_IO;
       goto error;
@@ -335,7 +334,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
       goto error;
     }
 
-    if (!_receive_raw_data (conn->socket, cmd->meta, cmd->info.meta_size)) {
+    if (!_receive_raw_data (conn, cmd->meta, cmd->info.meta_size)) {
       nns_edge_loge ("Failed to receive metadata from socket.");
       ret = NNS_EDGE_ERROR_IO;
       goto error;
@@ -489,13 +488,12 @@ _nns_edge_add_connection (nns_edge_handle_s * eh, int64_t client_id)
   data = g_hash_table_lookup (eh->conn_table, GUINT_TO_POINTER (client_id));
 
   if (NULL == data) {
-    data = (nns_edge_conn_data_s *) malloc (sizeof (nns_edge_conn_data_s));
+    data = (nns_edge_conn_data_s *) calloc (1, sizeof (nns_edge_conn_data_s));
     if (NULL == data) {
       nns_edge_loge ("Failed to allocate memory for connection data.");
       return NULL;
     }
 
-    memset (data, 0, sizeof (nns_edge_conn_data_s));
     data->id = client_id;
 
     g_hash_table_insert (eh->conn_table, GUINT_TO_POINTER (client_id), data);
@@ -580,7 +578,7 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
       G_SOCKET_PROTOCOL_TCP, &err);
 
   if (!conn->socket) {
-    nns_edge_loge ("Failed to create new socket");
+    nns_edge_loge ("Failed to create new socket.");
     goto done;
   }
 
@@ -622,13 +620,12 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
   bool done = false;
   int ret;
 
-  conn = (nns_edge_conn_s *) malloc (sizeof (nns_edge_conn_s));
+  conn = (nns_edge_conn_s *) calloc (1, sizeof (nns_edge_conn_s));
   if (!conn) {
     nns_edge_loge ("Failed to allocate client data.");
     goto error;
   }
 
-  memset (conn, 0, sizeof (nns_edge_conn_s));
   conn->host = nns_edge_strdup (host);
   conn->port = port;
 
@@ -808,7 +805,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
   nns_edge_thread_data_s *thread_data = NULL;
 
   thread_data =
-      (nns_edge_thread_data_s *) malloc (sizeof (nns_edge_thread_data_s));
+      (nns_edge_thread_data_s *) calloc (1, sizeof (nns_edge_thread_data_s));
   if (!thread_data) {
     nns_edge_loge ("Failed to allocate edge thread data.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
@@ -848,14 +845,13 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   GSocket *socket = NULL;
   GError *err = NULL;
   nns_edge_handle_s *eh = (nns_edge_handle_s *) user_data;
-  nns_edge_conn_s *conn = NULL;
-  nns_edge_cmd_s cmd;
   bool done = false;
-  char *dest_host = NULL;
-  int dest_port = 0;
-  nns_edge_conn_data_s *conn_data = NULL;
+  nns_edge_conn_s *conn;
+  nns_edge_conn_data_s *conn_data;
+  nns_edge_cmd_s cmd;
   int64_t client_id;
-  int ret;
+  char *dest_host = NULL;
+  int dest_port, ret;
 
   socket =
       g_socket_listener_accept_socket_finish (socket_listener, result, NULL,
@@ -868,14 +864,12 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   }
   g_socket_set_timeout (socket, DEFAULT_TIMEOUT_SEC);
 
-  /* create socket with connection */
-  conn = (nns_edge_conn_s *) malloc (sizeof (nns_edge_conn_s));
+  conn = (nns_edge_conn_s *) calloc (1, sizeof (nns_edge_conn_s));
   if (!conn) {
-    nns_edge_loge ("Failed to allocate edge connection");
+    nns_edge_loge ("Failed to allocate edge connection.");
     goto error;
   }
 
-  memset (conn, 0, sizeof (nns_edge_conn_s));
   conn->socket = socket;
 
   /* setting TCP_NODELAY to true in order to avoid packet batching as known as Nagle's algorithm */
@@ -893,7 +887,7 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   /* Send capability and info to check compatibility. */
   if (eh->flags & NNS_EDGE_FLAG_SERVER) {
     if (!STR_IS_VALID (eh->caps_str)) {
-      nns_edge_loge ("Cannot accept socket, invalid capability.");
+      nns_edge_loge ("Cannot accept socket, invalid server capability.");
       goto error;
     }
 
@@ -947,9 +941,8 @@ _nns_edge_accept_socket_async_cb (GObject * source, GAsyncResult * result,
   }
 
 error:
-  if (!done) {
+  if (!done)
     _nns_edge_close_connection (conn);
-  }
 
   if (eh->listener)
     g_socket_listener_accept_socket_async (eh->listener, NULL,
@@ -991,13 +984,12 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  eh = (nns_edge_handle_s *) malloc (sizeof (nns_edge_handle_s));
+  eh = (nns_edge_handle_s *) calloc (1, sizeof (nns_edge_handle_s));
   if (!eh) {
     nns_edge_loge ("Failed to allocate memory for edge handle.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  memset (eh, 0, sizeof (nns_edge_handle_s));
   nns_edge_lock_init (eh);
   eh->magic = NNS_EDGE_MAGIC;
   eh->id = nns_edge_strdup (id);
@@ -1026,8 +1018,8 @@ nns_edge_start (nns_edge_h edge_h)
 {
   GSocketAddress *saddr = NULL;
   GError *err = NULL;
-  int ret = 0;
   nns_edge_handle_s *eh;
+  int ret = NNS_EDGE_ERROR_NONE;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -1089,13 +1081,14 @@ nns_edge_start (nns_edge_h edge_h)
   g_socket_listener_set_backlog (eh->listener, N_BACKLOG);
 
   if (!_nns_edge_get_saddr (eh->host, eh->port, &saddr)) {
-    nns_edge_loge ("Failed to get socket address");
+    nns_edge_loge ("Failed to get socket address (%s:%d).", eh->host, eh->port);
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
     goto error;
   }
   if (!g_socket_listener_add_address (eh->listener, saddr,
           G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, NULL, NULL, &err)) {
-    nns_edge_loge ("Failed to add address: %s", err->message);
+    nns_edge_loge ("Failed to add address (%s:%d): %s", eh->host, eh->port,
+        err->message);
     g_clear_error (&err);
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
     goto error;
