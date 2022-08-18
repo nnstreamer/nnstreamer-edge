@@ -3436,7 +3436,13 @@ TEST(edgeMqtt, publishInvalidParam2_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* data is null */
   ret = nns_edge_mqtt_publish (edge_h, NULL, strlen (msg) + 1);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
@@ -3459,7 +3465,13 @@ TEST(edgeMqtt, publishInvalidParam3_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* data length is 0 */
   ret = nns_edge_mqtt_publish (edge_h, msg, 0);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
@@ -3482,6 +3494,8 @@ TEST(edgeMqtt, publishInvalidParam4_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_mqtt_publish (edge_h, msg, strlen (msg) + 1);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
@@ -3554,6 +3568,11 @@ TEST(edgeMqtt, getMessageInvalidParam2_n)
 
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND | NNS_EDGE_FLAG_SERVER, &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_PORT", "1883");
+
+  ret = nns_edge_start (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (edge_h, NULL);
