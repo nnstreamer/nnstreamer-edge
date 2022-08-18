@@ -20,7 +20,6 @@ extern "C" {
 
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-common.h"
-#include <gio/gio.h> /** @todo remove glib */
 
 /**
  * @brief Data structure for edge handle.
@@ -46,7 +45,11 @@ typedef struct {
   char *caps_str;
 
   GHashTable *conn_table;
-  GSocketListener *listener;
+
+  /* socket listener */
+  bool listening;
+  int listener_fd;
+  pthread_t listener_thread;
 
   /* MQTT */
   nns_edge_broker_h broker_h;

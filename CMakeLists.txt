@@ -63,7 +63,7 @@ ENDIF()
 
 # Check requires packages
 # TODO FIXME remove glib dependency
-SET(REQUIRES_LIST "glib-2.0 gio-2.0")
+SET(REQUIRES_LIST "glib-2.0")
 
 PKG_CHECK_MODULES(EDGE_REQUIRE_PKGS REQUIRED ${REQUIRES_LIST})
 
