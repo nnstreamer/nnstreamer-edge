@@ -296,7 +296,7 @@ nns_edge_mqtt_subscribe (nns_edge_h edge_h)
   }
 
   if (!MQTTAsync_isConnected (handle)) {
-    nns_edge_loge ("Invalid state, MQTT connection was not completed.");
+    nns_edge_loge ("Failed to subscribe, MQTT is not connected.");
     return NNS_EDGE_ERROR_IO;
   }
 
