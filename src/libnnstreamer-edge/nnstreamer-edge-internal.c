@@ -435,8 +435,10 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
 
   /* Stop and clear the message thread. */
   if (conn->msg_thread) {
-    conn->running = 0;
-    pthread_cancel (conn->msg_thread);
+    if (0 != conn->running) {
+      pthread_cancel (conn->msg_thread);
+      conn->running = 0;
+    }
     pthread_join (conn->msg_thread, NULL);
     conn->msg_thread = 0;
   }
@@ -740,6 +742,7 @@ _nns_edge_message_handler (void *thread_data)
     nns_edge_data_destroy (data_h);
     _nns_edge_cmd_clear (&cmd);
   }
+  conn->running = 0;
 
   /* Received error message from client, remove connection from table. */
   if (remove_connection) {
@@ -749,7 +752,6 @@ _nns_edge_message_handler (void *thread_data)
     g_hash_table_remove (eh->conn_table, GUINT_TO_POINTER (client_id));
   }
 
-  conn->running = 0;
   return NULL;
 }
 
@@ -944,7 +946,17 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
   }
 
   saddr.sin_family = AF_INET;
-  saddr.sin_addr.s_addr = htonl (INADDR_ANY);
+
+  if ((saddr.sin_addr.s_addr = inet_addr (eh->host)) == -1) {
+    struct hostent *ent = gethostbyname (eh->host);
+    if (!ent) {
+      nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
+      goto error;
+    }
+
+    memmove (&saddr.sin_addr, ent->h_addr, ent->h_length);
+  }
+
   saddr.sin_port = htons (eh->port);
 
   if (bind (eh->listener_fd, (struct sockaddr *) &saddr, saddr_len) < 0 ||
