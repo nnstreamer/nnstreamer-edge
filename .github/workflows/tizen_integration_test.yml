@@ -25,5 +25,5 @@ jobs:
     - name: get nnstreamer-main
       run: git clone https://github.com/nnstreamer/nnstreamer.git
     - name: run GBS on nnstreamer with unit test
-      run: pushd nnstreamer && gbs build --define "unit_test 1" && popd
+      run: pushd nnstreamer && gbs build --define "edge_test 1" && popd
 ## @todo run nnstreamer-edge related test cases only
