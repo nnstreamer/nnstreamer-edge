@@ -11,6 +11,8 @@
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-util.h"
 
 /**
  * @brief Data struct for unittest.
