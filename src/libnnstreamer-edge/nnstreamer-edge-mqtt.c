@@ -14,10 +14,10 @@
 #error "This file can be built with Paho MQTT library."
 #endif
 
-#include <unistd.h>
 #include <MQTTAsync.h>
-#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-util.h"
 
 /**
  * @brief Data structure for mqtt broker handle.
@@ -43,7 +43,6 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
 
   UNUSED (topic);
   UNUSED (topic_len);
-  UNUSED (message);
   eh = (nns_edge_handle_s *) context;
 
   if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {

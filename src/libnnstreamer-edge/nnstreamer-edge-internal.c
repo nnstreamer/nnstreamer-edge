@@ -14,7 +14,8 @@
 #include <netdb.h>
 #include <sys/poll.h>
 
-#include "nnstreamer-edge-common.h"
+#include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-internal.h"
 
 #define N_BACKLOG 10
