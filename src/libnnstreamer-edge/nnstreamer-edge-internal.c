@@ -64,7 +64,7 @@ typedef struct
 {
   char *host;
   int port;
-  int8_t running;
+  bool running;
   pthread_t msg_thread;
   int sockfd;
 } nns_edge_conn_s;
@@ -101,6 +101,32 @@ _set_socket_option (int fd)
   /* setting TCP_NODELAY to true in order to avoid packet batching as known as Nagle's algorithm */
   if (setsockopt (fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof (int)) < 0)
     nns_edge_logw ("Failed to set TCP delay option.");
+}
+
+/**
+ * @brief Fill socket address struct from host name and port number.
+ */
+static bool
+_fill_socket_addr (struct sockaddr_in *saddr, const char *host, const int port)
+{
+  /**
+   * @todo handle protocol
+   * 1. support edge connection type (TCP/UDP)
+   * 2. ipv4 and ipv6
+   */
+  saddr->sin_family = AF_INET;
+  saddr->sin_port = htons (port);
+
+  if ((saddr->sin_addr.s_addr = inet_addr (host)) == -1) {
+    struct hostent *ent = gethostbyname (host);
+
+    if (!ent)
+      return false;
+
+    memmove (&saddr->sin_addr, ent->h_addr, ent->h_length);
+  }
+
+  return true;
 }
 
 /**
@@ -439,9 +465,9 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
 
   /* Stop and clear the message thread. */
   if (conn->msg_thread) {
-    if (0 != conn->running) {
+    if (conn->running) {
       pthread_cancel (conn->msg_thread);
-      conn->running = 0;
+      conn->running = false;
     }
     pthread_join (conn->msg_thread, NULL);
     conn->msg_thread = 0;
@@ -537,22 +563,9 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
   struct sockaddr_in saddr = { 0 };
   socklen_t saddr_len = sizeof (struct sockaddr_in);
 
-  /**
-   * @todo handle protocol
-   * 1. support edge connection type (TCP/UDP)
-   * 2. ipv4 and ipv6
-   */
-  saddr.sin_family = AF_INET;
-  saddr.sin_port = htons (conn->port);
-
-  if ((saddr.sin_addr.s_addr = inet_addr (conn->host)) == -1) {
-    struct hostent *ent = gethostbyname (conn->host);
-    if (!ent) {
-      nns_edge_loge ("Failed to connect socket, invalid host %s.", conn->host);
-      return false;
-    }
-
-    memmove (&saddr.sin_addr, ent->h_addr, ent->h_length);
+  if (!_fill_socket_addr (&saddr, conn->host, conn->port)) {
+    nns_edge_loge ("Failed to connect socket, invalid host %s.", conn->host);
+    return false;
   }
 
   conn->sockfd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -685,7 +698,7 @@ _nns_edge_message_handler (void *thread_data)
   client_id = _tdata->client_id;
   SAFE_FREE (_tdata);
 
-  conn->running = 1;
+  conn->running = true;
   while (conn->running) {
     nns_edge_data_h data_h;
     unsigned int i;
@@ -746,7 +759,7 @@ _nns_edge_message_handler (void *thread_data)
     nns_edge_data_destroy (data_h);
     _nns_edge_cmd_clear (&cmd);
   }
-  conn->running = 0;
+  conn->running = false;
 
   /* Received error message from client, remove connection from table. */
   if (remove_connection) {
@@ -791,7 +804,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
 
   if (tid < 0) {
     nns_edge_loge ("Failed to create message handler thread.");
-    conn->running = 0;
+    conn->running = false;
     conn->msg_thread = 0;
     SAFE_FREE (thread_data);
     return NNS_EDGE_ERROR_IO;
@@ -926,6 +939,7 @@ _nns_edge_socket_listener_thread (void *thread_data)
         _nns_edge_accept_socket (eh);
     }
   }
+  eh->listening = false;
 
   return NULL;
 }
@@ -943,25 +957,16 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
   pthread_attr_t attr;
   int tid;
 
+  if (!_fill_socket_addr (&saddr, eh->host, eh->port)) {
+    nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
+    return false;
+  }
+
   eh->listener_fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (eh->listener_fd < 0) {
     nns_edge_loge ("Failed to create listener socket.");
     return false;
   }
-
-  saddr.sin_family = AF_INET;
-
-  if ((saddr.sin_addr.s_addr = inet_addr (eh->host)) == -1) {
-    struct hostent *ent = gethostbyname (eh->host);
-    if (!ent) {
-      nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
-      goto error;
-    }
-
-    memmove (&saddr.sin_addr, ent->h_addr, ent->h_length);
-  }
-
-  saddr.sin_port = htons (eh->port);
 
   if (bind (eh->listener_fd, (struct sockaddr *) &saddr, saddr_len) < 0 ||
       listen (eh->listener_fd, N_BACKLOG) < 0) {
@@ -1163,8 +1168,11 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->user_data = NULL;
 
   if (eh->listener_thread) {
-    eh->listening = false;
-    pthread_cancel (eh->listener_thread);
+    if (eh->listening) {
+      pthread_cancel (eh->listener_thread);
+      eh->listening = false;
+    }
+
     pthread_join (eh->listener_thread, NULL);
     eh->listener_thread = 0;
   }
