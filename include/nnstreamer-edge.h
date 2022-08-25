@@ -125,9 +125,15 @@ int nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port);
 int nns_edge_disconnect (nns_edge_h edge_h);
 
 /**
- * @brief Publish a message to desination (broker or connected node).
+ * @brief Send data to desination (broker or connected node), asynchronously.
  */
-int nns_edge_publish (nns_edge_h edge_h, nns_edge_data_h data_h);
+int nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h);
+
+/**
+ * @brief Deprecated, use nns_edge_send() instead.
+ * @todo Remove this macro later.
+ */
+#define nns_edge_publish(h,d) nns_edge_send(h,d)
 
 /**
  * @brief Set nnstreamer edge info.
