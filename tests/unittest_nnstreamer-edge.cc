@@ -110,7 +110,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
          * @note This is test code, responding to client.
          * Recommend not to call edge API in event callback.
          */
-        ret = nns_edge_publish (_td->handle, data_h);
+        ret = nns_edge_send (_td->handle, data_h);
         EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       } else {
         /* Compare received data */
@@ -255,12 +255,12 @@ TEST(edge, connectLocal)
   for (i = 0; i < 5U; i++) {
     ret = nns_edge_data_set_info (data_h, "client_id", client1_id);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-    ret = nns_edge_publish (client1_h, data_h);
+    ret = nns_edge_send (client1_h, data_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
     usleep (10000);
     ret = nns_edge_data_set_info (data_h, "client_id", client2_id);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-    ret = nns_edge_publish (client2_h, data_h);
+    ret = nns_edge_send (client2_h, data_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
     usleep (100000);
@@ -657,9 +657,9 @@ TEST(edge, disconnectInvalidParam02_n)
 }
 
 /**
- * @brief Publish - invalid param.
+ * @brief Send - invalid param.
  */
-TEST(edge, publishInvalidParam01_n)
+TEST(edge, sendInvalidParam01_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -670,7 +670,7 @@ TEST(edge, publishInvalidParam01_n)
   ret = nns_edge_data_set_info (data_h, "client_id", "10");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_publish (NULL, data_h);
+  ret = nns_edge_send (NULL, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_destroy (data_h);
@@ -678,9 +678,9 @@ TEST(edge, publishInvalidParam01_n)
 }
 
 /**
- * @brief Publish - invalid param.
+ * @brief Send - invalid param.
  */
-TEST(edge, publishInvalidParam02_n)
+TEST(edge, sendInvalidParam02_n)
 {
   nns_edge_h edge_h;
   nns_edge_data_h data_h;
@@ -700,7 +700,7 @@ TEST(edge, publishInvalidParam02_n)
   eh = (nns_edge_handle_s *) edge_h;
   eh->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_publish (edge_h, data_h);
+  ret = nns_edge_send (edge_h, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   eh->magic = NNS_EDGE_MAGIC;
@@ -713,9 +713,9 @@ TEST(edge, publishInvalidParam02_n)
 }
 
 /**
- * @brief Publish - invalid param.
+ * @brief Send - invalid param.
  */
-TEST(edge, publishInvalidParam03_n)
+TEST(edge, sendInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -724,37 +724,10 @@ TEST(edge, publishInvalidParam03_n)
       (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_publish (edge_h, NULL);
+  ret = nns_edge_send (edge_h, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
-  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-}
-
-/**
- * @brief Publish - invalid param.
- */
-TEST(edge, publishInvalidParam04_n)
-{
-  nns_edge_h edge_h;
-  nns_edge_data_h data_h;
-  int ret;
-
-  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
-      (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
-  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-  ret = nns_edge_data_create (&data_h);
-  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-  /* No client ID */
-  ret = nns_edge_publish (edge_h, data_h);
-  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
-
-  ret = nns_edge_release_handle (edge_h);
-  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-  ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -3052,7 +3025,7 @@ _test_edge_hybrid_event_cb (nns_edge_event_h event_h, void *user_data)
          * @note This is test code, responding to client.
          * Recommend not to call edge API in event callback.
          */
-        ret = nns_edge_publish (_td->handle, data_h);
+        ret = nns_edge_send (_td->handle, data_h);
         EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       } else {
         /* Compare received data */
@@ -3181,7 +3154,7 @@ TEST(edgeMqtt, connectLocal)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   for (i = 0; i < 5U; i++) {
-    ret = nns_edge_publish (client_h, data_h);
+    ret = nns_edge_send (client_h, data_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
     usleep (10000);
   }
