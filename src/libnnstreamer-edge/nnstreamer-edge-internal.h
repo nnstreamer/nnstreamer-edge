@@ -20,6 +20,7 @@ extern "C" {
 
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-common.h"
+#include "nnstreamer-edge-queue.h"
 
 /**
  * @brief Data structure for edge handle.
@@ -50,6 +51,10 @@ typedef struct {
   bool listening;
   int listener_fd;
   pthread_t listener_thread;
+
+  /* thread and queue to send data */
+  nns_edge_queue_h send_queue;
+  pthread_t send_thread;
 
   /* MQTT */
   nns_edge_broker_h broker_h;
