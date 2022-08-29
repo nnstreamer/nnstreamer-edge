@@ -315,6 +315,35 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 }
 
 /**
+ * @brief Send edge command to connected device using AITT.
+ */
+static int
+_nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
+{
+  unsigned int n, num_mem;
+  int ret;
+  void *raw_data;
+  size_t size;
+
+  if (!eh) {
+    nns_edge_loge ("Failed to send command, edge handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ret = nns_edge_data_get_count (data_h, &num_mem);
+  /** @todo Serialize the multi memory data. Now supporting one memory block */
+  for (n = 0; n < num_mem; n++) {
+    nns_edge_data_get (data_h, n, &raw_data, &size);
+    if (NNS_EDGE_ERROR_NONE != nns_edge_aitt_publish (eh, raw_data, size)) {
+      nns_edge_loge ("Failed to send %uth memory to socket.", n);
+      return NNS_EDGE_ERROR_IO;
+    }
+  }
+
+  return ret;
+}
+
+/**
  * @brief Receive edge command from connected device.
  * @note Before calling this function, you should initialize edge-cmd by using _nns_edge_cmd_init().
  */
@@ -888,33 +917,42 @@ _nns_edge_send_thread (void *thread_data)
 
   while (nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h)) {
     /* Send data to destination */
-    ret = nns_edge_data_get_info (data_h, "client_id", &val);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_logd
-          ("Cannot find client ID in edge data. Send to all connected nodes.");
+    switch (eh->connect_type) {
+      case NNS_EDGE_CONNECT_TYPE_TCP:
+      case NNS_EDGE_CONNECT_TYPE_HYBRID:
+        ret = nns_edge_data_get_info (data_h, "client_id", &val);
+        if (ret != NNS_EDGE_ERROR_NONE) {
+          nns_edge_logd
+              ("Cannot find client ID in edge data. Send to all connected nodes.");
 
-      conn_data = (nns_edge_conn_data_s *) eh->connections;
-      while (conn_data) {
-        /** @todo update code for each connect type */
-        conn = conn_data->sink_conn;
-        _nns_edge_transfer_data (conn, data_h, conn_data->id);
+          conn_data = (nns_edge_conn_data_s *) eh->connections;
+          while (conn_data) {
+            /** @todo update code for each connect type */
+            conn = conn_data->sink_conn;
+            _nns_edge_transfer_data (conn, data_h, conn_data->id);
 
-        conn_data = conn_data->next;
-      }
-    } else {
-      client_id = (int64_t) strtoll (val, NULL, 10);
-      SAFE_FREE (val);
+            conn_data = conn_data->next;
+          }
+        } else {
+          client_id = (int64_t) strtoll (val, NULL, 10);
+          SAFE_FREE (val);
 
-      conn_data = _nns_edge_get_connection (eh, client_id);
-      if (conn_data) {
-        conn = conn_data->sink_conn;
-        _nns_edge_transfer_data (conn, data_h, client_id);
-      } else {
-        nns_edge_loge
-            ("Cannot find connection, invalid client ID or connection closed.");
-      }
+          conn_data = _nns_edge_get_connection (eh, client_id);
+          if (conn_data) {
+            conn = conn_data->sink_conn;
+            _nns_edge_transfer_data (conn, data_h, client_id);
+          } else {
+            nns_edge_loge
+                ("Cannot find connection, invalid client ID or connection closed.");
+          }
+        }
+        break;
+      case NNS_EDGE_CONNECT_TYPE_AITT:
+        _nns_edge_cmd_send_aitt (eh, data_h);
+        break;
+      default:
+        break;
     }
-
     nns_edge_data_destroy (data_h);
   }
 
@@ -1238,7 +1276,7 @@ nns_edge_start (nns_edge_h edge_h)
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge
             ("Failed to start nnstreamer-edge. Connection failure to broker.");
-        goto error;
+        goto done;
       }
 
       msg = nns_edge_get_host_string (eh->host, eh->port);
@@ -1248,21 +1286,30 @@ nns_edge_start (nns_edge_h edge_h)
 
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Failed to publish the meesage to broker.");
-        goto error;
+        goto done;
+      }
+    } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
+      ret = nns_edge_aitt_connect (eh);
+      if (NNS_EDGE_ERROR_NONE != ret) {
+        nns_edge_loge ("Failed to connect to AITT broker.");
+        goto done;
       }
     }
   }
 
   /* Start listener thread to accept socket. */
-  if (!_nns_edge_create_socket_listener (eh)) {
-    nns_edge_loge ("Failed to create socket listener.");
-    ret = NNS_EDGE_ERROR_IO;
-    goto error;
+  if (NNS_EDGE_CONNECT_TYPE_TCP == eh->connect_type ||
+      NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+    if (!_nns_edge_create_socket_listener (eh)) {
+      nns_edge_loge ("Failed to create socket listener.");
+      ret = NNS_EDGE_ERROR_IO;
+      goto done;
+    }
   }
 
   ret = _nns_edge_create_send_thread (eh);
 
-error:
+done:
   nns_edge_unlock (eh);
   return ret;
 }
@@ -1289,10 +1336,19 @@ nns_edge_release_handle (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (nns_edge_mqtt_is_connected (eh)) {
-    if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh)) {
-      nns_edge_logw ("Failed to close mqtt connection.");
-    }
+  switch (eh->connect_type) {
+    case NNS_EDGE_CONNECT_TYPE_HYBRID:
+      if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh)) {
+        nns_edge_logw ("Failed to close mqtt connection.");
+      }
+      break;
+    case NNS_EDGE_CONNECT_TYPE_AITT:
+      if (NNS_EDGE_ERROR_NONE != nns_edge_aitt_close (eh)) {
+        nns_edge_logw ("Failed to close AITT connection.");
+      }
+      break;
+    default:
+      break;
   }
 
   eh->magic = NNS_EDGE_MAGIC_DEAD;
@@ -1459,6 +1515,20 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
         break;
       }
     }
+  } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
+    ret = nns_edge_aitt_connect (eh);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to connect to aitt broker. %s:%d", dest_host,
+          dest_port);
+      goto done;
+    }
+    ret = nns_edge_aitt_subscribe (eh);
+    if (NNS_EDGE_ERROR_NONE != ret) {
+      nns_edge_loge ("Failed to subscribe the topic using AITT: %s", eh->topic);
+      SAFE_FREE (eh->broker_h);
+      eh->broker_h = NULL;
+      goto done;
+    }
   } else {
     ret = _nns_edge_connect_to (eh, eh->client_id, dest_host, dest_port);
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -1466,6 +1536,7 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
     }
   }
 
+done:
   nns_edge_unlock (eh);
   return ret;
 }
