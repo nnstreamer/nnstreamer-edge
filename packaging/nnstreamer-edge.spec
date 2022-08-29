@@ -2,6 +2,7 @@
 
 # Default features for Tizen releases
 %define		mqtt_support 1
+%define     aitt_support 1
 
 %bcond_with tizen
 
@@ -27,6 +28,10 @@ BuildRequires:  pkgconfig(dlog)
 
 %if 0%{?mqtt_support}
 BuildRequires:  pkgconfig(paho-mqtt-c)
+%endif
+
+%if 0%{?aitt_support}
+BuildRequires:  aitt-devel
 %endif
 
 %if 0%{?unit_test}
