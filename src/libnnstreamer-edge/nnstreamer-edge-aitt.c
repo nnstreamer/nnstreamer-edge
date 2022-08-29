@@ -43,7 +43,6 @@ nns_edge_aitt_connect (nns_edge_h edge_h)
 {
   nns_edge_handle_s *eh;
   nns_edge_aitt_handle_s *ah;
-  aitt_option_h option;
 
   eh = (nns_edge_handle_s *) edge_h;
 
@@ -60,10 +59,7 @@ nns_edge_aitt_connect (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  option = aitt_option_new ();
-  aitt_option_set (option, AITT_OPT_MY_IP, eh->host);
-
-  ah->aitt_h = aitt_new (eh->id, option);
+  ah->aitt_h = aitt_new (eh->id, eh->host);
   if (!ah->aitt_h) {
     nns_edge_loge ("Failed to create AITT handle. AITT internal error.");
     SAFE_FREE (ah);
