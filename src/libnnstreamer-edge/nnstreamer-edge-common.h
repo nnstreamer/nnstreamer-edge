@@ -76,6 +76,15 @@ typedef struct {
 } nns_edge_event_s;
 
 /**
+ * @brief Internal data structure for the header of the serialzied edge data.
+ */
+typedef struct {
+  unsigned int num_mem;
+  size_t data_len[NNS_EDGE_DATA_LIMIT];
+  size_t meta_len;
+} nns_edge_data_header_s;
+
+/**
  * @brief Internal function to initialize metadata structure.
  */
 int nns_edge_metadata_init (nns_edge_metadata_s *meta);
@@ -145,6 +154,20 @@ int nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data, size_t *d
  * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
  */
 int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data, size_t data_len);
+
+/**
+ * @brief Serialize entire edge data (meta data + raw data).
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_serialize (nns_edge_data_h data_h, void **data, size_t *data_len);
+
+/**
+ * @brief Deserialize entire edge data (meta data + raw data).
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_deserialize (nns_edge_data_h data_h, void *data);
 
 #ifdef __cplusplus
 }

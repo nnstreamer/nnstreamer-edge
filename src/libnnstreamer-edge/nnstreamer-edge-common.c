@@ -874,3 +874,128 @@ nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
   nns_edge_unlock (ed);
   return ret;
 }
+
+/**
+ * @brief Serialize edge data (meta data + raw data).
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_serialize (nns_edge_data_h data_h, void **data, size_t *len)
+{
+  nns_edge_data_s *ed;
+  nns_edge_data_header_s edata_header;
+  void *meta_serialized = NULL;
+  size_t total, header_len, data_len;
+  char *serialized, *ptr;
+  unsigned int n;
+  int ret;
+
+  ed = (nns_edge_data_s *) data_h;
+  if (!ed || !data || !len) {
+    nns_edge_loge ("Invalid param, one of the given param is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (ed);
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    nns_edge_unlock (ed);
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  header_len = sizeof (nns_edge_data_header_s);
+
+  data_len = 0;
+  edata_header.num_mem = ed->num;
+  for (n = 0; n < ed->num; n++) {
+    edata_header.data_len[n] = ed->data[n].data_len;
+    data_len += ed->data[n].data_len;
+  }
+
+  ret =
+      nns_edge_metadata_serialize (&ed->metadata, &meta_serialized,
+      &edata_header.meta_len);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    goto done;
+  }
+
+  total = header_len + data_len + edata_header.meta_len;
+
+  serialized = ptr = (char *) malloc (total);
+  if (!serialized) {
+    ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+    goto done;
+  }
+
+  /** Copy serialization header of edge data */
+  memcpy (ptr, &edata_header, header_len);
+  ptr += header_len;
+
+  /** Copy edge data */
+  for (n = 0; n < ed->num; n++) {
+    memcpy (ptr, ed->data[n].data, ed->data[n].data_len);
+    ptr += ed->data[n].data_len;
+  }
+
+  /** Copy edge meta data */
+  memcpy (ptr, meta_serialized, edata_header.meta_len);
+
+  *data = serialized;
+  *len = total;
+
+done:
+  nns_edge_free (meta_serialized);
+  nns_edge_unlock (ed);
+  return ret;
+}
+
+/**
+ * @brief Deserialize metadata in edge data.
+ * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ */
+int
+nns_edge_data_deserialize (nns_edge_data_h data_h, void *data)
+{
+  nns_edge_data_s *ed;
+  nns_edge_data_header_s *header;
+  int ret;
+  unsigned int n;
+  size_t meta_len;
+  char *ptr;
+
+  ed = (nns_edge_data_s *) data_h;
+  if (!ed || !data) {
+    nns_edge_loge ("Invalid param, one of the given param is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (ed);
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    nns_edge_unlock (ed);
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ptr = (char *) data;
+  header = (nns_edge_data_header_s *) ptr;
+
+  ed->num = header->num_mem;
+  for (n = 0; n < ed->num; n++) {
+    ed->data[n].data_len = header->data_len[n];
+  }
+  meta_len = header->meta_len;
+
+  ptr += sizeof (nns_edge_data_header_s);
+
+  for (n = 0; n < ed->num; n++) {
+    ed->data[n].data = nns_edge_memdup (ptr, ed->data[n].data_len);
+    ptr += ed->data[n].data_len;
+  }
+
+  ret = nns_edge_metadata_deserialize (&ed->metadata, ptr, meta_len);
+
+  nns_edge_unlock (ed);
+  return ret;
+}
