@@ -45,7 +45,8 @@ typedef struct {
   int64_t client_id;
   char *caps_str;
 
-  GHashTable *conn_table;
+  /* list of connection data */
+  void *connections;
 
   /* socket listener */
   bool listening;
