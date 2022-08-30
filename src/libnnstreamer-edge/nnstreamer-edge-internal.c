@@ -745,7 +745,7 @@ _nns_edge_message_handler (void *thread_data)
       nns_edge_data_deserialize_meta (data_h, cmd.meta, cmd.info.meta_size);
 
     /* Set client ID in edge data */
-    val = nns_edge_strdup_printf ("%ld", (long int) client_id);
+    val = nns_edge_strdup_printf ("%lld", (long long) client_id);
     nns_edge_data_set_info (data_h, "client_id", val);
     SAFE_FREE (val);
 
@@ -764,8 +764,8 @@ _nns_edge_message_handler (void *thread_data)
   /* Received error message from client, remove connection from table. */
   if (remove_connection) {
     nns_edge_logd
-        ("Received error from client, remove connection of client (ID: %ld).",
-        (long int) client_id);
+        ("Received error from client, remove connection of client (ID: %lld).",
+        (long long) client_id);
     g_hash_table_remove (eh->conn_table, GUINT_TO_POINTER (client_id));
   }
 
@@ -1558,7 +1558,7 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
       nns_edge_loge ("Cannot get the client ID, it was started as a server.");
       ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
     } else {
-      *value = nns_edge_strdup_printf ("%ld", (long int) eh->client_id);
+      *value = nns_edge_strdup_printf ("%lld", (long long) eh->client_id);
     }
   } else {
     ret = nns_edge_metadata_get (&eh->meta, key, value);
