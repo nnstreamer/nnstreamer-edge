@@ -20,7 +20,6 @@
  */
 typedef struct
 {
-  GMainLoop *loop;
   nns_edge_h handle;
   bool running;
   bool is_server;
@@ -39,7 +38,6 @@ _get_test_data (bool is_server)
   _td = (ne_test_data_s *) calloc (1, sizeof (ne_test_data_s));
 
   if (_td) {
-    _td->loop = g_main_loop_new (NULL, FALSE);
     _td->is_server = is_server;
   }
 
@@ -54,14 +52,6 @@ _free_test_data (ne_test_data_s *_td)
 {
   if (!_td)
     return;
-
-  if (_td->loop) {
-    if (g_main_loop_is_running (_td->loop))
-      g_main_loop_quit (_td->loop);
-
-    g_main_loop_unref (_td->loop);
-    _td->loop = NULL;
-  }
 
   free (_td);
 }
@@ -139,25 +129,6 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 }
 
 /**
- * @brief Edge thread for test.
- */
-static void *
-_test_edge_thread (void *data)
-{
-  ne_test_data_s *_td = (ne_test_data_s *) data;
-  int ret;
-
-  ret = nns_edge_start (_td->handle);
-  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-  _td->running = true;
-  g_main_loop_run (_td->loop);
-  _td->running = false;
-
-  return NULL;
-}
-
-/**
  * @brief Connect to local host, multiple clients.
  */
 TEST(edge, connectLocal)
@@ -165,8 +136,6 @@ TEST(edge, connectLocal)
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
   nns_edge_data_h data_h;
-  pthread_t server_thread, client1_thread, client2_thread;
-  pthread_attr_t attr;
   size_t data_len;
   void *data;
   unsigned int i, retry;
@@ -203,26 +172,14 @@ TEST(edge, connectLocal)
   nns_edge_set_info (client2_h, "CAPS", "test client2");
   _td_client2->handle = client2_h;
 
-  /* Start server/client thread */
-  pthread_attr_init (&attr);
-  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
-  pthread_create (&server_thread, &attr, _test_edge_thread, _td_server);
-  pthread_create (&client1_thread, &attr, _test_edge_thread, _td_client1);
-  pthread_create (&client2_thread, &attr, _test_edge_thread, _td_client2);
-  pthread_attr_destroy (&attr);
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client1_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client2_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  /* Wait for server/client thread */
-  do {
-    usleep (20000);
-  } while (!g_main_loop_is_running (_td_server->loop));
-
-  do {
-    usleep (20000);
-  } while (!g_main_loop_is_running (_td_client1->loop));
-
-  do {
-    usleep (20000);
-  } while (!g_main_loop_is_running (_td_client2->loop));
+  usleep (200000);
 
   ret = nns_edge_connect (client1_h, "127.0.0.1", port);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -281,10 +238,6 @@ TEST(edge, connectLocal)
     if (_td_client1->received > 0 && _td_client2->received > 0)
       break;
   } while (retry++ < 200U);
-
-  g_main_loop_quit (_td_server->loop);
-  g_main_loop_quit (_td_client1->loop);
-  g_main_loop_quit (_td_client2->loop);
 
   ret = nns_edge_disconnect (server_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -3336,8 +3289,6 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_h server_h, client_h;
   ne_test_data_s *_td_server, *_td_client;
   nns_edge_data_h data_h;
-  pthread_t server_thread, client_thread;
-  pthread_attr_t attr;
   size_t data_len;
   void *data;
   unsigned int i, retry;
@@ -3373,21 +3324,12 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_set_info (client_h, "TOPIC", "temp-mqtt-topic");
   _td_client->handle = client_h;
 
-  /* Start server/client thread */
-  pthread_attr_init (&attr);
-  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
-  pthread_create (&server_thread, &attr, _test_edge_thread, _td_server);
-  pthread_create (&client_thread, &attr, _test_edge_thread, _td_client);
-  pthread_attr_destroy (&attr);
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  /* Wait for server/client thread */
-  do {
-    usleep (20000);
-  } while (!g_main_loop_is_running (_td_server->loop));
-
-  do {
-    usleep (20000);
-  } while (!g_main_loop_is_running (_td_client->loop));
+  usleep (200000);
 
   ret = nns_edge_connect (client_h, "tcp://localhost", 1883);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -3432,9 +3374,6 @@ TEST(edgeMqtt, connectLocal)
     if (_td_client->received > 0)
       break;
   } while (retry++ < 200U);
-
-  g_main_loop_quit (_td_server->loop);
-  g_main_loop_quit (_td_client->loop);
 
   ret = nns_edge_release_handle (server_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
