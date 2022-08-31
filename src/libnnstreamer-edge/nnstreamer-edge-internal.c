@@ -843,7 +843,7 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   _set_socket_option (conn->sockfd);
 
   if (eh->flags & NNS_EDGE_FLAG_SERVER)
-    client_id = g_get_monotonic_time ();
+    client_id = nns_edge_generate_client_id ();
   else
     client_id = eh->client_id;
 

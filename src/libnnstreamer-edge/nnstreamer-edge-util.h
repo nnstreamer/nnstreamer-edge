@@ -50,6 +50,11 @@ extern "C" {
 #define nns_edge_cond_signal(h) do { pthread_cond_signal (&(h)->cond); } while (0)
 
 /**
+ * @brief Generate client ID.
+ */
+int64_t nns_edge_generate_client_id (void);
+
+/**
  * @brief Get available port number.
  */
 int nns_edge_get_available_port (void);
