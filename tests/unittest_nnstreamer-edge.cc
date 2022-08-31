@@ -36,11 +36,12 @@ _get_test_data (bool is_server)
 {
   ne_test_data_s *_td;
 
-  _td = (ne_test_data_s *) malloc (sizeof (ne_test_data_s));
-  memset (_td, 0, sizeof (ne_test_data_s));
+  _td = (ne_test_data_s *) calloc (1, sizeof (ne_test_data_s));
 
-  _td->loop = g_main_loop_new (NULL, FALSE);
-  _td->is_server = is_server;
+  if (_td) {
+    _td->loop = g_main_loop_new (NULL, FALSE);
+    _td->is_server = is_server;
+  }
 
   return _td;
 }
@@ -175,6 +176,7 @@ TEST(edge, connectLocal)
   _td_server = _get_test_data (true);
   _td_client1 = _get_test_data (false);
   _td_client2 = _get_test_data (false);
+  ASSERT_TRUE (_td_server != NULL && _td_client1 != NULL && _td_client2 != NULL);
   port = nns_edge_get_available_port ();
 
   /* Prepare server (127.0.0.1:port) */
@@ -452,6 +454,7 @@ TEST(edge, setEventCbSetNullCallback)
   int ret;
 
   _td = _get_test_data (false);
+  ASSERT_TRUE (_td != NULL);
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
@@ -494,6 +497,7 @@ TEST(edge, setEventCbInvalidParam02_n)
   int ret;
 
   _td = _get_test_data (false);
+  ASSERT_TRUE (_td != NULL);
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       (NNS_EDGE_FLAG_RECV | NNS_EDGE_FLAG_SEND), &edge_h);
@@ -3155,7 +3159,6 @@ TEST(edgeQueue, getLengthInvalidParam01_n)
 TEST(edgeQueue, pushInvalidParam01_n)
 {
   void *data;
-  unsigned int i;
 
   data = malloc (5 * sizeof (unsigned int));
   ASSERT_TRUE (data != NULL);
@@ -3346,6 +3349,7 @@ TEST(edgeMqtt, connectLocal)
 
   _td_server = _get_test_data (true);
   _td_client = _get_test_data (false);
+  ASSERT_TRUE (_td_server != NULL && _td_client != NULL);
 
   /* Prepare server (127.0.0.1:port) */
   nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
@@ -3407,7 +3411,7 @@ TEST(edgeMqtt, connectLocal)
 
   nns_edge_get_info (client_h, "client_id", &val);
   nns_edge_data_set_info (data_h, "client_id", val);
-  g_free (val);
+  nns_edge_free (val);
 
   ret = nns_edge_data_set_info (data_h, "test-key", "test-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
