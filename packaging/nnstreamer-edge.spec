@@ -29,9 +29,6 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(paho-mqtt-c)
 %endif
 
-# TODO remove glib
-BuildRequires:  glib2-devel
-
 %if 0%{?unit_test}
 BuildRequires:  gtest-devel
 BuildRequires:  procps

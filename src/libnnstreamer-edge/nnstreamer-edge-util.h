@@ -31,6 +31,14 @@ extern "C" {
 #define UNUSED(expr) do { (void)(expr); } while (0)
 #endif
 
+#ifndef TRUE
+#define TRUE (1)
+#endif
+
+#ifndef FALSE
+#define FALSE (0)
+#endif
+
 #define STR_IS_VALID(s) ((s) && (s)[0] != '\0')
 #define SAFE_FREE(p) do { if (p) { free (p); (p) = NULL; } } while (0)
 

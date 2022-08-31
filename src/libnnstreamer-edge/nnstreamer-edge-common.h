@@ -15,7 +15,6 @@
 #ifndef __NNSTREAMER_EDGE_COMMON_H__
 #define __NNSTREAMER_EDGE_COMMON_H__
 
-#include <glib.h> /** @todo remove glib */
 #include "nnstreamer-edge.h"
 
 #ifdef __cplusplus
