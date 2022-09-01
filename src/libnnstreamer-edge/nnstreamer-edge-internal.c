@@ -320,9 +320,8 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 static int
 _nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
 {
-  unsigned int n, num_mem;
   int ret;
-  void *raw_data;
+  void *data;
   size_t size;
 
   if (!eh) {
@@ -330,16 +329,21 @@ _nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = nns_edge_data_get_count (data_h, &num_mem);
-  /** @todo Serialize the multi memory data. Now supporting one memory block */
-  for (n = 0; n < num_mem; n++) {
-    nns_edge_data_get (data_h, n, &raw_data, &size);
-    if (NNS_EDGE_ERROR_NONE != nns_edge_aitt_publish (eh, raw_data, size)) {
-      nns_edge_loge ("Failed to send %uth memory to socket.", n);
-      return NNS_EDGE_ERROR_IO;
-    }
+
+  ret = nns_edge_data_serialize (data_h, &data, &size);
+
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to serialize the edge data.");
+    goto done;
   }
 
+  ret = nns_edge_aitt_publish (eh, data, size);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to send data to destination.");
+  }
+
+done:
+  nns_edge_free (data);
   return ret;
 }
 
