@@ -5,7 +5,7 @@ TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge ${TEST_REQUIRE_PKGS_LDFLAGS} nnst
 INSTALL (TARGETS unittest_nnstreamer-edge DESTINATION ${BIN_INSTALL_DIR})
 
 # AITT test
-IF(ENABLE_AITT)
+IF(AITT_SUPPORT)
 ADD_EXECUTABLE(unittest_nnstreamer-edge-aitt unittest_nnstreamer-edge-aitt.cc)
 TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-aitt PRIVATE ${EDGE_REQUIRE_PKGS_INCLUDE_DIRS} ${INCLUDE_DIR} ${NNS_EDGE_SRC_DIR})
 TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-aitt ${TEST_REQUIRE_PKGS_LDFLAGS} nnstreamer-edge)
