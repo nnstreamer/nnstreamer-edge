@@ -204,8 +204,7 @@ aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
     return;
   }
 
-  /** @todo support multi memory chunk. Deserialize the received data. */
-  nns_edge_data_add (data_h, (void *) msg, msg_len, NULL);
+  nns_edge_data_deserialize (data_h, (void *) msg);
 
   _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h,
       sizeof (nns_edge_data_h), NULL);

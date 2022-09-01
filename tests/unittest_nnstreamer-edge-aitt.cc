@@ -55,6 +55,7 @@ _free_test_data (ne_test_data_s *_td)
   free (_td);
 }
 
+
 /**
  * @brief Edge event callback for test.
  */
@@ -89,12 +90,17 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
       /* Compare received data */
       ret = nns_edge_data_get_count (data_h, &count);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      EXPECT_EQ (count, 2U);
+
       ret = nns_edge_data_get (data_h, 0, &data, &data_len);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-      EXPECT_EQ (count, 1U);
       for (i = 0; i < 10U; i++)
         EXPECT_EQ (((unsigned int *) data)[i], i);
+
+      ret = nns_edge_data_get (data_h, 1, &data, &data_len);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      for (i = 0; i < 20U; i++)
+        EXPECT_EQ (((unsigned int *) data)[i], 20 - i);
 
       ret = nns_edge_data_destroy (data_h);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -132,7 +138,7 @@ TEST(edge, connectLocal)
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
   nns_edge_data_h data_h;
   size_t data_len;
-  void *data;
+  void *data1, *data2;
   unsigned int i, retry;
   int ret, port;
   char *val;
@@ -191,19 +197,28 @@ TEST(edge, connectLocal)
 
   /* Send request to server */
   data_len = 10U * sizeof (unsigned int);
-  data = malloc (data_len);
-  ASSERT_TRUE (data != NULL);
+  data1 = malloc (data_len);
+  ASSERT_TRUE (data1 != NULL);
+
+  data2 = malloc (data_len * 2);
+  ASSERT_TRUE (data2 != NULL);
 
   for (i = 0; i < 10U; i++)
-    ((unsigned int *) data)[i] = i;
+    ((unsigned int *) data1)[i] = i;
+
+  for (i = 0; i < 20U; i++)
+    ((unsigned int *) data2)[i] = 20 - i;
 
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
+  ret = nns_edge_data_add (data_h, data1, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  for (i = 0; i < 5U; i++) {
+  ret = nns_edge_data_add (data_h, data2, data_len * 2, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  for (i = 0; i < 1U; i++) {
     ret = nns_edge_send (server_h, data_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
     usleep (10000);
@@ -237,7 +252,6 @@ TEST(edge, connectLocal)
   _free_test_data (_td_client1);
   _free_test_data (_td_client2);
 }
-
 
 /**
  * @brief Connect to the mqtt broker with invalid param.
