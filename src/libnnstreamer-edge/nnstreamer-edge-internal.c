@@ -631,35 +631,6 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
 }
 
 /**
- * @brief Remove nnstreamer-edge connection data.
- * @note This function should be called with handle lock.
- */
-static void
-_nns_edge_remove_connection_by_conn (nns_edge_handle_s * eh,
-    nns_edge_conn_s * conn)
-{
-  nns_edge_conn_data_s *cdata, *prev;
-
-  cdata = (nns_edge_conn_data_s *) eh->connections;
-  prev = NULL;
-
-  while (cdata) {
-    if (cdata->sink_conn == conn || cdata->src_conn == conn) {
-      if (prev)
-        prev->next = cdata->next;
-      else
-        eh->connections = cdata->next;
-
-      _nns_edge_release_connection_data (cdata);
-      return;
-    }
-
-    prev = cdata;
-    cdata = cdata->next;
-  }
-}
-
-/**
  * @brief Remove all connection data.
  * @note This function should be called with handle lock.
  */
@@ -876,13 +847,15 @@ _nns_edge_send_thread (void *thread_data)
 
           conn_data = (nns_edge_conn_data_s *) eh->connections;
           while (conn_data) {
+            client_id = conn_data->id;
             conn = conn_data->sink_conn;
-            ret = _nns_edge_transfer_data (conn, data_h, conn_data->id);
+            ret = _nns_edge_transfer_data (conn, data_h, client_id);
+            conn_data = conn_data->next;
+
             if (NNS_EDGE_ERROR_NONE != ret) {
               nns_edge_loge ("Failed to transfer data. Close the connection.");
-              _nns_edge_remove_connection_by_conn (eh, conn);
+              _nns_edge_remove_connection (eh, client_id);
             }
-            conn_data = conn_data->next;
           }
         } else {
           client_id = (int64_t) strtoll (val, NULL, 10);
@@ -1629,30 +1602,29 @@ nns_edge_disconnect (nns_edge_h edge_h)
 }
 
 /**
- * @brief Thread to send data.
+ * @brief Check whether edge is connected or not.
  */
-static int
+static bool
 _nns_edge_is_connected (nns_edge_h edge_h)
 {
   nns_edge_handle_s *eh = (nns_edge_handle_s *) edge_h;
   nns_edge_conn_data_s *conn_data;
   nns_edge_conn_s *conn;
-  int connection_cnt = 0;
 
   if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type &&
       NNS_EDGE_ERROR_NONE == nns_edge_aitt_is_connected (eh))
-    return 1;
+    return true;
 
   conn_data = (nns_edge_conn_data_s *) eh->connections;
   while (conn_data) {
     conn = conn_data->sink_conn;
     if (_nns_edge_check_connection (conn)) {
-      connection_cnt++;
+      return true;
     }
     conn_data = conn_data->next;
   }
 
-  return connection_cnt;
+  return false;
 }
 
 /**
