@@ -1650,10 +1650,6 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  /**
-   * @todo User handles (replace or append) the capability of edge handle.
-   * @todo Change key-value set as json or hash table.
-   */
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     SAFE_FREE (eh->caps_str);
     eh->caps_str = nns_edge_strdup (value);
@@ -1728,10 +1724,6 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  /**
-   * @todo User handles (replace or append) the capability of edge handle.
-   * @todo Change key-value set as json or hash table.
-   */
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     *value = nns_edge_strdup (eh->caps_str);
   } else if (0 == strcasecmp (key, "IP") || 0 == strcasecmp (key, "HOST")) {

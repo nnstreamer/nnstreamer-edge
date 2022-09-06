@@ -8,12 +8,6 @@
  * @see    https://github.com/nnstreamer/nnstreamer
  * @author Gichan Jang <gichan2.jang@samsung.com>
  * @bug    No known bugs except for NYI items
- *
- * @note This file will be moved to nnstreamer-edge repo. (https://github.com/nnstreamer/nnstreamer-edge)
- *
- * @todo Update document and sample code.
- * 1. Add sample code when the 1st API set is complete - connection, pub/sub, request, ...
- * 2. Update license when migrating this into edge repo. (Apache-2.0)
  */
 
 #ifndef __NNSTREAMER_EDGE_H__
@@ -42,8 +36,7 @@ typedef void *nns_edge_data_h;
 #define NNS_EDGE_DATA_LIMIT (16)
 
 /**
- * @brief Enumeration for the error codes of nnstreamer-edge.
- * @todo define detailed error code later (linux standard error, sync with tizen error code)
+ * @brief Enumeration for the error codes of nnstreamer-edge (linux standard error, sync with tizen error code).
  */
 typedef enum {
   NNS_EDGE_ERROR_NONE = 0,
@@ -100,7 +93,7 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * @param[in] id Unique id in local network
  * @param[in] connect_type value of @a nns_edge_connect_type_e. Connection type between edge nodes.
  * @param[in] flags value of @a nns_edge_flag_e. The value can be set by using bitwise-or operation.
- * @param[out] edge_h The edge handle. edge handle should be released using nns_edge_release_handle().
+ * @param[out] edge_h The edge handle. If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -146,18 +139,18 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * nns_edge_h edge_h;
  * int ret;
  *
- * // create edge handle. Select the connection type and node type. In this example, TCP and Query-client are used.
+ * // Create edge handle. Select the connection type and node type. In this example, TCP and query-client are used.
  * ret = nns_edge_create_handle ("TEMP_ID", NNS_EDGE_CONNECT_TYPE_TCP, NNS_EDGE_NODE_QUERY_CLIENT, &edge_h);
  * if (NNS_EDGE_ERROR_NONE != ret)
  *   // Handle error case. After this, handling error case is repeated, so it is omitted.
  *
  * // Information that needs to be set according to the node and connection type.
- * // 1. query-server-src:
+ * // 1. Query-server-src:
  * //  - All connection type: HOST, PORT, CAPS
  * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
- * // 2. query-server-sink:
+ * // 2. Query-server-sink:
  * //  - All connection type: CAPS
- * // 3. query-client
+ * // 3. Query-client
  * //  - All connection type: HOST, PORT, CAPS
  * //  - Hybrid and AITT: TOPIC
  * // 4. Stream-sink
@@ -167,7 +160,7 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * //  - All connection type: HOST, PORT
  * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
  *
- * // Setting infomation for query client of TCP connection.
+ * // Set infomation for query-client of TCP connection.
  * ret = nns_edge_set_info (edge_h, "HOST", "127.0.0.1");
  * ret = nns_edge_set_info (edge_h, "PORT", "1234");
  * ret = nns_edge_set_info (edge_h, "CAPS", "CAPABILITY_STRING");
@@ -176,7 +169,7 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * // Query-server, query-client and stream-src need to set event callback.
  * nns_edge_set_event_callback (src->edge_h, _nns_edge_event_cb, src);
  *
- * // start edge handle.
+ * // Start edge handle.
  * ret = nns_edge_start (edge_h);
  *
  * // Do something...
@@ -223,7 +216,7 @@ int nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb, void *
 /**
  * @brief Connect to the destination node. In the case of Hybrid and AITT, the TOPIC, DEST_HOST and DEST_PORT must be set before connection using nns_edge_set_info().
  * @param[in] edge_h The edge handle.
- * @param[in] dest_host IP address to connect. In case of TCP connection, it is the ip address of the destination node, and in the case of Hybrid or AITT connection, it is the ip of the broker.
+ * @param[in] dest_host IP address to connect. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP of the broker.
  * @param[in] dest_port The network port to connect. In case of TCP connection, it is the port of the destination node, and in the case of Hybrid or AITT connection, it is the port of the broker.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -246,7 +239,7 @@ int nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb, void *
  * // Set raw data to be transferred.
  * ret = nns_edge_data_add (data_h, data, data_size, NULL);
  *
- * // [Optional] Set client ID to data handle. If client_id is not given, send data to all connected edeg nodes.
+ * // [Optional] Set client ID to data handle. If client_id is not given, send data to all connected edge nodes.
  * ret = nns_edge_get_info (edge_h, "client_id", &val);
  * ret = nns_edge_data_set_info (data_h, "client_id", val);
  *
@@ -272,7 +265,7 @@ int nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port);
 int nns_edge_disconnect (nns_edge_h edge_h);
 
 /**
- * @brief Send data to desination (broker or connected node), asynchronously. If client_id is not set in data_h, send data to all connected edeg nodes. To set client_id in data_h, use nns_edge_data_set_info().
+ * @brief Send data to destination (broker or connected node), asynchronously. If client_id is not set in data_h, send data to all connected edge nodes. To set client_id in data_h, use nns_edge_data_set_info().
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -301,13 +294,13 @@ int nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h);
  * @section table_sec Edge info table
  * key                  | value
  * ---------------------|--------------------------------------------------------------
- * CAPS or CAPABILITY   | capapility strings.
+ * CAPS or CAPABILITY   | capability strings.
  * IP or HOST           | IP address of the node to accept connection from other node.
  * PORT                 | Port of the node to accept connection from other node. The value should be 0 or higher.
- * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the ip address of the destination node, and in the case of Hybrid or AITT connection, it is the ip address of the broker.
+ * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP address of the broker.
  * DEST_PORT            | Port of the destination node. In case of TCP connection, it is the port number of the destination node, and in the case of Hybrid or AITT connection, it is the port number of the broker. The value should be 0 or higher.
  * TOPIC                | Topic used to publish/subscribe to/from the broker.
- * ID or CLIENT_ID      | Unique indentifier of the edge handle or client ID. (Read-only)
+ * ID or CLIENT_ID      | Unique identifier of the edge handle or client ID. (Read-only)
  */
 int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
 
@@ -327,7 +320,7 @@ int nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value);
 /**
  * @brief Get the nnstreamer edge event type.
  * @param[in] event_h The edge event handle.
- * @param[out] event event type. value of @a nns_edge_event_e.
+ * @param[out] event The event type, value of @a nns_edge_event_e.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -396,7 +389,7 @@ int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
 
 /**
  * @brief Add raw data into nnstreamer edge data.
- * @note See NNS_EDGE_DATA_LIMIT, the maximum number of edge data in handle.
+ * @note See NNS_EDGE_DATA_LIMIT, the maximum number of raw data in handle.
  * @param[in] data_h The edge data handle.
  * @param[in] data The raw data.
  * @param[in] data_len data length.

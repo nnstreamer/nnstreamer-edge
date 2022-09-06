@@ -4,7 +4,7 @@
  *
  * @file   nnstreamer-edge-internal.h
  * @date   11 May 2022
- * @brief  Internal functions to support communication among devices.
+ * @brief  Internal functions and definition to support communication among devices.
  * @see    https://github.com/nnstreamer/nnstreamer
  * @author Gichan Jang <gichan2.jang@samsung.com>
  * @bug    No known bugs except for NYI items
