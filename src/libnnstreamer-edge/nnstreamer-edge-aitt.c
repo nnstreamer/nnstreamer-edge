@@ -110,6 +110,31 @@ nns_edge_aitt_close (nns_edge_h edge_h)
 }
 
 /**
+ * @brief Check whether aitt handle exists or not.
+ */
+int
+nns_edge_aitt_is_connected (nns_edge_h edge_h)
+{
+  nns_edge_handle_s *eh;
+  nns_edge_aitt_handle_s *ah;
+
+  eh = (nns_edge_handle_s *) edge_h;
+
+  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ah = (nns_edge_aitt_handle_s *) eh->broker_h;
+  if (!ah || !ah->aitt_h) {
+    nns_edge_loge ("AITT handle is not yet connected.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Publish raw data.
  * @note This is internal function forAITT. You should call this with edge-handle lock.
  */

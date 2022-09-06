@@ -169,6 +169,12 @@ int nns_edge_aitt_connect (nns_edge_h edge_h);
 int nns_edge_aitt_close (nns_edge_h edge_h);
 
 /**
+ * @brief Check whether aitt handle exists or not.
+ */
+int
+nns_edge_aitt_is_connected (nns_edge_h edge_h);
+
+/**
  * @brief Publish raw data.
  * @note This is internal function forAITT. You should call this with edge-handle lock.
  */
@@ -184,6 +190,7 @@ int nns_edge_aitt_subscribe (nns_edge_h edge_h);
 #define nns_edge_aitt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #endif
 
 #ifdef __cplusplus

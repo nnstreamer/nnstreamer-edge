@@ -1629,6 +1629,33 @@ nns_edge_disconnect (nns_edge_h edge_h)
 }
 
 /**
+ * @brief Thread to send data.
+ */
+static int
+_nns_edge_is_connected (nns_edge_h edge_h)
+{
+  nns_edge_handle_s *eh = (nns_edge_handle_s *) edge_h;
+  nns_edge_conn_data_s *conn_data;
+  nns_edge_conn_s *conn;
+  int connection_cnt = 0;
+
+  if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type &&
+      NNS_EDGE_ERROR_NONE == nns_edge_aitt_is_connected (eh))
+    return 1;
+
+  conn_data = (nns_edge_conn_data_s *) eh->connections;
+  while (conn_data) {
+    conn = conn_data->sink_conn;
+    if (_nns_edge_check_connection (conn)) {
+      connection_cnt++;
+    }
+    conn_data = conn_data->next;
+  }
+
+  return connection_cnt;
+}
+
+/**
  * @brief Send data to desination (broker or connected node), asynchronously.
  */
 int
@@ -1654,6 +1681,12 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (0 == _nns_edge_is_connected (eh)) {
+    nns_edge_loge ("There is no available connection.");
+    nns_edge_unlock (eh);
+    return NNS_EDGE_ERROR_IO;
   }
 
   if (!eh->send_thread) {
