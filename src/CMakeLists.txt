@@ -3,6 +3,7 @@ SET(NNS_EDGE_LIB_NAME nnstreamer-edge)
 SET(NNS_EDGE_SRCS
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-common.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-data.c
+    ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-event.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-internal.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-util.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-queue.c
