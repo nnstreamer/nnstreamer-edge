@@ -19,8 +19,49 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "nnstreamer-edge.h"
-#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-queue.h"
+
+typedef void *nns_edge_broker_h;
+
+/**
+ * @brief Internal data structure for raw data.
+ */
+typedef struct {
+  void *data;
+  size_t data_len;
+  nns_edge_data_destroy_cb destroy_cb;
+} nns_edge_raw_data_s;
+
+/**
+ * @brief Internal data structure for metadata.
+ */
+typedef struct _nns_edge_metadata_node_s nns_edge_metadata_node_s;
+
+/**
+ * @brief Internal data structure for metadata.
+ */
+struct _nns_edge_metadata_node_s {
+  char *key;
+  char *value;
+  nns_edge_metadata_node_s *next;
+};
+
+/**
+ * @brief Internal data structure to handle metadata. This struct should be managed in the handle.
+ */
+typedef struct {
+  unsigned int list_len;
+  nns_edge_metadata_node_s *list;
+} nns_edge_metadata_s;
+
+/**
+ * @brief Internal data structure for edge event.
+ */
+typedef struct {
+  unsigned int magic;
+  nns_edge_event_e event;
+  nns_edge_raw_data_s data;
+} nns_edge_event_s;
 
 /**
  * @brief Data structure for edge handle.

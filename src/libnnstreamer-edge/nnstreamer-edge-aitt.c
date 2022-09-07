@@ -13,6 +13,8 @@
 
 #include <stdbool.h>
 #include <aitt_c.h>
+
+#include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-util.h"
@@ -24,7 +26,6 @@ typedef void *nns_edge_aitt_sub_h;
 
 /**
  * @brief Data structure for aitt handle.
- * @todo Update AITT-related handle later. This is internal struct to manage edge-handle with AITT.
  */
 typedef struct
 {
@@ -32,7 +33,6 @@ typedef struct
   nns_edge_aitt_msg_h msg_h;
   nns_edge_aitt_sub_h sub_h;
 } nns_edge_aitt_handle_s;
-
 
 /**
  * @brief Create AITT handle and connect to AITT.
