@@ -37,6 +37,7 @@ BuildRequires:  aitt-devel
 %if 0%{?unit_test}
 BuildRequires:  gtest-devel
 BuildRequires:  procps
+BuildRequires:  mosquitto
 
 %if 0%{?testcoverage}
 BuildRequires:	lcov
