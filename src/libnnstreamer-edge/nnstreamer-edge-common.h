@@ -57,24 +57,6 @@ int nns_edge_metadata_serialize (nns_edge_metadata_s *meta, void **data, size_t 
  */
 int nns_edge_metadata_deserialize (nns_edge_metadata_s *meta, void *data, size_t data_len);
 
-/**
- * @brief Create nnstreamer edge event.
- * @note This is internal function for edge event.
- */
-int nns_edge_event_create (nns_edge_event_e event, nns_edge_event_h * event_h);
-
-/**
- * @brief Destroy nnstreamer edge event.
- * @note This is internal function for edge event.
- */
-int nns_edge_event_destroy (nns_edge_event_h event_h);
-
-/**
- * @brief Set event data.
- * @note This is internal function for edge event.
- */
-int nns_edge_event_set_data (nns_edge_event_h event_h, void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

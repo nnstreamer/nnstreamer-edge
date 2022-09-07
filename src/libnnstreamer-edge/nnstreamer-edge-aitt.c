@@ -15,6 +15,7 @@
 #include <aitt_c.h>
 
 #include "nnstreamer-edge-data.h"
+#include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-util.h"
