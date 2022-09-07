@@ -14,7 +14,9 @@
 #include <netdb.h>
 #include <sys/poll.h>
 
+#include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-internal.h"
 
@@ -321,7 +323,7 @@ static int
 _nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
 {
   int ret;
-  void *data;
+  void *data = NULL;
   size_t size;
 
   if (!eh) {
@@ -329,9 +331,7 @@ _nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-
   ret = nns_edge_data_serialize (data_h, &data, &size);
-
   if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to serialize the edge data.");
     goto done;

@@ -14,13 +14,8 @@
 #define __NNSTREAMER_EDGE_H__
 
 #include <errno.h>
-#include <limits.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {

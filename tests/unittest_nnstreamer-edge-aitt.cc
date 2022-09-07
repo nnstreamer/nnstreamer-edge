@@ -55,7 +55,6 @@ _free_test_data (ne_test_data_s *_td)
   free (_td);
 }
 
-
 /**
  * @brief Edge event callback for test.
  */
@@ -218,7 +217,7 @@ TEST(edge, connectLocal)
   ret = nns_edge_data_add (data_h, data2, data_len * 2, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  for (i = 0; i < 1U; i++) {
+  for (i = 0; i < 5U; i++) {
     ret = nns_edge_send (server_h, data_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
     usleep (10000);
