@@ -271,12 +271,6 @@ int nns_edge_disconnect (nns_edge_h edge_h);
 int nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h);
 
 /**
- * @brief Deprecated, use nns_edge_send() instead.
- * @todo Remove this macro later.
- */
-#define nns_edge_publish(h,d) nns_edge_send(h,d)
-
-/**
  * @brief Set nnstreamer edge info.
  * @note The param key is case-insensitive. If same key string already exists, it will replace the old value.
  * @param[in] edge_h The edge handle.
