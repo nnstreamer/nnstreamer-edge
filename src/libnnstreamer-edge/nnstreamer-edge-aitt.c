@@ -16,7 +16,6 @@
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
-#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-log.h"

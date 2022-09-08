@@ -16,6 +16,7 @@
 
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-metadata.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,7 +30,7 @@ typedef struct {
   pthread_mutex_t lock;
   unsigned int num;
   nns_edge_raw_data_s data[NNS_EDGE_DATA_LIMIT];
-  nns_edge_metadata_s metadata;
+  nns_edge_metadata_h metadata;
 } nns_edge_data_s;
 
 /**

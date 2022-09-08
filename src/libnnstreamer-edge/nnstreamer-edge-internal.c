@@ -17,7 +17,6 @@
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
-#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-internal.h"
 
@@ -1248,9 +1247,9 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->node_type = node_type;
   eh->broker_h = NULL;
   eh->connections = NULL;
-  nns_edge_metadata_init (&eh->meta);
   eh->listening = false;
   eh->listener_fd = -1;
+  nns_edge_metadata_create (&eh->metadata);
   nns_edge_queue_create (&eh->send_queue);
 
   *edge_h = eh;
@@ -1411,7 +1410,8 @@ nns_edge_release_handle (nns_edge_h edge_h)
 
   _nns_edge_remove_all_connection (eh);
 
-  nns_edge_metadata_free (&eh->meta);
+  nns_edge_metadata_destroy (eh->metadata);
+  eh->metadata = NULL;
   SAFE_FREE (eh->id);
   SAFE_FREE (eh->topic);
   SAFE_FREE (eh->host);
@@ -1747,7 +1747,7 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     nns_edge_loge ("Cannot update %s.", key);
     ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   } else {
-    ret = nns_edge_metadata_set (&eh->meta, key, value);
+    ret = nns_edge_metadata_set (eh->metadata, key, value);
   }
 
   nns_edge_unlock (eh);
@@ -1811,7 +1811,7 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
       *value = nns_edge_strdup_printf ("%lld", (long long) eh->client_id);
     }
   } else {
-    ret = nns_edge_metadata_get (&eh->meta, key, value);
+    ret = nns_edge_metadata_get (eh->metadata, key, value);
   }
 
   nns_edge_unlock (eh);
