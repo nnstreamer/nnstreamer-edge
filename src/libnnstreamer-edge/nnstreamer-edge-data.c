@@ -12,7 +12,6 @@
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-log.h"
-#include "nnstreamer-edge-common.h"
 #include "nnstreamer-edge-util.h"
 
 /**
@@ -36,7 +35,7 @@ nns_edge_data_create (nns_edge_data_h * data_h)
 
   nns_edge_lock_init (ed);
   ed->magic = NNS_EDGE_MAGIC;
-  nns_edge_metadata_init (&ed->metadata);
+  nns_edge_metadata_create (&ed->metadata);
 
   *data_h = ed;
   return NNS_EDGE_ERROR_NONE;
@@ -72,7 +71,7 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
       ed->data[i].destroy_cb (ed->data[i].data);
   }
 
-  nns_edge_metadata_free (&ed->metadata);
+  nns_edge_metadata_destroy (ed->metadata);
 
   nns_edge_unlock (ed);
   nns_edge_lock_destroy (ed);
@@ -161,7 +160,7 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
     copied->data[i].destroy_cb = nns_edge_free;
   }
 
-  ret = nns_edge_metadata_copy (&copied->metadata, &ed->metadata);
+  ret = nns_edge_metadata_copy (copied->metadata, ed->metadata);
 
 done:
   if (ret != NNS_EDGE_ERROR_NONE) {
@@ -322,7 +321,7 @@ nns_edge_data_set_info (nns_edge_data_h data_h, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = nns_edge_metadata_set (&ed->metadata, key, value);
+  ret = nns_edge_metadata_set (ed->metadata, key, value);
 
   nns_edge_unlock (ed);
   return ret;
@@ -361,7 +360,7 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = nns_edge_metadata_get (&ed->metadata, key, value);
+  ret = nns_edge_metadata_get (ed->metadata, key, value);
 
   nns_edge_unlock (ed);
   return ret;
@@ -391,7 +390,7 @@ nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = nns_edge_metadata_serialize (&ed->metadata, data, data_len);
+  ret = nns_edge_metadata_serialize (ed->metadata, data, data_len);
 
   nns_edge_unlock (ed);
   return ret;
@@ -421,7 +420,7 @@ nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = nns_edge_metadata_deserialize (&ed->metadata, data, data_len);
+  ret = nns_edge_metadata_deserialize (ed->metadata, data, data_len);
 
   nns_edge_unlock (ed);
   return ret;
@@ -464,7 +463,7 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, size_t *len)
     data_len += ed->data[n].data_len;
   }
 
-  ret = nns_edge_metadata_serialize (&ed->metadata, &meta_serialized,
+  ret = nns_edge_metadata_serialize (ed->metadata, &meta_serialized,
       &edata_header.meta_len);
   if (NNS_EDGE_ERROR_NONE != ret) {
     goto done;
@@ -543,7 +542,7 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, void *data)
     ptr += ed->data[n].data_len;
   }
 
-  ret = nns_edge_metadata_deserialize (&ed->metadata, ptr, meta_len);
+  ret = nns_edge_metadata_deserialize (ed->metadata, ptr, meta_len);
 
   nns_edge_unlock (ed);
   return ret;

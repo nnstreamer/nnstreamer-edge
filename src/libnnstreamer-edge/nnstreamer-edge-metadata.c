@@ -2,18 +2,40 @@
 /**
  * Copyright (C) 2022 Samsung Electronics Co., Ltd. All Rights Reserved.
  *
- * @file   nnstreamer-edge-common.c
+ * @file   nnstreamer-edge-metadata.c
  * @date   6 April 2022
- * @brief  Common util functions for nnstreamer edge.
+ * @brief  Util functions for metadata.
  * @see    https://github.com/nnstreamer/nnstreamer
  * @author Gichan Jang <gichan2.jang@samsung.com>
  * @bug    No known bugs except for NYI items
  */
 
-#include "nnstreamer-edge-common.h"
-#include "nnstreamer-edge-data.h"
-#include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-metadata.h"
 #include "nnstreamer-edge-util.h"
+
+/**
+ * @brief Internal data structure for metadata.
+ */
+typedef struct _nns_edge_metadata_node_s nns_edge_metadata_node_s;
+
+/**
+ * @brief Internal data structure for metadata.
+ */
+struct _nns_edge_metadata_node_s
+{
+  char *key;
+  char *value;
+  nns_edge_metadata_node_s *next;
+};
+
+/**
+ * @brief Internal data structure to handle metadata. This struct should be managed in the handle.
+ */
+typedef struct
+{
+  unsigned int list_len;
+  nns_edge_metadata_node_s *list;
+} nns_edge_metadata_s;
 
 /**
  * @brief Internal function to find node in the list.
@@ -43,7 +65,7 @@ nns_edge_metadata_find (nns_edge_metadata_s * meta, const char *key)
 /**
  * @brief Internal function to initialize metadata structure.
  */
-int
+static int
 nns_edge_metadata_init (nns_edge_metadata_s * meta)
 {
   if (!meta)
@@ -56,7 +78,7 @@ nns_edge_metadata_init (nns_edge_metadata_s * meta)
 /**
  * @brief Internal function to free the list and items in metadata structure.
  */
-int
+static int
 nns_edge_metadata_free (nns_edge_metadata_s * meta)
 {
   nns_edge_metadata_node_s *node, *tmp;
@@ -82,13 +104,56 @@ nns_edge_metadata_free (nns_edge_metadata_s * meta)
 }
 
 /**
+ * @brief Internal function to create metadata.
+ */
+int
+nns_edge_metadata_create (nns_edge_metadata_h * metadata_h)
+{
+  nns_edge_metadata_s *meta;
+
+  if (!metadata_h)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  meta = calloc (1, sizeof (nns_edge_metadata_s));
+  if (!meta)
+    return NNS_EDGE_ERROR_OUT_OF_MEMORY;
+
+  nns_edge_metadata_init (meta);
+
+  *metadata_h = meta;
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Internal function to destroy metadata.
+ */
+int
+nns_edge_metadata_destroy (nns_edge_metadata_h metadata_h)
+{
+  nns_edge_metadata_s *meta;
+
+  meta = (nns_edge_metadata_s *) metadata_h;
+
+  if (!meta)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  nns_edge_metadata_free (meta);
+  free (meta);
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Internal function to set the metadata.
  */
 int
-nns_edge_metadata_set (nns_edge_metadata_s * meta,
+nns_edge_metadata_set (nns_edge_metadata_h metadata_h,
     const char *key, const char *value)
 {
+  nns_edge_metadata_s *meta;
   nns_edge_metadata_node_s *node;
+
+  meta = (nns_edge_metadata_s *) metadata_h;
 
   if (!meta)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -138,10 +203,13 @@ nns_edge_metadata_set (nns_edge_metadata_s * meta,
  * @brief Internal function to get the metadata in the list. Caller should release the returned value using free().
  */
 int
-nns_edge_metadata_get (nns_edge_metadata_s * meta,
+nns_edge_metadata_get (nns_edge_metadata_h metadata_h,
     const char *key, char **value)
 {
+  nns_edge_metadata_s *meta;
   nns_edge_metadata_node_s *node;
+
+  meta = (nns_edge_metadata_s *) metadata_h;
 
   if (!value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -159,11 +227,15 @@ nns_edge_metadata_get (nns_edge_metadata_s * meta,
  * @brief Internal function to copy the metadata.
  */
 int
-nns_edge_metadata_copy (nns_edge_metadata_s * dest, nns_edge_metadata_s * src)
+nns_edge_metadata_copy (nns_edge_metadata_h dest_h, nns_edge_metadata_h src_h)
 {
+  nns_edge_metadata_s *dest, *src;
   nns_edge_metadata_s tmp;
   nns_edge_metadata_node_s *node;
   int ret;
+
+  dest = (nns_edge_metadata_s *) dest_h;
+  src = (nns_edge_metadata_s *) src_h;
 
   if (!dest || !src)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -192,12 +264,15 @@ nns_edge_metadata_copy (nns_edge_metadata_s * dest, nns_edge_metadata_s * src)
  * @brief Internal function to serialize the metadata. Caller should release the returned value using free().
  */
 int
-nns_edge_metadata_serialize (nns_edge_metadata_s * meta,
+nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
     void **data, size_t *data_len)
 {
+  nns_edge_metadata_s *meta;
   nns_edge_metadata_node_s *node;
   char *serialized, *ptr;
   size_t total, len;
+
+  meta = (nns_edge_metadata_s *) metadata_h;
 
   if (!meta)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -252,13 +327,16 @@ nns_edge_metadata_serialize (nns_edge_metadata_s * meta,
  * @brief Internal function to deserialize memory into metadata.
  */
 int
-nns_edge_metadata_deserialize (nns_edge_metadata_s * meta,
+nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
     void *data, size_t data_len)
 {
+  nns_edge_metadata_s *meta;
   char *key, *value;
   size_t cur;
   unsigned int total;
   int ret;
+
+  meta = (nns_edge_metadata_s *) metadata_h;
 
   if (!meta)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
