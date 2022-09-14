@@ -131,7 +131,7 @@ _check_mqtt_broker ()
 /**
  * @brief Connect to local host, multiple clients.
  */
-TEST(edge, connectLocal)
+TEST(edgeAitt, connectLocal)
 {
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;

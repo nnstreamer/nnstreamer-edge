@@ -2203,7 +2203,6 @@ TEST(edgeDataSerialize, invalidParam04_n)
 TEST(edgeDataDeserialize, invalidParam01_n)
 {
   void *data = NULL;
-  size_t data_len;
   int ret;
 
   ret = nns_edge_data_deserialize (NULL, data);
