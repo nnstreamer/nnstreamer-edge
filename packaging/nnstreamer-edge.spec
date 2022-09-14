@@ -112,7 +112,10 @@ popd
 
 %if 0%{?unit_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
+
+%if 0%{?aitt_support}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-aitt
+%endif
 
 %if 0%{?testcoverage}
 # 'lcov' generates the date format with UTC time zone by default. Let's replace UTC with KST.
@@ -158,7 +161,10 @@ rm -rf %{buildroot}
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/unittest_nnstreamer-edge
+
+%if 0%{?aitt_support}
 %{_bindir}/unittest_nnstreamer-edge-aitt
+%endif
 
 %if 0%{?testcoverage}
 %files unittest-coverage
