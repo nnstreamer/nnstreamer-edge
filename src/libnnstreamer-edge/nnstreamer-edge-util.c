@@ -7,6 +7,7 @@
  * @brief  Utility functions.
  * @see    https://github.com/nnstreamer/nnstreamer-edge
  * @author Jaeyun Jung <jy1210.jung@samsung.com>
+ * @bug    No known bugs except for NYI items
  */
 
 #define _GNU_SOURCE
