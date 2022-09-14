@@ -270,19 +270,6 @@ TEST(edge, createHandleInvalidParam01_n)
   nns_edge_h edge_h;
   int ret;
 
-  ret = nns_edge_create_handle (NULL, NNS_EDGE_CONNECT_TYPE_TCP,
-      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
-  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
-}
-
-/**
- * @brief Create edge handle - invalid param.
- */
-TEST(edge, createHandleInvalidParam02_n)
-{
-  nns_edge_h edge_h;
-  int ret;
-
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_UNKNOWN,
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
@@ -291,7 +278,7 @@ TEST(edge, createHandleInvalidParam02_n)
 /**
  * @brief Create edge handle - invalid param.
  */
-TEST(edge, createHandleInvalidParam03_n)
+TEST(edge, createHandleInvalidParam02_n)
 {
   int ret;
 
@@ -303,20 +290,7 @@ TEST(edge, createHandleInvalidParam03_n)
 /**
  * @brief Create edge handle - invalid param.
  */
-TEST(edge, createHandleInvalidParam04_n)
-{
-  nns_edge_h edge_h;
-  int ret;
-
-  ret = nns_edge_create_handle ("", NNS_EDGE_CONNECT_TYPE_MQTT,
-      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
-  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
-}
-
-/**
- * @brief Create edge handle - invalid param.
- */
-TEST(edge, createHandleInvalidParam05_n)
+TEST(edge, createHandleInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;

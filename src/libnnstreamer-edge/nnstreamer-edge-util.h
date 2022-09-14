@@ -60,7 +60,7 @@ extern "C" {
 /**
  * @brief Generate client ID.
  */
-int64_t nns_edge_generate_client_id (void);
+int64_t nns_edge_generate_id (void);
 
 /**
  * @brief Get available port number.

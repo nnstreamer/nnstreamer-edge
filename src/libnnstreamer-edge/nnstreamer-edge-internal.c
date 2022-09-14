@@ -775,6 +775,8 @@ _nns_edge_message_handler (void *thread_data)
         ("Received error from client, remove connection of client (ID: %lld).",
         (long long) client_id);
     _nns_edge_remove_connection (eh, client_id);
+    _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CONNECTION_CLOSED,
+        NULL, 0, NULL);
   }
 
   return NULL;
@@ -1034,7 +1036,7 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
 
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
-    client_id = nns_edge_generate_client_id ();
+    client_id = nns_edge_generate_id ();
   } else {
     client_id = eh->client_id;
   }
@@ -1208,11 +1210,6 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
 {
   nns_edge_handle_s *eh;
 
-  if (!STR_IS_VALID (id)) {
-    nns_edge_loge ("Invalid param, given ID is invalid.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
-
   if (connect_type < 0 || connect_type >= NNS_EDGE_CONNECT_TYPE_UNKNOWN) {
     nns_edge_loge ("Invalid param, set valid connect type.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -1240,7 +1237,8 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
 
   nns_edge_lock_init (eh);
   eh->magic = NNS_EDGE_MAGIC;
-  eh->id = nns_edge_strdup (id);
+  eh->id = STR_IS_VALID (id) ? nns_edge_strdup (id) :
+      nns_edge_strdup_printf ("%lld", (long long) nns_edge_generate_id ());
   eh->connect_type = connect_type;
   eh->host = nns_edge_strdup ("localhost");
   eh->port = 0;

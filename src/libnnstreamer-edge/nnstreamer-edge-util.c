@@ -16,18 +16,18 @@
 #include "nnstreamer-edge-util.h"
 
 /**
- * @brief Generate client ID.
+ * @brief Generate ID.
  */
 int64_t
-nns_edge_generate_client_id (void)
+nns_edge_generate_id (void)
 {
   struct timespec ts;
-  int64_t client_id;
+  int64_t _id;
 
   clock_gettime (CLOCK_MONOTONIC, &ts);
-  client_id = ((int64_t) ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
+  _id = ((int64_t) ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
 
-  return client_id;
+  return _id;
 }
 
 /**
