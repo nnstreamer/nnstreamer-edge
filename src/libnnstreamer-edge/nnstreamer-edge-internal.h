@@ -20,9 +20,9 @@ extern "C" {
 
 #include "nnstreamer-edge.h"
 #include "nnstreamer-edge-metadata.h"
+#include "nnstreamer-edge-aitt.h"
+#include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-queue.h"
-
-typedef void *nns_edge_broker_h;
 
 /**
  * @brief Internal data structure for raw data.
@@ -77,100 +77,9 @@ typedef struct {
   nns_edge_queue_h send_queue;
   pthread_t send_thread;
 
-  /* MQTT */
-  nns_edge_broker_h broker_h;
+  /* MQTT or AITT handle */
+  void *broker_h;
 } nns_edge_handle_s;
-
-#if defined(ENABLE_MQTT)
-/**
- * @brief Connect to MQTT.
- * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
- */
-int nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic);
-
-/**
- * @brief Close the connection to MQTT.
- * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
- */
-int nns_edge_mqtt_close (nns_edge_h edge_h);
-
-/**
- * @brief Publish raw data.
- * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
- */
-int nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length);
-
-/**
- * @brief Subscribe a topic.
- * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
- */
-int nns_edge_mqtt_subscribe (nns_edge_h edge_h);
-
-/**
- * @brief Check mqtt connection
- */
-bool nns_edge_mqtt_is_connected (nns_edge_h edge_h);
-
-/**
- * @brief Get message from mqtt broker.
- */
-int nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg);
-
-#else
-/**
- * @todo consider to change code style later.
- * If MQTT is disabled, nnstreamer does not include nnstreamer_edge_mqtt.c, and changing code style will make error as it is not used function now.
- *
- * static int nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
- * {
- *   return NNS_EDGE_ERROR_NOT_SUPPORTED;
- * }
- */
-#define nns_edge_mqtt_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_mqtt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_mqtt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_mqtt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_mqtt_is_connected(...) (false)
-#define nns_edge_mqtt_get_message(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#endif
-
-#if defined(ENABLE_AITT)
-/**
- * @brief Create AITT handle and connect to AITT.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
- */
-int nns_edge_aitt_connect (nns_edge_h edge_h);
-
-/**
- * @brief Release the AITT handle.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
- */
-int nns_edge_aitt_close (nns_edge_h edge_h);
-
-/**
- * @brief Check whether aitt handle exists or not.
- */
-int
-nns_edge_aitt_is_connected (nns_edge_h edge_h);
-
-/**
- * @brief Publish raw data.
- * @note This is internal function forAITT. You should call this with edge-handle lock.
- */
-int nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length);
-
-/**
- * @brief Subscribe a topic.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
- */
-int nns_edge_aitt_subscribe (nns_edge_h edge_h);
-#else
-#define nns_edge_aitt_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_aitt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_aitt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_aitt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#define nns_edge_aitt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
-#endif
 
 #ifdef __cplusplus
 }
