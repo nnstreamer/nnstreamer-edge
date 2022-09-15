@@ -326,7 +326,7 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
  * @brief Send edge command to connected device using AITT.
  */
 static int
-_nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h * data_h)
+_nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h data_h)
 {
   int ret;
   void *data = NULL;
