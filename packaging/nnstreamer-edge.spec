@@ -1,8 +1,14 @@
 %define     test_script $(pwd)/packaging/run_unittests.sh
 
 # Default features for Tizen releases
-%define		mqtt_support 1
+%define     mqtt_support 1
 %define     aitt_support 1
+
+# Define features for TV releases
+%if "%{?profile}" == "tv"
+%define     mqtt_support 0
+%define     aitt_support 0
+%endif
 
 %bcond_with tizen
 
@@ -40,7 +46,7 @@ BuildRequires:  procps
 BuildRequires:  mosquitto
 
 %if 0%{?testcoverage}
-BuildRequires:	lcov
+BuildRequires:  lcov
 %endif
 %endif
 
