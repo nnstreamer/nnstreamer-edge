@@ -99,12 +99,6 @@ typedef struct
 } nns_edge_thread_data_s;
 
 /**
- * @brief Create message handle thread.
- */
-static int
-_nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
-    int64_t client_id);
-/**
  * @brief Set socket option.
  * @todo handle connection type (TCP/UDP).
  */
@@ -981,20 +975,20 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
     }
   }
 
-  conn_data = _nns_edge_add_connection (eh, client_id);
-  if (conn_data) {
-    /* Close old connection and set new one. */
-    _nns_edge_close_connection (conn_data->sink_conn);
-    conn_data->sink_conn = conn;
-    done = true;
-  }
-
   if (NNS_EDGE_NODE_TYPE_SUB == eh->node_type) {
     ret = _nns_edge_create_message_thread (eh, conn, client_id);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to create message handle thread.");
       goto error;
     }
+  }
+
+  conn_data = _nns_edge_add_connection (eh, client_id);
+  if (conn_data) {
+    /* Close old connection and set new one. */
+    _nns_edge_close_connection (conn_data->sink_conn);
+    conn_data->sink_conn = conn;
+    done = true;
   }
 
 error:
@@ -1063,6 +1057,7 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
 
   if (NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type) {
     /* Receive host info from destination. */
+    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
     ret = _nns_edge_cmd_receive (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive node info.");
@@ -1087,7 +1082,12 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   }
 
   conn_data = _nns_edge_add_connection (eh, client_id);
+  if (!conn_data) {
+    nns_edge_loge ("Failed to add client connection.");
+    goto error;
+  }
 
+  /* Close old connection and set new one for each node type. */
   if (eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_CLIENT ||
       eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_SERVER) {
     ret = _nns_edge_create_message_thread (eh, conn, client_id);
@@ -1097,13 +1097,12 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
     }
     _nns_edge_close_connection (conn_data->src_conn);
     conn_data->src_conn = conn;
-    done = true;
   } else {
-    /* Close old connection and set new one. */
     _nns_edge_close_connection (conn_data->sink_conn);
     conn_data->sink_conn = conn;
-    done = true;
   }
+
+  done = true;
 
 error:
   if (!done)
@@ -1305,7 +1304,7 @@ nns_edge_start (nns_edge_h edge_h)
 
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge
-            ("Failed to start nnstreamer-edge. Connection failure to broker.");
+            ("Failed to start nnstreamer-edge, cannot connect to broker.");
         goto done;
       }
 
@@ -1371,6 +1370,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
       if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh)) {
         nns_edge_logw ("Failed to close mqtt connection.");
       }
+      eh->broker_h = NULL;
       break;
     case NNS_EDGE_CONNECT_TYPE_AITT:
       if (NNS_EDGE_ERROR_NONE != nns_edge_aitt_close (eh)) {
@@ -1520,15 +1520,13 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Connection failure to broker.");
-        nns_edge_unlock (eh);
-        return ret;
+        goto done;
       }
 
       ret = nns_edge_mqtt_subscribe (eh);
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Failed to subscribe to topic: %s.", eh->topic);
-        nns_edge_unlock (eh);
-        return ret;
+        goto done;
       }
     }
 
@@ -1654,7 +1652,7 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (0 == _nns_edge_is_connected (eh)) {
+  if (!_nns_edge_is_connected (eh)) {
     nns_edge_loge ("There is no available connection.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_IO;
