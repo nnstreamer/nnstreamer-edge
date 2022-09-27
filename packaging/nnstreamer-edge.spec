@@ -80,6 +80,18 @@ HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %define enable_unittest -DENABLE_TEST=OFF
 %endif
 
+%if 0%{?mqtt_support}
+%define enable_mqtt -DMQTT_SUPPORT=ON
+%else
+%define enable_mqtt -DMQTT_SUPPORT=OFF
+%endif
+
+%if 0%{?aitt_support}
+%define enable_aitt -DAITT_SUPPORT=ON
+%else
+%define enable_aitt -DAITT_SUPPORT=OFF
+%endif
+
 %prep
 %setup -q
 cp %{SOURCE1001} .
@@ -105,7 +117,8 @@ mkdir -p build
 pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-    -DVERSION=%{version} %{enable_unittest}
+    -DVERSION=%{version} \
+    %{enable_unittest} %{enable_mqtt} %{enable_aitt}
 
 make %{?jobs:-j%jobs}
 popd
