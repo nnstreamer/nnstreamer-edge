@@ -1,0 +1,13 @@
+#
+# For a description of the syntax of this configuration file,
+# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#
+
+config NNSTREAMER_EDGE
+	bool "nnstreamer-edge library"
+	default n
+	---help---
+		Enables the nnstreamer-edge library.
+		nnstreamer-edge provides interfaces to support data connection and 
+		AI offloading feature between edge devices.
+		See https://github.com/nnstreamer/nnstreamer-edge for the details.
