@@ -12,13 +12,21 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/poll.h>
+#include <poll.h>
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-internal.h"
+
+#ifndef PTHREAD_CREATE_JOINABLE
+#define PTHREAD_CREATE_JOINABLE 0
+#endif
+
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 #define N_BACKLOG 10
 #define DEFAULT_TIMEOUT_SEC 10
