@@ -1,3 +1,9 @@
+nnstreamer-edge (0.2.1.0) unstable xenial bionic focal; urgency=medium
+
+  * 0.2.1 Start development of 0.2.1 for Tizen 7.5 release (0.2.2)
+
+ -- Sangjung Woo <sangjung.woo@samsung.com>  Fri, 30 Sep 2022 12:10:00 +0900
+
 nnstreamer-edge (0.1.0.0) unstable xenial bionic focal; urgency=medium
 
   * 0.1.0 development starts after migrating edge interfaces from nnstreamer repogitory.
