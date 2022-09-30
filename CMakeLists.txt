@@ -11,7 +11,7 @@ OPTION(MQTT_SUPPORT     "Enable MQTT" OFF)
 OPTION(AITT_SUPPORT     "Enable AITT" OFF)
 
 IF (NOT DEFINED VERSION)
-    SET(VERSION    0.1.0)
+    SET(VERSION    0.2.1)
 ENDIF()
 
 # GoogleTest requires at least C++11 and match the nnstreamer cpp version.
