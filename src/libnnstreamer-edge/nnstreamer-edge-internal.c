@@ -208,8 +208,13 @@ _nns_edge_check_connection (nns_edge_conn_s * conn)
   poll_fd.events = POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP;
   poll_fd.revents = 0;
 
+  /** Timeout zero means that the poll() is returned immediately. */
   n = poll (&poll_fd, 1, 0);
-  if (n <= 0 || poll_fd.revents & (POLLERR | POLLHUP)) {
+  /**
+   * Return value zero indicates that the system call timed out.
+   * let's skip the check `n == 0` because timeout is set to 0.
+   */
+  if (n < 0 || poll_fd.revents & (POLLERR | POLLHUP)) {
     nns_edge_logw ("Socket is not available, possibly closed.");
     return false;
   }
