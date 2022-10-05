@@ -10,6 +10,9 @@
  * @bug    No known bugs except for NYI items
  */
 
+#if !defined(ENABLE_AITT)
+#error "This file can be built with AITT library."
+#endif
 
 #include <stdbool.h>
 #include <aitt_c.h>
