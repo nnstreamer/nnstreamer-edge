@@ -1497,7 +1497,7 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (dest_port <= 0 || dest_port > 65535) {
+  if (!PORT_IS_VALID (dest_port)) {
     nns_edge_loge ("Invalid port number %d.", dest_port);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
