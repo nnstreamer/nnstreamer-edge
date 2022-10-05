@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #define STR_IS_VALID(s) ((s) && (s)[0] != '\0')
+#define PORT_IS_VALID(p) ((p) > 0 && (p) <= 65535)
 #define SAFE_FREE(p) do { if (p) { free (p); (p) = NULL; } } while (0)
 
 #define NNS_EDGE_MAGIC 0xfeedfeed
