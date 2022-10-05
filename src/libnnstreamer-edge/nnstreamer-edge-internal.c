@@ -697,10 +697,8 @@ _nns_edge_message_handler (void *thread_data)
   nns_edge_thread_data_s *_tdata = (nns_edge_thread_data_s *) thread_data;
   nns_edge_handle_s *eh;
   nns_edge_conn_s *conn;
-  nns_edge_cmd_s cmd;
   bool remove_connection = false;
   int64_t client_id;
-  char *val;
   int ret;
 
   if (!_tdata) {
@@ -715,8 +713,7 @@ _nns_edge_message_handler (void *thread_data)
 
   conn->running = true;
   while (conn->running) {
-    nns_edge_data_h data_h;
-    unsigned int i;
+    struct pollfd poll_fd;
 
     /* Validate edge handle */
     if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
@@ -724,55 +721,67 @@ _nns_edge_message_handler (void *thread_data)
       break;
     }
 
-    /** Receive data from the client */
-    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
-    ret = _nns_edge_cmd_receive (conn, &cmd);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to receive data from the connected node.");
-      remove_connection = true;
-      break;
-    }
+    poll_fd.fd = conn->sockfd;
+    poll_fd.events = POLLIN | POLLHUP | POLLERR;
+    poll_fd.revents = 0;
 
-    if (cmd.info.cmd == _NNS_EDGE_CMD_ERROR) {
-      nns_edge_loge ("Received error, stop msg thread.");
+    /* 10 milliseconds */
+    if (poll (&poll_fd, 1, 10) > 0) {
+      nns_edge_cmd_s cmd;
+      nns_edge_data_h data_h;
+      char *val;
+      unsigned int i;
+
+      /* Receive data from the client */
+      _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
+      ret = _nns_edge_cmd_receive (conn, &cmd);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to receive data from the connected node.");
+        remove_connection = true;
+        break;
+      }
+
+      if (cmd.info.cmd == _NNS_EDGE_CMD_ERROR) {
+        nns_edge_loge ("Received error, stop msg thread.");
+        _nns_edge_cmd_clear (&cmd);
+        remove_connection = true;
+        break;
+      }
+
+      if (cmd.info.cmd != _NNS_EDGE_CMD_TRANSFER_DATA) {
+        /** @todo handle other cmd later */
+        _nns_edge_cmd_clear (&cmd);
+        continue;
+      }
+
+      ret = nns_edge_data_create (&data_h);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to create data handle in msg thread.");
+        _nns_edge_cmd_clear (&cmd);
+        continue;
+      }
+
+      for (i = 0; i < cmd.info.num; i++)
+        nns_edge_data_add (data_h, cmd.mem[i], cmd.info.mem_size[i], NULL);
+
+      if (cmd.info.meta_size > 0)
+        nns_edge_data_deserialize_meta (data_h, cmd.meta, cmd.info.meta_size);
+
+      /* Set client ID in edge data */
+      val = nns_edge_strdup_printf ("%lld", (long long) client_id);
+      nns_edge_data_set_info (data_h, "client_id", val);
+      SAFE_FREE (val);
+
+      ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
+          data_h, sizeof (nns_edge_data_h), NULL);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        /* Try to get next request if server does not accept data from client. */
+        nns_edge_logw ("The server does not accept data from client.");
+      }
+
+      nns_edge_data_destroy (data_h);
       _nns_edge_cmd_clear (&cmd);
-      remove_connection = true;
-      break;
     }
-
-    if (cmd.info.cmd != _NNS_EDGE_CMD_TRANSFER_DATA) {
-      /** @todo handle other cmd later */
-      _nns_edge_cmd_clear (&cmd);
-      continue;
-    }
-
-    ret = nns_edge_data_create (&data_h);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to create data handle in msg thread.");
-      _nns_edge_cmd_clear (&cmd);
-      continue;
-    }
-
-    for (i = 0; i < cmd.info.num; i++)
-      nns_edge_data_add (data_h, cmd.mem[i], cmd.info.mem_size[i], NULL);
-
-    if (cmd.info.meta_size > 0)
-      nns_edge_data_deserialize_meta (data_h, cmd.meta, cmd.info.meta_size);
-
-    /* Set client ID in edge data */
-    val = nns_edge_strdup_printf ("%lld", (long long) client_id);
-    nns_edge_data_set_info (data_h, "client_id", val);
-    SAFE_FREE (val);
-
-    ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
-        data_h, sizeof (nns_edge_data_h), NULL);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      /* Try to get next request if server does not accept data from client. */
-      nns_edge_logw ("The server does not accept data from client.");
-    }
-
-    nns_edge_data_destroy (data_h);
-    _nns_edge_cmd_clear (&cmd);
   }
   conn->running = false;
 
