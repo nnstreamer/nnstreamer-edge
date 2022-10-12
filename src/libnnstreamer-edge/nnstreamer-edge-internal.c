@@ -134,7 +134,7 @@ _fill_socket_addr (struct sockaddr_in *saddr, const char *host, const int port)
   saddr->sin_family = AF_INET;
   saddr->sin_port = htons (port);
 
-  if ((saddr->sin_addr.s_addr = inet_addr (host)) == -1) {
+  if ((saddr->sin_addr.s_addr = inet_addr (host)) == INADDR_NONE) {
     struct hostent *ent = gethostbyname (host);
 
     if (!ent)
@@ -1638,6 +1638,18 @@ _nns_edge_is_connected (nns_edge_h edge_h)
 }
 
 /**
+ * @brief internal wrapper function of the nns_edge_data_destory () to avoid build warning of the incompatibe type casting.
+ */
+void
+_nns_edge_data_destroy (nns_edge_data_h data_h)
+{
+  if (data_h) {
+    if (NNS_EDGE_ERROR_NONE != nns_edge_data_destroy (data_h))
+      nns_edge_logw ("Failed to destory the nns-edge data handle.");
+  }
+}
+
+/**
  * @brief Send data to desination (broker or connected node), asynchronously.
  */
 int
@@ -1680,8 +1692,7 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
   /* Create new data handle and push it into send-queue. */
   nns_edge_data_copy (data_h, &new_data_h);
 
-  if (!nns_edge_queue_push (eh->send_queue, new_data_h,
-          (nns_edge_queue_data_destroy_cb) nns_edge_data_destroy)) {
+  if (!nns_edge_queue_push (eh->send_queue, new_data_h, _nns_edge_data_destroy)) {
     nns_edge_loge ("Failed to send data, cannot push data into queue.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_IO;
