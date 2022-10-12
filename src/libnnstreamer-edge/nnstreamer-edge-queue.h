@@ -8,6 +8,7 @@
  * @see    https://github.com/nnstreamer/nnstreamer-edge
  * @author Jaeyun Jung <jy1210.jung@samsung.com>
  * @note   This file is internal header for nnstreamer-edge. DO NOT export this file.
+ * @bug No known bugs except for NYI items.
  */
 
 #ifndef __NNSTREAMER_EDGE_QUEUE_H__
