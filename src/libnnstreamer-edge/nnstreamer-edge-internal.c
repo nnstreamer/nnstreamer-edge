@@ -48,14 +48,14 @@ typedef enum
  */
 typedef struct
 {
-  unsigned int magic;
+  uint32_t magic;
   nns_edge_cmd_e cmd;
   int64_t client_id;
 
   /* memory info */
   uint32_t num;
-  size_t mem_size[NNS_EDGE_DATA_LIMIT];
-  size_t meta_size;
+  nns_size_t mem_size[NNS_EDGE_DATA_LIMIT];
+  nns_size_t meta_size;
 } nns_edge_cmd_info_s;
 
 /**
@@ -150,10 +150,10 @@ _fill_socket_addr (struct sockaddr_in *saddr, const char *host, const int port)
  * @brief Send data to connected socket.
  */
 static bool
-_send_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
+_send_raw_data (nns_edge_conn_s * conn, void *data, nns_size_t size)
 {
-  size_t sent = 0;
-  ssize_t rret;
+  nns_size_t sent = 0;
+  nns_ssize_t rret;
 
   while (sent < size) {
     rret = send (conn->sockfd, (char *) data + sent, size - sent, MSG_NOSIGNAL);
@@ -173,10 +173,10 @@ _send_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
  * @brief Receive data from connected socket.
  */
 static bool
-_receive_raw_data (nns_edge_conn_s * conn, void *data, size_t size)
+_receive_raw_data (nns_edge_conn_s * conn, void *data, nns_size_t size)
 {
-  size_t received = 0;
-  ssize_t rret;
+  nns_size_t received = 0;
+  nns_ssize_t rret;
 
   while (received < size) {
     rret = recv (conn->sockfd, (char *) data + received, size - received, 0);
@@ -337,7 +337,7 @@ _nns_edge_cmd_send_aitt (nns_edge_handle_s * eh, nns_edge_data_h data_h)
 {
   int ret;
   void *data = NULL;
-  size_t size;
+  nns_size_t size;
 
   if (!eh) {
     nns_edge_loge ("Failed to send command, edge handle is null.");
@@ -472,7 +472,7 @@ _nns_edge_transfer_data (nns_edge_conn_s * conn, nns_edge_data_h data_h,
  */
 static int
 _nns_edge_invoke_event_cb (nns_edge_handle_s * eh, nns_edge_event_e event,
-    void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb)
+    void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb)
 {
   nns_edge_event_h event_h;
   int ret;
@@ -786,7 +786,7 @@ _nns_edge_message_handler (void *thread_data)
 
   /* Received error message from client, remove connection from table. */
   if (remove_connection) {
-    nns_edge_logd
+    nns_edge_loge
         ("Received error from client, remove connection of client (ID: %lld).",
         (long long) client_id);
     _nns_edge_remove_connection (eh, client_id);

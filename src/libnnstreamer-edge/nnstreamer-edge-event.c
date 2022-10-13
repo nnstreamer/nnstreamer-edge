@@ -75,8 +75,8 @@ nns_edge_event_destroy (nns_edge_event_h event_h)
  * @brief Set event data.
  */
 int
-nns_edge_event_set_data (nns_edge_event_h event_h, void *data, size_t data_len,
-    nns_edge_data_destroy_cb destroy_cb)
+nns_edge_event_set_data (nns_edge_event_h event_h, void *data,
+    nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb)
 {
   nns_edge_event_s *ee;
 

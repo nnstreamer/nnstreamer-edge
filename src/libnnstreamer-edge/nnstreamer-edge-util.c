@@ -123,7 +123,7 @@ nns_edge_free (void *data)
  * @note Caller should release newly allocated memory using nns_edge_free().
  */
 void *
-nns_edge_memdup (const void *data, size_t size)
+nns_edge_memdup (const void *data, nns_size_t size)
 {
   void *mem = NULL;
 
@@ -160,7 +160,7 @@ nns_edge_strdup (const char *str)
  * @note Caller should release newly allocated string using nns_edge_free().
  */
 char *
-nns_edge_strndup (const char *str, size_t len)
+nns_edge_strndup (const char *str, nns_size_t len)
 {
   char *new_str = NULL;
 

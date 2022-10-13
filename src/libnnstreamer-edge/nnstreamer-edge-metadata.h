@@ -50,12 +50,12 @@ int nns_edge_metadata_copy (nns_edge_metadata_h dest_h, nns_edge_metadata_h src_
 /**
  * @brief Internal function to serialize the metadata. Caller should release the returned value using free().
  */
-int nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h, void **data, size_t *data_len);
+int nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h, void **data, nns_size_t *data_len);
 
 /**
  * @brief Internal function to deserialize memory into metadata.
  */
-int nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h, void *data, size_t data_len);
+int nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h, void *data, nns_size_t data_len);
 
 #ifdef __cplusplus
 }

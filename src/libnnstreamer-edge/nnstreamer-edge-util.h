@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "nnstreamer-edge.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,7 +94,7 @@ void nns_edge_free (void *data);
  * @brief Allocate new memory and copy bytes.
  * @note Caller should release newly allocated memory using nns_edge_free().
  */
-void *nns_edge_memdup (const void *data, size_t size);
+void *nns_edge_memdup (const void *data, nns_size_t size);
 
 /**
  * @brief Allocate new memory and copy string.
@@ -105,7 +106,7 @@ char *nns_edge_strdup (const char *str);
  * @brief Allocate new memory and copy bytes of string.
  * @note Caller should release newly allocated string using nns_edge_free().
  */
-char *nns_edge_strndup (const char *str, size_t len);
+char *nns_edge_strndup (const char *str, nns_size_t len);
 
 /**
  * @brief Allocate new memory and print formatted string.

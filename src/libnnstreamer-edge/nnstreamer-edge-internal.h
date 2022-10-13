@@ -29,7 +29,7 @@ extern "C" {
  */
 typedef struct {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   nns_edge_data_destroy_cb destroy_cb;
 } nns_edge_raw_data_s;
 
@@ -37,7 +37,7 @@ typedef struct {
  * @brief Internal data structure for edge event.
  */
 typedef struct {
-  unsigned int magic;
+  uint32_t magic;
   nns_edge_event_e event;
   nns_edge_raw_data_s data;
 } nns_edge_event_s;
@@ -46,7 +46,7 @@ typedef struct {
  * @brief Data structure for edge handle.
  */
 typedef struct {
-  unsigned int magic;
+  uint32_t magic;
   pthread_mutex_t lock;
   char *id;
   char *topic;
