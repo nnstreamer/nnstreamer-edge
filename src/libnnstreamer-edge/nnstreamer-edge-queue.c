@@ -7,6 +7,7 @@
  * @brief  Thread-safe queue.
  * @see    https://github.com/nnstreamer/nnstreamer-edge
  * @author Jaeyun Jung <jy1210.jung@samsung.com>
+ * @bug    No known bugs except for NYI items.
  */
 
 #include "nnstreamer-edge-log.h"
