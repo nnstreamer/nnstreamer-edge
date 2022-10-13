@@ -158,6 +158,7 @@ TEST(edge, connectLocal)
   nns_edge_set_info (server_h, "IP", "127.0.0.1");
   nns_edge_set_info (server_h, "PORT", val);
   nns_edge_set_info (server_h, "CAPS", "test server");
+  nns_edge_set_info (server_h, "QUEUE_SIZE", "10");
   _td_server->handle = server_h;
   nns_edge_free (val);
 
@@ -3309,6 +3310,40 @@ TEST(edgeQueue, getLengthInvalidParam01_n)
 
   len = nns_edge_queue_get_length (NULL);
   EXPECT_EQ (len, 0U);
+}
+
+/**
+ * @brief Set limit of queue.
+ */
+TEST(edgeQueue, setLimit)
+{
+  nns_edge_queue_h queue_h;
+  void *data;
+  unsigned int i, len;
+
+  data = malloc (sizeof (unsigned int));
+  ASSERT_TRUE (data != NULL);
+
+  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U));
+
+  for (i = 0; i < 5U; i++)
+    nns_edge_queue_push (queue_h, data, NULL);
+
+  len = nns_edge_queue_get_length (queue_h);
+  EXPECT_EQ (len, 3U);
+
+  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+
+  free (data);
+}
+
+/**
+ * @brief Set limit of queue - invalid param.
+ */
+TEST(edgeQueue, setLimitInvalidParam01_n)
+{
+  EXPECT_FALSE (nns_edge_queue_set_limit (NULL, 5U));
 }
 
 /**
