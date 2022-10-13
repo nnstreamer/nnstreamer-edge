@@ -68,7 +68,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   char *val;
   unsigned int i, count;
   int ret;
@@ -138,7 +138,7 @@ TEST(edge, connectLocal)
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
   nns_edge_data_h data_h;
-  size_t data_len;
+  nns_size_t data_len;
   void *data;
   unsigned int i, retry;
   int ret, port;
@@ -1136,7 +1136,7 @@ TEST(edgeData, copy)
 {
   nns_edge_data_h src_h, desc_h;
   void *data, *result;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   char *result_value;
   unsigned int i, result_count;
   int ret;
@@ -1250,7 +1250,7 @@ TEST(edgeData, addMaxData_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int i, ret;
 
   data_len = 10U * sizeof (int);
@@ -1280,7 +1280,7 @@ TEST(edgeData, addMaxData_n)
 TEST(edgeData, addInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1301,7 +1301,7 @@ TEST(edgeData, addInvalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1332,7 +1332,7 @@ TEST(edgeData, addInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1358,7 +1358,7 @@ TEST(edgeData, addInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1384,7 +1384,7 @@ TEST(edgeData, get)
 {
   nns_edge_data_h data_h;
   void *data, *result;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   unsigned int count;
   int ret;
 
@@ -1419,7 +1419,7 @@ TEST(edgeData, get)
 TEST(edgeData, getInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_get (NULL, 0, &data, &data_len);
@@ -1434,7 +1434,7 @@ TEST(edgeData, getInvalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data, *result;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1468,7 +1468,7 @@ TEST(edgeData, getInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data, *result;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1498,7 +1498,7 @@ TEST(edgeData, getInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1527,7 +1527,7 @@ TEST(edgeData, getInvalidParam05_n)
 {
   nns_edge_data_h data_h;
   void *data, *result;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1569,7 +1569,7 @@ TEST(edgeData, getCountInvalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   unsigned int count;
   int ret;
 
@@ -1604,7 +1604,7 @@ TEST(edgeData, getCountInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -1807,7 +1807,7 @@ TEST(edgeData, getInfoInvalidParam05_n)
 TEST(edgeData, serializeInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_serialize_meta (NULL, &data, &data_len);
@@ -1822,7 +1822,7 @@ TEST(edgeData, serializeInvalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -1849,7 +1849,7 @@ TEST(edgeData, serializeInvalidParam02_n)
 TEST(edgeData, serializeInvalidParam03_n)
 {
   nns_edge_data_h data_h;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -1894,7 +1894,7 @@ TEST(edgeData, deserializeInvalidParam01_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -1923,7 +1923,7 @@ TEST(edgeData, deserializeInvalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -1956,7 +1956,7 @@ TEST(edgeData, deserializeInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -1984,7 +1984,7 @@ TEST(edgeData, deserializeInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -2013,7 +2013,7 @@ TEST(edgeDataSerialize, normal)
 {
   nns_edge_data_h src_h, dest_h;
   void *data1, *data2, *result, *serialized_data;
-  size_t data_len, result_len, serialized_len;
+  nns_size_t data_len, result_len, serialized_len;
   char *result_value;
   unsigned int i, result_count;
   int ret;
@@ -2092,7 +2092,7 @@ TEST(edgeDataSerialize, normal)
 TEST(edgeDataSerialize, invalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_serialize (NULL, &data, &data_len);
@@ -2107,7 +2107,7 @@ TEST(edgeData, invalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -2134,7 +2134,7 @@ TEST(edgeData, invalidParam02_n)
 TEST(edgeDataSerialize, invalidParam03_n)
 {
   nns_edge_data_h data_h;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -2194,7 +2194,7 @@ TEST(edgeDataDeserialize, invalidParam02_n)
   nns_edge_data_h data_h;
   nns_edge_data_s *ed;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -2280,7 +2280,7 @@ TEST(edgeEvent, destroyInvalidParam02_n)
   nns_edge_event_h event_h;
   nns_edge_event_s *ee;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -2311,7 +2311,7 @@ TEST(edgeEvent, destroyInvalidParam02_n)
 TEST(edgeEvent, setDataInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -2331,7 +2331,7 @@ TEST(edgeEvent, setDataInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -2357,7 +2357,7 @@ TEST(edgeEvent, setDataInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -2384,7 +2384,7 @@ TEST(edgeEvent, setDataInvalidParam04_n)
   nns_edge_event_h event_h;
   nns_edge_event_s *ee;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U * sizeof (int);
@@ -2491,7 +2491,7 @@ TEST(edgeEvent, parseNewData)
   nns_edge_event_h event_h;
   nns_edge_data_h data_h, result_h;
   void *data, *result;
-  size_t data_len, result_len;
+  nns_size_t data_len, result_len;
   char *result_value;
   unsigned int i, count;
   int ret;
@@ -2985,7 +2985,7 @@ TEST(edgeMeta, serialize)
   nns_edge_metadata_h src, desc;
   char *value;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_metadata_create (&src);
@@ -3035,7 +3035,7 @@ TEST(edgeMeta, serialize)
 TEST(edgeMeta, serializeInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_metadata_serialize (NULL, &data, &data_len);
@@ -3048,7 +3048,7 @@ TEST(edgeMeta, serializeInvalidParam01_n)
 TEST(edgeMeta, serializeInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_metadata_create (&meta);
@@ -3086,7 +3086,7 @@ TEST(edgeMeta, serializeInvalidParam03_n)
 TEST(edgeMeta, deserializeInvalidParam01_n)
 {
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U + sizeof (unsigned int);
@@ -3106,7 +3106,7 @@ TEST(edgeMeta, deserializeInvalidParam01_n)
 TEST(edgeMeta, deserializeInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U + sizeof (unsigned int);
@@ -3128,7 +3128,7 @@ TEST(edgeMeta, deserializeInvalidParam03_n)
 {
   nns_edge_metadata_h meta;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   int ret;
 
   data_len = 10U + sizeof (unsigned int);
@@ -3414,7 +3414,7 @@ _test_edge_hybrid_event_cb (nns_edge_event_h event_h, void *user_data)
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   char *val;
   unsigned int i, count;
   int ret;
@@ -3494,7 +3494,7 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_h server_h, client_h;
   ne_test_data_s *_td_server, *_td_client;
   nns_edge_data_h data_h;
-  size_t data_len;
+  nns_size_t data_len;
   void *data;
   unsigned int i, retry;
   int ret = 0;

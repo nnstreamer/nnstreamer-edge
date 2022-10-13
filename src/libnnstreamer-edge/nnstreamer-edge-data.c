@@ -176,7 +176,7 @@ done:
  * @brief Add raw data into nnstreamer edge data.
  */
 int
-nns_edge_data_add (nns_edge_data_h data_h, void *data, size_t data_len,
+nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len,
     nns_edge_data_destroy_cb destroy_cb)
 {
   nns_edge_data_s *ed;
@@ -221,7 +221,7 @@ nns_edge_data_add (nns_edge_data_h data_h, void *data, size_t data_len,
  */
 int
 nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data,
-    size_t *data_len)
+    nns_size_t * data_len)
 {
   nns_edge_data_s *ed;
 
@@ -371,7 +371,7 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
  */
 int
 nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
-    size_t *data_len)
+    nns_size_t * data_len)
 {
   nns_edge_data_s *ed;
   int ret;
@@ -401,7 +401,7 @@ nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
  */
 int
 nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
-    size_t data_len)
+    nns_size_t data_len)
 {
   nns_edge_data_s *ed;
   int ret;
@@ -430,12 +430,12 @@ nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
  * @brief Serialize edge data (meta data + raw data).
  */
 int
-nns_edge_data_serialize (nns_edge_data_h data_h, void **data, size_t *len)
+nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
 {
   nns_edge_data_s *ed;
   nns_edge_data_header_s edata_header;
   void *meta_serialized = NULL;
-  size_t total, header_len, data_len;
+  nns_size_t total, header_len, data_len;
   char *serialized, *ptr;
   unsigned int n;
   int ret;
@@ -509,7 +509,7 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, void *data)
   nns_edge_data_header_s *header;
   int ret;
   unsigned int n;
-  size_t meta_len;
+  nns_size_t meta_len;
   char *ptr;
 
   ed = (nns_edge_data_s *) data_h;

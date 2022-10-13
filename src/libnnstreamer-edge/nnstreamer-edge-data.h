@@ -26,9 +26,9 @@ extern "C" {
  * @brief Internal data structure for edge data.
  */
 typedef struct {
-  unsigned int magic;
+  uint32_t magic;
   pthread_mutex_t lock;
-  unsigned int num;
+  uint32_t num;
   nns_edge_raw_data_s data[NNS_EDGE_DATA_LIMIT];
   nns_edge_metadata_h metadata;
 } nns_edge_data_s;
@@ -37,9 +37,9 @@ typedef struct {
  * @brief Internal data structure for the header of the serialzied edge data.
  */
 typedef struct {
-  unsigned int num_mem;
-  size_t data_len[NNS_EDGE_DATA_LIMIT];
-  size_t meta_len;
+  uint32_t num_mem;
+  nns_size_t data_len[NNS_EDGE_DATA_LIMIT];
+  nns_size_t meta_len;
 } nns_edge_data_header_s;
 
 /**
@@ -52,19 +52,19 @@ int nns_edge_data_is_valid (nns_edge_data_h data_h);
  * @brief Serialize metadata in edge data.
  * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
  */
-int nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data, size_t *data_len);
+int nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data, nns_size_t *data_len);
 
 /**
  * @brief Deserialize metadata in edge data.
  * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
  */
-int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data, size_t data_len);
+int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data, nns_size_t data_len);
 
 /**
  * @brief Serialize entire edge data (meta data + raw data).
  * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
  */
-int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, size_t *data_len);
+int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t *data_len);
 
 /**
  * @brief Deserialize entire edge data (meta data + raw data).

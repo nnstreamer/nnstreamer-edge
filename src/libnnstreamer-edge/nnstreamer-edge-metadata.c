@@ -33,7 +33,7 @@ struct _nns_edge_metadata_node_s
  */
 typedef struct
 {
-  unsigned int list_len;
+  uint32_t list_len;
   nns_edge_metadata_node_s *list;
 } nns_edge_metadata_s;
 
@@ -265,12 +265,13 @@ nns_edge_metadata_copy (nns_edge_metadata_h dest_h, nns_edge_metadata_h src_h)
  */
 int
 nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
-    void **data, size_t *data_len)
+    void **data, nns_size_t * data_len)
 {
   nns_edge_metadata_s *meta;
   nns_edge_metadata_node_s *node;
   char *serialized, *ptr;
-  size_t total, len;
+  nns_size_t total;
+  uint32_t len;
 
   meta = (nns_edge_metadata_s *) metadata_h;
 
@@ -286,7 +287,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
   if (meta->list_len == 0)
     return NNS_EDGE_ERROR_NONE;
 
-  total = len = sizeof (unsigned int);
+  total = len = sizeof (uint32_t);
 
   node = meta->list;
   while (node) {
@@ -299,7 +300,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
 
   /* length + list of key-value pair */
-  ((unsigned int *) serialized)[0] = meta->list_len;
+  ((uint32_t *) serialized)[0] = meta->list_len;
   ptr += len;
 
   node = meta->list;
@@ -328,12 +329,11 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
  */
 int
 nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
-    void *data, size_t data_len)
+    void *data, nns_size_t data_len)
 {
   nns_edge_metadata_s *meta;
   char *key, *value;
-  size_t cur;
-  unsigned int total;
+  nns_size_t cur, total;
   int ret;
 
   meta = (nns_edge_metadata_s *) metadata_h;
@@ -347,9 +347,9 @@ nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
   nns_edge_metadata_free (meta);
 
   /* length + list of key-value pair */
-  total = ((unsigned int *) data)[0];
+  total = ((uint32_t *) data)[0];
 
-  cur = sizeof (unsigned int);
+  cur = sizeof (uint32_t);
   while (cur < data_len || meta->list_len < total) {
     key = (char *) data + cur;
     cur += (strlen (key) + 1);

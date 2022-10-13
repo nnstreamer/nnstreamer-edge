@@ -13,6 +13,7 @@
 #ifndef __NNSTREAMER_EDGE_H__
 #define __NNSTREAMER_EDGE_H__
 
+#include <stdint.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +25,8 @@ extern "C" {
 typedef void *nns_edge_h;
 typedef void *nns_edge_event_h;
 typedef void *nns_edge_data_h;
+typedef uint64_t nns_size_t;
+typedef int64_t nns_ssize_t;
 
 /**
  * @brief The maximum number of data instances that nnstreamer-edge data may have.
@@ -389,7 +392,7 @@ int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-int nns_edge_data_add (nns_edge_data_h data_h, void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb);
+int nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
 
 /**
  * @brief Get the n'th edge data.
@@ -403,7 +406,7 @@ int nns_edge_data_add (nns_edge_data_h data_h, void *data, size_t data_len, nns_
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-int nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data, size_t *data_len);
+int nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data, nns_size_t *data_len);
 
 /**
  * @brief Get the number of edge data in handle.

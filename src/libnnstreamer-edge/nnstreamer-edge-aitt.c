@@ -181,7 +181,7 @@ nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length)
  */
 static int
 _nns_edge_invoke_event_cb (nns_edge_handle_s * eh, nns_edge_event_e event,
-    void *data, size_t data_len, nns_edge_data_destroy_cb destroy_cb)
+    void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb)
 {
   nns_edge_event_h event_h;
   int ret;

@@ -64,7 +64,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
   nns_edge_data_h data_h;
   void *data;
-  size_t data_len;
+  nns_size_t data_len;
   unsigned int i, count;
   int ret;
 
@@ -135,7 +135,7 @@ TEST(edgeAitt, connectLocal)
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
   nns_edge_data_h data_h;
-  size_t data_len;
+  nns_size_t data_len;
   void *data1, *data2;
   unsigned int i, retry;
   int ret, port;
