@@ -50,6 +50,14 @@ bool nns_edge_queue_destroy (nns_edge_queue_h handle);
 unsigned int nns_edge_queue_get_length (nns_edge_queue_h handle);
 
 /**
+ * @brief Set the max length of the queue.
+ * @param[in] handle The queue handle.
+ * @param[in] limit The max data in queue. Default 0 means unlimited.
+ * @return true on success.
+ */
+bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit);
+
+/**
  * @brief Add new data into queue.
  * @param[in] handle The queue handle.
  * @param[in] data The data to be added.

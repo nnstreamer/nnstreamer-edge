@@ -36,6 +36,7 @@ typedef struct
   pthread_mutex_t lock;
   pthread_cond_t cond;
 
+  unsigned int max_data; /**< Max data in queue (default 0 means unlimited) */
   unsigned int length;
   nns_edge_queue_data_s *head;
   nns_edge_queue_data_s *tail;
@@ -148,6 +149,26 @@ nns_edge_queue_get_length (nns_edge_queue_h handle)
 }
 
 /**
+ * @brief Set the max length of the queue.
+ */
+bool
+nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit)
+{
+  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+
+  if (!q) {
+    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+    return false;
+  }
+
+  nns_edge_lock (q);
+  q->max_data = limit;
+  nns_edge_unlock (q);
+
+  return true;
+}
+
+/**
  * @brief Add new data into queue.
  */
 bool
@@ -177,12 +198,17 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
   qdata->destroy = destroy;
 
   nns_edge_lock (q);
-  if (!q->head)
-    q->head = qdata;
-  if (q->tail)
-    q->tail->next = qdata;
-  q->tail = qdata;
-  q->length++;
+  if (q->max_data > 0U && q->length >= q->max_data) {
+    nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
+        q->max_data);
+  } else {
+    if (!q->head)
+      q->head = qdata;
+    if (q->tail)
+      q->tail->next = qdata;
+    q->tail = qdata;
+    q->length++;
+  }
   nns_edge_cond_signal (q);
   nns_edge_unlock (q);
 
