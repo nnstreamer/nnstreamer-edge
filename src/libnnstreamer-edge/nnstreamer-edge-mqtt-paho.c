@@ -2,7 +2,7 @@
 /**
  * Copyright (C) 2022 Samsung Electronics Co., Ltd. All Rights Reserved.
  *
- * @file   nnstreamer-edge-mqtt.c
+ * @file   nnstreamer-edge-mqtt-paho.c
  * @date   11 May 2022
  * @brief  Internal functions to support MQTT protocol (Paho Asynchronous MQTT C Client Library).
  * @see    https://github.com/nnstreamer/nnstreamer
