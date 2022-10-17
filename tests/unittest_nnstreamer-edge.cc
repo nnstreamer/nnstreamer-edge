@@ -3548,7 +3548,7 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_set_event_callback (server_h, _test_edge_hybrid_event_cb, _td_server);
   nns_edge_set_info (server_h, "HOST", "localhost");
   nns_edge_set_info (server_h, "PORT", "0");
-  nns_edge_set_info (server_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (server_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (server_h, "DEST_PORT", "1883");
   nns_edge_set_info (server_h, "TOPIC", "temp-mqtt-topic");
   nns_edge_set_info (server_h, "CAPS", "test server");
@@ -3571,7 +3571,7 @@ TEST(edgeMqtt, connectLocal)
 
   usleep (200000);
 
-  ret = nns_edge_connect (client_h, "tcp://localhost", 1883);
+  ret = nns_edge_connect (client_h, "127.0.0.1", 1883);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   usleep (10000);
 
@@ -3655,7 +3655,7 @@ TEST(edgeMqtt, connectInvalidParam2_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_mqtt_connect (edge_h, NULL);
@@ -3679,7 +3679,7 @@ TEST(edgeMqtt, connectInvalidParam3_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_mqtt_connect (edge_h, "");
@@ -3779,7 +3779,7 @@ TEST(edgeMqtt, publishInvalidParam2_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_start (edge_h);
@@ -3808,7 +3808,7 @@ TEST(edgeMqtt, publishInvalidParam3_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_start (edge_h);
@@ -3837,7 +3837,7 @@ TEST(edgeMqtt, publishInvalidParam4_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_mqtt_publish (edge_h, msg, strlen (msg) + 1);
@@ -3912,7 +3912,7 @@ TEST(edgeMqtt, getMessageInvalidParam2_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_start (edge_h);
@@ -3940,7 +3940,7 @@ TEST(edgeMqtt, getMessageWithinTimeout_n)
   ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  nns_edge_set_info (edge_h, "DEST_HOST", "tcp://localhost");
+  nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
   ret = nns_edge_mqtt_connect (edge_h, "temp-mqtt-topic");
