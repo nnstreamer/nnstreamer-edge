@@ -290,7 +290,7 @@ int nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h);
  * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP address of the broker.
  * DEST_PORT            | Port of the destination node. In case of TCP connection, it is the port number of the destination node, and in the case of Hybrid or AITT connection, it is the port number of the broker. The value should be 0 or higher.
  * TOPIC                | Topic used to publish/subscribe to/from the broker.
- * QUEUE_SIZE           | Max number of data in the queue, when sending edge data to other node. Default 0 means unlimited.
+ * QUEUE_SIZE           | Max number of data in the queue, when sending edge data to other node. Default 0 means unlimited. N:<leaky [NEW, OLD]> where leaky 'OLD' drops old buffer (default NEW). (e.g., QUEUE_SIZE=5:OLD drops old buffer and pushes new data when queue size reaches 5.)
  * ID or CLIENT_ID      | Unique identifier of the edge handle or client ID. (Read-only)
  */
 int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
