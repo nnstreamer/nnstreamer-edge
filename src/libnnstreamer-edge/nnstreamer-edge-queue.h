@@ -29,6 +29,15 @@ typedef void *nns_edge_queue_h;
 typedef void (*nns_edge_queue_data_destroy_cb) (void *data);
 
 /**
+ * @brief Enumeration for the queue leaky option.
+ */
+typedef enum {
+  NNS_EDGE_QUEUE_LEAK_UNKNOWN = 0,
+  NNS_EDGE_QUEUE_LEAK_NEW,
+  NNS_EDGE_QUEUE_LEAK_OLD
+} nns_edge_queue_leak_e;
+
+/**
  * @brief Create queue.
  * @param[out] handle Newly created handle.
  * @return true on success.
@@ -53,9 +62,10 @@ unsigned int nns_edge_queue_get_length (nns_edge_queue_h handle);
  * @brief Set the max length of the queue.
  * @param[in] handle The queue handle.
  * @param[in] limit The max data in queue. Default 0 means unlimited.
+ * @param[in] leaky The queue leaky option.
  * @return true on success.
  */
-bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit);
+bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_edge_queue_leak_e leaky);
 
 /**
  * @brief Add new data into queue.

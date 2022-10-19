@@ -37,6 +37,7 @@ typedef struct
   pthread_mutex_t lock;
   pthread_cond_t cond;
 
+  nns_edge_queue_leak_e leaky;
   unsigned int max_data; /**< Max data in queue (default 0 means unlimited) */
   unsigned int length;
   nns_edge_queue_data_s *head;
@@ -44,22 +45,27 @@ typedef struct
 } nns_edge_queue_s;
 
 /**
- * @brief Pop data from queue.
+ * @brief Pop data from queue. If the param 'clear' is true, release old data and return null.
  * @note This function should be called with lock.
  */
 static void *
-_pop_data (nns_edge_queue_s * q)
+_pop_data (nns_edge_queue_s * q, bool clear)
 {
   nns_edge_queue_data_s *qdata;
   void *data = NULL;
 
   qdata = q->head;
   if (qdata) {
-    data = qdata->data;
-
     q->head = qdata->next;
     if ((--q->length) == 0U)
       q->head = q->tail = NULL;
+
+    if (clear) {
+      if (qdata->destroy)
+        qdata->destroy (qdata->data);
+    } else {
+      data = qdata->data;
+    }
 
     free (qdata);
   }
@@ -88,6 +94,7 @@ nns_edge_queue_create (nns_edge_queue_h * handle)
 
   nns_edge_lock_init (q);
   nns_edge_cond_init (q);
+  q->leaky = NNS_EDGE_QUEUE_LEAK_NEW;
 
   *handle = q;
   return true;
@@ -153,7 +160,8 @@ nns_edge_queue_get_length (nns_edge_queue_h handle)
  * @brief Set the max length of the queue.
  */
 bool
-nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit)
+nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
+    nns_edge_queue_leak_e leaky)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
@@ -164,6 +172,8 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit)
 
   nns_edge_lock (q);
   q->max_data = limit;
+  if (leaky != NNS_EDGE_QUEUE_LEAK_UNKNOWN)
+    q->leaky = leaky;
   nns_edge_unlock (q);
 
   return true;
@@ -178,6 +188,7 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   nns_edge_queue_data_s *qdata;
+  bool pushed = false;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
@@ -200,20 +211,29 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
 
   nns_edge_lock (q);
   if (q->max_data > 0U && q->length >= q->max_data) {
-    nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
-        q->max_data);
-  } else {
-    if (!q->head)
-      q->head = qdata;
-    if (q->tail)
-      q->tail->next = qdata;
-    q->tail = qdata;
-    q->length++;
+    /* Clear old data in queue if leaky option is 'old'. */
+    if (q->leaky == NNS_EDGE_QUEUE_LEAK_OLD) {
+      _pop_data (q, true);
+    } else {
+      nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
+          q->max_data);
+      goto done;
+    }
   }
+
+  if (!q->head)
+    q->head = qdata;
+  if (q->tail)
+    q->tail->next = qdata;
+  q->tail = qdata;
+  q->length++;
+  pushed = true;
+
+done:
   nns_edge_cond_signal (q);
   nns_edge_unlock (q);
 
-  return true;
+  return pushed;
 }
 
 /**
@@ -235,7 +255,7 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data)
   }
 
   nns_edge_lock (q);
-  *data = _pop_data (q);
+  *data = _pop_data (q, false);
   nns_edge_unlock (q);
 
   return (*data != NULL);
@@ -277,7 +297,7 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
     }
   }
 
-  *data = _pop_data (q);
+  *data = _pop_data (q, false);
   nns_edge_unlock (q);
 
   return (*data != NULL);

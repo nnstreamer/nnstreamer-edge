@@ -1772,8 +1772,30 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     nns_edge_loge ("Cannot update %s.", key);
     ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   } else if (0 == strcasecmp (key, "QUEUE_SIZE")) {
-    unsigned int limit = (unsigned int) strtoull (value, NULL, 10);
-    nns_edge_queue_set_limit (eh->send_queue, limit);
+    char *s;
+    unsigned int limit;
+    nns_edge_queue_leak_e leaky = NNS_EDGE_QUEUE_LEAK_UNKNOWN;
+
+    s = strstr (value, ":");
+    if (s) {
+      char *v = nns_edge_strndup (value, s - value);
+
+      limit = (unsigned int) strtoull (v, NULL, 10);
+      nns_edge_free (v);
+
+      if (strcasecmp (s + 1, "NEW") == 0) {
+        leaky = NNS_EDGE_QUEUE_LEAK_NEW;
+      } else if (strcasecmp (s + 1, "OLD") == 0) {
+        leaky = NNS_EDGE_QUEUE_LEAK_OLD;
+      } else {
+        nns_edge_loge ("Cannot set queue leaky option (%s).", s + 1);
+        ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+      }
+    } else {
+      limit = (unsigned int) strtoull (value, NULL, 10);
+    }
+
+    nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
   } else {
     ret = nns_edge_metadata_set (eh->metadata, key, value);
   }

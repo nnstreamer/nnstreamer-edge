@@ -158,7 +158,7 @@ TEST(edge, connectLocal)
   nns_edge_set_info (server_h, "IP", "127.0.0.1");
   nns_edge_set_info (server_h, "PORT", val);
   nns_edge_set_info (server_h, "CAPS", "test server");
-  nns_edge_set_info (server_h, "QUEUE_SIZE", "10");
+  nns_edge_set_info (server_h, "QUEUE_SIZE", "10:OLD");
   _td_server->handle = server_h;
   nns_edge_free (val);
 
@@ -820,6 +820,26 @@ TEST(edge, setInfoInvalidParam08_n)
   ret = nns_edge_set_info (edge_h, "port", "0");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "port", "77777");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set info - invalid param.
+ */
+TEST(edge, setInfoInvalidParam09_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Invalid option */
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "15:INVALID_LEAKY");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
@@ -3325,7 +3345,7 @@ TEST(edgeQueue, setLimit)
   ASSERT_TRUE (data != NULL);
 
   EXPECT_TRUE (nns_edge_queue_create (&queue_h));
-  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U));
+  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW));
 
   for (i = 0; i < 5U; i++)
     nns_edge_queue_push (queue_h, data, NULL);
@@ -3339,11 +3359,88 @@ TEST(edgeQueue, setLimit)
 }
 
 /**
+ * @brief Set leaky option of queue.
+ */
+TEST(edgeQueue, setLeaky)
+{
+  nns_edge_queue_h queue_h;
+  void *data;
+  unsigned int i, len;
+  bool res;
+
+  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+
+  /* leaky option new */
+  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW));
+
+  for (i = 0; i < 5U; i++) {
+    data = malloc (sizeof (unsigned int));
+    ASSERT_TRUE (data != NULL);
+
+    *((unsigned int *) data) = i + 1;
+
+    res = nns_edge_queue_push (queue_h, data, free);
+    if (i < 3U) {
+      EXPECT_TRUE (res);
+    } else {
+      EXPECT_FALSE (res);
+      free (data);
+    }
+  }
+
+  len = nns_edge_queue_get_length (queue_h);
+  EXPECT_EQ (len, 3U);
+
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 1U);
+  free (data);
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 2U);
+  free (data);
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 3U);
+  free (data);
+
+  len = nns_edge_queue_get_length (queue_h);
+  EXPECT_EQ (len, 0U);
+
+  /* leaky option old */
+  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_OLD));
+
+  for (i = 0; i < 5U; i++) {
+    data = malloc (sizeof (unsigned int));
+    ASSERT_TRUE (data != NULL);
+
+    *((unsigned int *) data) = i + 1;
+
+    EXPECT_TRUE (nns_edge_queue_push (queue_h, data, free));
+  }
+
+  len = nns_edge_queue_get_length (queue_h);
+  EXPECT_EQ (len, 3U);
+
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 3U);
+  free (data);
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 4U);
+  free (data);
+  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data));
+  EXPECT_EQ (*((unsigned int *) data), 5U);
+  free (data);
+
+  len = nns_edge_queue_get_length (queue_h);
+  EXPECT_EQ (len, 0U);
+
+  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+}
+
+/**
  * @brief Set limit of queue - invalid param.
  */
 TEST(edgeQueue, setLimitInvalidParam01_n)
 {
-  EXPECT_FALSE (nns_edge_queue_set_limit (NULL, 5U));
+  EXPECT_FALSE (nns_edge_queue_set_limit (NULL, 5U, NNS_EDGE_QUEUE_LEAK_NEW));
 }
 
 /**
@@ -3552,6 +3649,7 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_set_info (server_h, "DEST_PORT", "1883");
   nns_edge_set_info (server_h, "TOPIC", "temp-mqtt-topic");
   nns_edge_set_info (server_h, "CAPS", "test server");
+  nns_edge_set_info (server_h, "QUEUE_SIZE", "10:NEW");
   _td_server->handle = server_h;
 
   /* Prepare client */
