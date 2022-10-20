@@ -74,6 +74,12 @@ HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %endif
 %endif
 
+%if %{with tizen}
+%define enable_tizen -DENABLE_TIZEN=ON
+%else
+%define enable_tizen -DENABLE_TIZEN=OFF
+%endif
+
 %if 0%{?unit_test}
 %define enable_unittest -DENABLE_TEST=ON
 %else
@@ -118,7 +124,7 @@ pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DVERSION=%{version} \
-    %{enable_unittest} %{enable_mqtt} %{enable_aitt}
+    %{enable_tizen} %{enable_unittest} %{enable_mqtt} %{enable_aitt}
 
 make %{?jobs:-j%jobs}
 popd
