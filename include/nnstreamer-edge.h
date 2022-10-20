@@ -73,6 +73,18 @@ typedef enum {
 } nns_edge_node_type_e;
 
 /**
+ * @brief Enumeration for log message.
+ */
+typedef enum {
+  NNS_EDGE_LOG_DEBUG = 0,
+  NNS_EDGE_LOG_INFO,
+  NNS_EDGE_LOG_WARNING,
+  NNS_EDGE_LOG_ERROR,
+  NNS_EDGE_LOG_FATAL,
+  NNS_EDGE_LOG_NONE
+} nns_edge_log_level_e;
+
+/**
  * @brief Callback for the nnstreamer edge event.
  * @note This callback will suspend data stream. Do not spend too much time in the callback.
  * @return User should return NNS_EDGE_ERROR_NONE if an event is successfully handled.
@@ -443,6 +455,12 @@ int nns_edge_data_set_info (nns_edge_data_h data_h, const char *key, const char 
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value);
+
+/**
+ * @brief Set the logging level. Default value is NNS_EDGE_LOG_INFO.
+ * @param[in] level The log level to print out.
+ */
+void nns_edge_set_log_level (nns_edge_log_level_e level);
 
 #ifdef __cplusplus
 }
