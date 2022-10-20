@@ -12,6 +12,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"

@@ -387,12 +387,8 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
     nns_edge_loge ("Failed to receive command, invalid command.");
     return NNS_EDGE_ERROR_IO;
   }
-  /**
-   * @todo Too many unnecessary debug messages are printed. Currently, all messages,
-   *       including debugs and info, are printed regardless of the log level.
-   *       Let's print the log message according to the log level later.
-   */
-  // nns_edge_logd ("Received command:%d (num:%u)", cmd->info.cmd, cmd->info.num);
+
+  nns_edge_logd ("Received command:%d (num:%u)", cmd->info.cmd, cmd->info.num);
   if (cmd->info.num >= NNS_EDGE_DATA_LIMIT) {
     nns_edge_loge ("Invalid request, the max memories for data transfer is %d.",
         NNS_EDGE_DATA_LIMIT);

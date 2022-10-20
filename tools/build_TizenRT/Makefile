@@ -57,11 +57,12 @@ ASRCS		=
 CSRCS		= src/libnnstreamer-edge/nnstreamer-edge-data.c \
 		src/libnnstreamer-edge/nnstreamer-edge-event.c \
 		src/libnnstreamer-edge/nnstreamer-edge-internal.c \
+		src/libnnstreamer-edge/nnstreamer-edge-log.c \
 		src/libnnstreamer-edge/nnstreamer-edge-metadata.c \
 		src/libnnstreamer-edge/nnstreamer-edge-queue.c \
 		src/libnnstreamer-edge/nnstreamer-edge-util.c
 
-CFLAGS += -I ./include
+CFLAGS += -I ./include -DDEBUG=0
 
 # TODO Include sources - Paho MQTT and AITT library.
 # Paho MQTT library
