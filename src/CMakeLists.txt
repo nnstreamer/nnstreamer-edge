@@ -11,10 +11,10 @@ SET(NNS_EDGE_SRCS
 )
 
 IF(MQTT_SUPPORT)
-    IF(PAHO_MQTT_LIB)
-        SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-mqtt-paho.c)
-    ELSE()
+    IF(MOSQUITTO_LIB)
         SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-mqtt-mosquitto.c)
+    ELSE()
+        SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-mqtt-paho.c)
     ENDIF()
 ENDIF()
 
