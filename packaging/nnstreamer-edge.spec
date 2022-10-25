@@ -33,7 +33,7 @@ BuildRequires:  pkgconfig(dlog)
 %endif
 
 %if 0%{?mqtt_support}
-BuildRequires:  pkgconfig(paho-mqtt-c)
+BuildRequires:  pkgconfig(libmosquitto)
 %endif
 
 %if 0%{?aitt_support}
