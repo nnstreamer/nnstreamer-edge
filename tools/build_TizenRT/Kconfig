@@ -6,6 +6,7 @@
 config NNSTREAMER_EDGE
 	bool "nnstreamer-edge library"
 	default n
+	depends on NET && NETUTILS_MQTT
 	---help---
 		Enables the nnstreamer-edge library.
 		nnstreamer-edge provides interfaces to support data connection and 

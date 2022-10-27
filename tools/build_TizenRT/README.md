@@ -50,9 +50,7 @@ build_targets=(
 	"artik055s/audio"
 	"artik053/st_things"
 	"artik053/tc"
-	"qemu/build_test"
 	"imxrt1020-evk/loadable_elf_apps"
-	"imxrt1050-evk/loadable_elf_apps"
 	"rtl8721csm/hello"
 	"rtl8721csm/loadable_apps"
 	"rtl8721csm/tc"
@@ -60,6 +58,7 @@ build_targets=(
 
 # Add configuration (TizenRT/build/configs/<target>/defconfig).
 CONFIG_NNSTREAMER_EDGE=y
+CONFIG_NETUTILS_MQTT=y
 ```
 
 3. Run build-test.
