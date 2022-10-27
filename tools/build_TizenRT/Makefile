@@ -64,10 +64,13 @@ CSRCS		= src/libnnstreamer-edge/nnstreamer-edge-data.c \
 
 CFLAGS += -I ./include -DDEBUG=0
 
-# TODO Include sources - Paho MQTT and AITT library.
-# Paho MQTT library
-# CSRCS += nnstreamer-edge-mqtt.c
-# CFLAGS += -DENABLE_MQTT=1
+ifeq ($(CONFIG_NETUTILS_MQTT),y)
+	CFLAGS += -I ../mosquitto
+	CFLAGS += -DENABLE_MQTT=1
+	CSRCS += src/libnnstreamer-edge/nnstreamer-edge-mqtt-mosquitto.c
+endif
+
+# TODO Include sources - AITT library.
 # AITT library
 # CSRCS += nnstreamer-edge-aitt.c
 # CFLAGS += -DENABLE_AITT=1
