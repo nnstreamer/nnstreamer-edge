@@ -519,9 +519,7 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
 
   /* Stop and clear the message thread. */
   if (conn->msg_thread) {
-    if (conn->running) {
-      conn->running = false;
-    }
+    conn->running = false;
     pthread_join (conn->msg_thread, NULL);
     conn->msg_thread = 0;
   }
@@ -1411,10 +1409,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   }
 
   if (eh->listener_thread) {
-    if (eh->listening) {
-      eh->listening = false;
-    }
-
+    eh->listening = false;
     pthread_join (eh->listener_thread, NULL);
     eh->listener_thread = 0;
   }
