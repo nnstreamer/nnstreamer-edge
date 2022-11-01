@@ -43,6 +43,11 @@ typedef struct {
 } nns_edge_data_header_s;
 
 /**
+ * @brief Internal wrapper function of the nns_edge_data_destory() to avoid build warning of the incompatibe type casting. (See nns_edge_data_destroy_cb())
+ */
+void nns_edge_data_release_handle (void *data);
+
+/**
  * @brief Validate edge data handle.
  * @note This is internal function, DO NOT export this.
  */
