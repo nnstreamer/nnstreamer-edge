@@ -16,17 +16,13 @@
 
 #include <stdbool.h>
 #include <sys/time.h>
+#include "nnstreamer-edge.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 typedef void *nns_edge_queue_h;
-
-/**
- * @brief Callback called when data in queue is released.
- */
-typedef void (*nns_edge_queue_data_destroy_cb) (void *data);
 
 /**
  * @brief Enumeration for the queue leaky option.
@@ -74,7 +70,7 @@ bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_
  * @param[in] destroy Nullable, the callback function to release data.
  * @return true on success.
  */
-bool nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_edge_queue_data_destroy_cb destroy);
+bool nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_edge_data_destroy_cb destroy);
 
 /**
  * @brief Remove and return the first data in queue.
