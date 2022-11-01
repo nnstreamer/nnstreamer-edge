@@ -25,7 +25,7 @@ typedef struct _nns_edge_queue_data_s nns_edge_queue_data_s;
 struct _nns_edge_queue_data_s
 {
   void *data;
-  nns_edge_queue_data_destroy_cb destroy;
+  nns_edge_data_destroy_cb destroy;
   nns_edge_queue_data_s *next;
 };
 
@@ -107,7 +107,6 @@ bool
 nns_edge_queue_destroy (nns_edge_queue_h handle)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
-  nns_edge_queue_data_s *qdata;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
@@ -116,16 +115,10 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
 
   nns_edge_lock (q);
   nns_edge_cond_signal (q);
-  while ((qdata = q->head) != NULL) {
-    if (qdata->destroy)
-      qdata->destroy (qdata->data);
 
-    q->head = qdata->next;
-    free (qdata);
-  }
+  while (q->length > 0U)
+    _pop_data (q, true);
 
-  q->head = q->tail = NULL;
-  q->length = 0U;
   nns_edge_unlock (q);
 
   nns_edge_cond_destroy (q);
@@ -184,7 +177,7 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
  */
 bool
 nns_edge_queue_push (nns_edge_queue_h handle, void *data,
-    nns_edge_queue_data_destroy_cb destroy)
+    nns_edge_data_destroy_cb destroy)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   nns_edge_queue_data_s *qdata;
@@ -200,15 +193,6 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
     return false;
   }
 
-  qdata = calloc (1, sizeof (nns_edge_queue_data_s));
-  if (!qdata) {
-    nns_edge_loge ("[Queue] Failed to allocate new memory for data.");
-    return false;
-  }
-
-  qdata->data = data;
-  qdata->destroy = destroy;
-
   nns_edge_lock (q);
   if (q->max_data > 0U && q->length >= q->max_data) {
     /* Clear old data in queue if leaky option is 'old'. */
@@ -220,6 +204,15 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
       goto done;
     }
   }
+
+  qdata = calloc (1, sizeof (nns_edge_queue_data_s));
+  if (!qdata) {
+    nns_edge_loge ("[Queue] Failed to allocate new memory for data.");
+    goto done;
+  }
+
+  qdata->data = data;
+  qdata->destroy = destroy;
 
   if (!q->head)
     q->head = qdata;
