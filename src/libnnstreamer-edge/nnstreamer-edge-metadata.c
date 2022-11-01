@@ -270,8 +270,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
   nns_edge_metadata_s *meta;
   nns_edge_metadata_node_s *node;
   char *serialized, *ptr;
-  nns_size_t total;
-  uint32_t len;
+  nns_size_t total, len;
 
   meta = (nns_edge_metadata_s *) metadata_h;
 
@@ -287,6 +286,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
   if (meta->list_len == 0)
     return NNS_EDGE_ERROR_NONE;
 
+  /* length, # of metadata */
   total = len = sizeof (uint32_t);
 
   node = meta->list;
