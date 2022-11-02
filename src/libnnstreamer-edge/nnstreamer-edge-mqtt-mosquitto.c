@@ -10,6 +10,10 @@
  * @bug    No known bugs except for NYI items
  */
 
+#if !defined(ENABLE_MQTT)
+#error "This file can be built with mosquitto library."
+#endif
+
 #include <mosquitto.h>
 #include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-log.h"
@@ -43,7 +47,7 @@ on_message_callback (struct mosquitto *client, void *data,
   }
 
   if (0 >= message->payloadlen) {
-    nns_edge_logw ("Invalid payload lenth: %d", message->payloadlen);
+    nns_edge_logw ("Invalid payload length: %d", message->payloadlen);
     return;
   }
 
@@ -67,9 +71,10 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
   int mret;
   char *client_id;
   struct mosquitto *handle;
-  int ver = MQTT_PROTOCOL_V311;
+  int ver = MQTT_PROTOCOL_V311; /** @todo check mqtt version (TizenRT repo) */
 
-  mosquitto_lib_init ();
+  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
+      eh->id, eh->dest_host, eh->dest_port);
 
   bh = (nns_edge_broker_s *) calloc (1, sizeof (nns_edge_broker_s));
   if (!bh) {
@@ -77,6 +82,7 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
+  mosquitto_lib_init ();
   client_id = nns_edge_strdup_printf ("nns_edge_%s_%u", eh->id, getpid ());
 
   handle = mosquitto_new (client_id, TRUE, NULL);
@@ -84,9 +90,7 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
 
   if (!handle) {
     nns_edge_loge ("Failed to create mosquitto client instance.");
-    SAFE_FREE (bh);
-    mosquitto_lib_cleanup ();
-    return NNS_EDGE_ERROR_UNKNOWN;
+    goto error;
   }
 
   mosquitto_user_data_set (handle, bh);
@@ -105,19 +109,26 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
     goto error;
   }
 
-  bh->topic = nns_edge_strdup (topic);
-  bh->mqtt_h = handle;
-  bh->connected = false;
-  nns_edge_queue_create (&bh->server_list);
-  eh->broker_h = bh;
+  mret = mosquitto_connect (handle, eh->dest_host, eh->dest_port, 60);
+  if (mret != MOSQ_ERR_SUCCESS) {
+    nns_edge_loge ("Failed to connect MQTT.");
+    goto error;
+  }
 
+  nns_edge_queue_create (&bh->server_list);
+  bh->mqtt_h = handle;
+  bh->topic = nns_edge_strdup (topic);
+  bh->connected = true;
+
+  eh->broker_h = bh;
   return NNS_EDGE_ERROR_NONE;
 
 error:
   SAFE_FREE (bh);
-  mosquitto_destroy (handle);
+  if (handle)
+    mosquitto_destroy (handle);
   mosquitto_lib_cleanup ();
-  return NNS_EDGE_ERROR_UNKNOWN;
+  return NNS_EDGE_ERROR_CONNECTION_FAILURE;
 }
 
 /**
@@ -128,9 +139,7 @@ int
 nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
 {
   nns_edge_handle_s *eh;
-  nns_edge_broker_s *bh;
   int ret = NNS_EDGE_ERROR_NONE;
-  struct mosquitto *handle;
 
   if (!STR_IS_VALID (topic)) {
     nns_edge_loge ("Invalid param, given topic is invalid.");
@@ -144,29 +153,10 @@ nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
-      eh->id, eh->dest_host, eh->dest_port);
+  ret = _nns_edge_mqtt_init_client (eh, topic);
+  if (NNS_EDGE_ERROR_NONE != ret)
+    nns_edge_loge ("Failed to initialize the MQTT client object.");
 
-  if (NNS_EDGE_ERROR_NONE != _nns_edge_mqtt_init_client (eh, topic)) {
-    nns_edge_loge ("Failed to initialize the mqtt client objects.");
-    return NNS_EDGE_ERROR_CONNECTION_FAILURE;
-  }
-
-  bh = (nns_edge_broker_s *) eh->broker_h;
-  handle = bh->mqtt_h;
-
-  if (MOSQ_ERR_SUCCESS != mosquitto_connect (handle, eh->dest_host,
-          eh->dest_port, 60)) {
-    nns_edge_loge ("Failed to connect MQTT.");
-    ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
-    goto error;
-  }
-
-  bh->connected = true;
-  return NNS_EDGE_ERROR_NONE;
-
-error:
-  nns_edge_mqtt_close (eh);
   return ret;
 }
 
