@@ -52,7 +52,7 @@ IF(MQTT_SUPPORT)
             FIND_LIBRARY(PAHO_MQTT_LIB NAMES paho-mqtt3a paho-mqtt3c paho-mqtt3as paho-mqtt3cs)
 
             IF(NOT PAHO_MQTT_LIB)
-                MESSAGE("FATAL_ERROR Cannot find paho-mqtt-c and mosquitto library.")
+                MESSAGE(FATAL_ERROR "Cannot find paho-mqtt-c and mosquitto library.")
             ELSE()
                 MESSAGE("Found Paho MQTT library.")
             ENDIF()
