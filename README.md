@@ -1,4 +1,5 @@
 [![Code Coverage](http://ci.nnstreamer.ai/nnstreamer-edge/ci/badge/codecoverage.svg)](http://ci.nnstreamer.ai/nnstreamer-edge/ci/gcov_html/index.html)
+[![DailyBuild](http://ci.nnstreamer.ai/nnstreamer-edge/ci/daily-build/badge/daily_build_badge.svg)](http://ci.nnstreamer.ai/nnstreamer-edge/ci/daily-build/build_result/)
 
 # nnstreamer-edge
 Remote source nodes for NNStreamer pipelines without GStreamer dependencies
