@@ -445,7 +445,7 @@ TEST(edgeAitt, publishInvalidParam4_n)
   nns_edge_set_info (edge_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (edge_h, "DEST_PORT", "1883");
 
-  ret = nns_edge_mqtt_publish (edge_h, msg, strlen (msg) + 1);
+  ret = nns_edge_aitt_publish (edge_h, msg, strlen (msg) + 1);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_release_handle (edge_h);
