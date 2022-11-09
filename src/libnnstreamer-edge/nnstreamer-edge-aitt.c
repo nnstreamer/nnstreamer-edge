@@ -221,7 +221,7 @@ error:
  */
 static void
 aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
-    size_t msg_len, void *user_data)
+    int msg_len, void *user_data)
 {
   nns_edge_handle_s *eh;
   nns_edge_data_h data_h;
