@@ -13,6 +13,10 @@
 #include <stdarg.h>
 #include "nnstreamer-edge-log.h"
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 #if defined(__TIZEN__)
 #include <dlog.h>
 
