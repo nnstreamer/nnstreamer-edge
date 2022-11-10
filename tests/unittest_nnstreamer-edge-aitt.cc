@@ -190,8 +190,7 @@ TEST(edgeAitt, connectLocal)
   usleep (10000);
   ret = nns_edge_connect (client2_h, "127.0.0.1", 1883);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-
-  sleep (2);
+  usleep (10000);
 
   /* Send request to server */
   data_len = 10U * sizeof (unsigned int);
