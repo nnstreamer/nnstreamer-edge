@@ -134,7 +134,7 @@ nns_edge_memdup (const void *data, nns_size_t size)
     if (mem) {
       memcpy (mem, data, size);
     } else {
-      nns_edge_loge ("Failed to allocate memory (%zd).", size);
+      nns_edge_loge ("Failed to allocate memory (%llu).", size);
     }
   }
 
@@ -172,7 +172,7 @@ nns_edge_strndup (const char *str, nns_size_t len)
       strncpy (new_str, str, len);
       new_str[len] = '\0';
     } else {
-      nns_edge_loge ("Failed to allocate memory (%zd).", len + 1);
+      nns_edge_loge ("Failed to allocate memory (%llu).", len + 1);
     }
   }
 
