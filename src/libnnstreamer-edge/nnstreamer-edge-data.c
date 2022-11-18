@@ -485,7 +485,7 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
 
   total = header_len + data_len + edata_header.meta_len;
 
-  serialized = ptr = (char *) malloc (total);
+  serialized = ptr = (char *) nns_edge_malloc (total);
   if (!serialized) {
     ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
     goto done;

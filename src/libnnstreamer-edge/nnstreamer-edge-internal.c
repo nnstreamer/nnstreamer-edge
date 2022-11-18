@@ -396,7 +396,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   }
 
   for (n = 0; n < cmd->info.num; n++) {
-    cmd->mem[n] = malloc (cmd->info.mem_size[n]);
+    cmd->mem[n] = nns_edge_malloc (cmd->info.mem_size[n]);
     if (!cmd->mem[n]) {
       nns_edge_loge ("Failed to allocate memory to receive data from socket.");
       ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
@@ -411,7 +411,7 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   }
 
   if (cmd->info.meta_size > 0) {
-    cmd->meta = malloc (cmd->info.meta_size);
+    cmd->meta = nns_edge_malloc (cmd->info.meta_size);
     if (!cmd->meta) {
       nns_edge_loge ("Failed to allocate memory to receive meta from socket.");
       ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
