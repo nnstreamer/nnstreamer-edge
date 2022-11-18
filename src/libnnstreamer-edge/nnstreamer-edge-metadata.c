@@ -295,7 +295,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
     node = node->next;
   }
 
-  serialized = ptr = (char *) malloc (total);
+  serialized = ptr = (char *) nns_edge_malloc (total);
   if (!serialized)
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
 

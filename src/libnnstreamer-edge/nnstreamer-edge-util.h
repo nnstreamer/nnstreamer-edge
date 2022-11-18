@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include "nnstreamer-edge.h"
 
 #ifdef __cplusplus
@@ -39,6 +40,13 @@ extern "C" {
 
 #ifndef FALSE
 #define FALSE (0)
+#endif
+
+/**
+ * @brief The max size to allocate memory. This would be defined in C99 limits.h.
+ */
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t) -1)
 #endif
 
 #define STR_IS_VALID(s) ((s) && (s)[0] != '\0')
@@ -84,6 +92,12 @@ void nns_edge_parse_host_string (const char *host_str, char **host, int *port);
  * @brief Parse string and get port number. Return negative value when failed to get port number.
  */
 int nns_edge_parse_port_number (const char *port_str);
+
+/**
+ * @brief Allocate new memory. The max size is SIZE_MAX.
+ * @note Caller should release newly allocated memory using nns_edge_free().
+ */
+void *nns_edge_malloc (nns_size_t size);
 
 /**
  * @brief Free allocated memory.

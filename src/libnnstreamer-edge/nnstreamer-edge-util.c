@@ -110,6 +110,24 @@ nns_edge_parse_port_number (const char *port_str)
 }
 
 /**
+ * @brief Allocate new memory. The max size is SIZE_MAX.
+ * @note Caller should release newly allocated memory using nns_edge_free().
+ */
+void *
+nns_edge_malloc (nns_size_t size)
+{
+  void *mem = NULL;
+
+  if (size > 0 && size <= SIZE_MAX)
+    mem = malloc (size);
+
+  if (!mem)
+    nns_edge_loge ("Failed to allocate memory (%llu).", size);
+
+  return mem;
+}
+
+/**
  * @brief Free allocated memory.
  */
 void
@@ -129,13 +147,10 @@ nns_edge_memdup (const void *data, nns_size_t size)
   void *mem = NULL;
 
   if (data && size > 0) {
-    mem = malloc (size);
+    mem = nns_edge_malloc (size);
 
-    if (mem) {
+    if (mem)
       memcpy (mem, data, size);
-    } else {
-      nns_edge_loge ("Failed to allocate memory (%llu).", size);
-    }
   }
 
   return mem;
@@ -166,13 +181,11 @@ nns_edge_strndup (const char *str, nns_size_t len)
   char *new_str = NULL;
 
   if (str) {
-    new_str = (char *) malloc (len + 1);
+    new_str = (char *) nns_edge_malloc (len + 1);
 
     if (new_str) {
       strncpy (new_str, str, len);
       new_str[len] = '\0';
-    } else {
-      nns_edge_loge ("Failed to allocate memory (%llu).", len + 1);
     }
   }
 
