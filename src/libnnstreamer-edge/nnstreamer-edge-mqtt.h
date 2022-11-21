@@ -20,49 +20,49 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef void *nns_edge_mqtt_h;
+typedef void *nns_edge_broker_h;
 
 #if defined(ENABLE_MQTT)
 /**
  * @brief Connect to MQTT.
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
-int nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic);
+int nns_edge_mqtt_connect (const char *id, const char *topic, const char *host, const int port, nns_edge_broker_h *broker_h);
 
 /**
  * @brief Close the connection to MQTT.
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
-int nns_edge_mqtt_close (nns_edge_h edge_h);
+int nns_edge_mqtt_close (nns_edge_broker_h broker_h);
 
 /**
  * @brief Publish raw data.
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
-int nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length);
+int nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data, const int length);
 
 /**
  * @brief Subscribe a topic.
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
-int nns_edge_mqtt_subscribe (nns_edge_h edge_h);
+int nns_edge_mqtt_subscribe (nns_edge_broker_h broker_h);
 
 /**
  * @brief Check mqtt connection
  */
-bool nns_edge_mqtt_is_connected (nns_edge_h edge_h);
+bool nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h);
 
 /**
  * @brief Get message from mqtt broker.
  */
-int nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg);
+int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, char **msg);
 
 #else
 /**
  * @todo consider to change code style later.
  * If MQTT is disabled, nnstreamer does not include nnstreamer_edge_mqtt.c, and changing code style will make error as it is not used function now.
  *
- * static int nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
+ * static int nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data, const int length)
  * {
  *   return NNS_EDGE_ERROR_NOT_SUPPORTED;
  * }

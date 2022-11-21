@@ -27,7 +27,10 @@ typedef struct
 {
   void *mqtt_h;
   nns_edge_queue_h server_list;
+  char *id;
   char *topic;
+  char *host;
+  int port;
   bool connected;
 } nns_edge_broker_s;
 
@@ -65,7 +68,8 @@ on_message_callback (struct mosquitto *client, void *data,
  * @brief Initializes MQTT object.
  */
 static int
-_nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
+_nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
+    const int port, nns_edge_broker_h * broker_h)
 {
   nns_edge_broker_s *bh;
   int mret;
@@ -73,8 +77,7 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
   struct mosquitto *handle;
   int ver = MQTT_PROTOCOL_V311; /** @todo check mqtt version (TizenRT repo) */
 
-  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).",
-      eh->id, eh->dest_host, eh->dest_port);
+  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).", id, host, port);
 
   bh = (nns_edge_broker_s *) calloc (1, sizeof (nns_edge_broker_s));
   if (!bh) {
@@ -83,7 +86,7 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
   }
 
   mosquitto_lib_init ();
-  client_id = nns_edge_strdup_printf ("nns_edge_%s_%u", eh->id, getpid ());
+  client_id = nns_edge_strdup_printf ("nns_edge_%s_%u", id, getpid ());
 
   handle = mosquitto_new (client_id, TRUE, NULL);
   SAFE_FREE (client_id);
@@ -109,7 +112,7 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
     goto error;
   }
 
-  mret = mosquitto_connect (handle, eh->dest_host, eh->dest_port, 60);
+  mret = mosquitto_connect (handle, host, port, 60);
   if (mret != MOSQ_ERR_SUCCESS) {
     nns_edge_loge ("Failed to connect MQTT.");
     goto error;
@@ -117,10 +120,13 @@ _nns_edge_mqtt_init_client (nns_edge_handle_s * eh, const char *topic)
 
   nns_edge_queue_create (&bh->server_list);
   bh->mqtt_h = handle;
+  bh->id = nns_edge_strdup (id);
   bh->topic = nns_edge_strdup (topic);
+  bh->host = nns_edge_strdup (host);
+  bh->port = port;
   bh->connected = true;
 
-  eh->broker_h = bh;
+  *broker_h = bh;
   return NNS_EDGE_ERROR_NONE;
 
 error:
@@ -136,24 +142,37 @@ error:
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
 int
-nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
+nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
+    const int port, nns_edge_broker_h * broker_h)
 {
-  nns_edge_handle_s *eh;
   int ret = NNS_EDGE_ERROR_NONE;
+
+  if (!STR_IS_VALID (id)) {
+    nns_edge_loge ("Invalid param, given id is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
 
   if (!STR_IS_VALID (topic)) {
     nns_edge_loge ("Invalid param, given topic is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!STR_IS_VALID (host)) {
+    nns_edge_loge ("Invalid param, given host is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = _nns_edge_mqtt_init_client (eh, topic);
+  if (!PORT_IS_VALID (port)) {
+    nns_edge_loge ("Invalid param, given port is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, mqtt_h should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ret = _nns_edge_mqtt_init_client (id, topic, host, port, broker_h);
   if (NNS_EDGE_ERROR_NONE != ret)
     nns_edge_loge ("Failed to initialize the MQTT client object.");
 
@@ -165,25 +184,22 @@ nns_edge_mqtt_connect (nns_edge_h edge_h, const char *topic)
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
 int
-nns_edge_mqtt_close (nns_edge_h edge_h)
+nns_edge_mqtt_close (nns_edge_broker_h broker_h)
 {
-  nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
   struct mosquitto *handle;
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given broker handle is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  bh = (nns_edge_broker_s *) eh->broker_h;
+  bh = (nns_edge_broker_s *) broker_h;
   handle = bh->mqtt_h;
 
   if (handle) {
     nns_edge_logi ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
-        eh->id, eh->dest_host, eh->dest_port);
+        bh->id, bh->host, bh->port);
 
     /* Clear retained message */
     mosquitto_publish (handle, NULL, bh->topic, 0, NULL, 1, true);
@@ -195,9 +211,10 @@ nns_edge_mqtt_close (nns_edge_h edge_h)
 
   nns_edge_queue_destroy (bh->server_list);
   bh->server_list = NULL;
+  SAFE_FREE (bh->id);
   SAFE_FREE (bh->topic);
+  SAFE_FREE (bh->host);
   SAFE_FREE (bh);
-  eh->broker_h = NULL;
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -207,17 +224,15 @@ nns_edge_mqtt_close (nns_edge_h edge_h)
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
 int
-nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
+nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data,
+    const int length)
 {
-  nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
   struct mosquitto *handle;
   int ret;
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given broker handle is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -226,7 +241,7 @@ nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  bh = (nns_edge_broker_s *) eh->broker_h;
+  bh = (nns_edge_broker_s *) broker_h;
   handle = bh->mqtt_h;
 
   if (!handle) {
@@ -243,7 +258,7 @@ nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
   ret = mosquitto_publish (handle, NULL, bh->topic, length, data, 1, true);
   if (MOSQ_ERR_SUCCESS != ret) {
     nns_edge_loge ("Failed to publish a message (ID:%s, Topic:%s).",
-        eh->id, eh->topic);
+        bh->id, bh->topic);
     return NNS_EDGE_ERROR_IO;
   }
 
@@ -255,21 +270,18 @@ nns_edge_mqtt_publish (nns_edge_h edge_h, const void *data, const int length)
  * @note This is internal function for MQTT broker. You should call this with edge-handle lock.
  */
 int
-nns_edge_mqtt_subscribe (nns_edge_h edge_h)
+nns_edge_mqtt_subscribe (nns_edge_broker_h broker_h)
 {
-  nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
   void *handle;
   int ret;
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given broker handle is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  bh = (nns_edge_broker_s *) eh->broker_h;
+  bh = (nns_edge_broker_s *) broker_h;
   handle = bh->mqtt_h;
 
   if (!handle) {
@@ -286,7 +298,7 @@ nns_edge_mqtt_subscribe (nns_edge_h edge_h)
   ret = mosquitto_subscribe (handle, NULL, bh->topic, 1);
   if (MOSQ_ERR_SUCCESS != ret) {
     nns_edge_loge ("Failed to subscribe a topic (ID:%s, Topic:%s).",
-        eh->id, eh->topic);
+        bh->id, bh->topic);
     return NNS_EDGE_ERROR_IO;
   }
 
@@ -297,15 +309,12 @@ nns_edge_mqtt_subscribe (nns_edge_h edge_h)
  * @brief Get message from mqtt broker.
  */
 int
-nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg)
+nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, char **msg)
 {
-  nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given broker handle is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -314,7 +323,7 @@ nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  bh = (nns_edge_broker_s *) eh->broker_h;
+  bh = (nns_edge_broker_s *) broker_h;
 
   /* Wait for 1 second */
   if (!nns_edge_queue_wait_pop (bh->server_list, 1000U, (void **) msg)) {
@@ -329,19 +338,16 @@ nns_edge_mqtt_get_message (nns_edge_h edge_h, char **msg)
  * @brief Check mqtt connection
  */
 bool
-nns_edge_mqtt_is_connected (nns_edge_h edge_h)
+nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h)
 {
-  nns_edge_handle_s *eh;
   nns_edge_broker_s *bh;
 
-  eh = (nns_edge_handle_s *) edge_h;
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh) || !eh->broker_h) {
-    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given broker handle is invalid.");
     return false;
   }
 
-  bh = (nns_edge_broker_s *) eh->broker_h;
+  bh = (nns_edge_broker_s *) broker_h;
 
   return bh->connected;
 }
