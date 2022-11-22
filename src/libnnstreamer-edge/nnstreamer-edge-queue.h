@@ -67,27 +67,30 @@ bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_
  * @brief Add new data into queue.
  * @param[in] handle The queue handle.
  * @param[in] data The data to be added.
+ * @param[in] size The size of pushed data.
  * @param[in] destroy Nullable, the callback function to release data.
  * @return true on success.
  */
-bool nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_edge_data_destroy_cb destroy);
+bool nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size, nns_edge_data_destroy_cb destroy);
 
 /**
  * @brief Remove and return the first data in queue.
  * @param[in] handle The queue handle.
  * @param[out] data The data in the queue.
+ * @param[out] size The size of data.
  * @return true on success. false if queue is empty.
  */
-bool nns_edge_queue_pop (nns_edge_queue_h handle, void **data);
+bool nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
 
 /**
  * @brief Remove and return the first data in queue. If queue is empty, wait until new data is added in the queue.
  * @param[in] handle The queue handle.
  * @param[in] timeout The time to wait for new data, in milliseconds. (0 for infinite timeout)
  * @param[out] data The data in the queue.
+ * @param[out] size The size of data.
  * @return true on success.
  */
-bool nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data);
+bool nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
 
 #ifdef __cplusplus
 }
