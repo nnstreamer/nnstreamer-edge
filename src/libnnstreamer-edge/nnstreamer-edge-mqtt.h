@@ -53,10 +53,9 @@ int nns_edge_mqtt_subscribe (nns_edge_broker_h broker_h);
 bool nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h);
 
 /**
- * @brief Get message from mqtt broker.
+ * @brief Get message from mqtt broker. If no message in the queue, it waits up to 1 second for new message.
  */
-int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, char **msg);
-
+int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg, nns_size_t *msg_len);
 #else
 /**
  * @todo consider to change code style later.

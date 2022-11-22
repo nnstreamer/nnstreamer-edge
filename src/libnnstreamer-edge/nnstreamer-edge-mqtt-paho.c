@@ -43,6 +43,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
 {
   nns_edge_broker_s *bh;
   char *msg = NULL;
+  nns_size_t msg_len;
 
   UNUSED (topic);
   UNUSED (topic_len);
@@ -61,9 +62,10 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   nns_edge_logd ("MQTT message is arrived (ID:%s, Topic:%s).",
       bh->id, bh->topic);
 
-  msg = nns_edge_memdup (message->payload, message->payloadlen);
+  msg_len = (nns_size_t) message->payloadlen;
+  msg = nns_edge_memdup (message->payload, msg_len);
   if (msg)
-    nns_edge_queue_push (bh->server_list, msg, nns_edge_free);
+    nns_edge_queue_push (bh->server_list, msg, msg_len, nns_edge_free);
 
   return TRUE;
 }
@@ -348,7 +350,8 @@ nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h)
  * @brief Get message from mqtt broker.
  */
 int
-nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, char **msg)
+nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
+    nns_size_t * msg_len)
 {
   nns_edge_broker_s *bh;
 
@@ -365,7 +368,7 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, char **msg)
   bh = (nns_edge_broker_s *) broker_h;
 
   /* Wait for 1 second */
-  if (!nns_edge_queue_wait_pop (bh->server_list, 1000U, (void **) msg)) {
+  if (!nns_edge_queue_wait_pop (bh->server_list, 1000U, msg, msg_len)) {
     nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }

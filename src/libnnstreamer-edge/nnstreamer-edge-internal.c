@@ -797,11 +797,12 @@ _nns_edge_send_thread (void *thread_data)
   nns_edge_conn_data_s *conn_data;
   nns_edge_conn_s *conn;
   nns_edge_data_h data_h;
+  nns_size_t data_size;
   int64_t client_id;
   char *val;
   int ret;
 
-  while (nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h)) {
+  while (nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h, &data_size)) {
     /* Send data to destination */
     switch (eh->connect_type) {
       case NNS_EDGE_CONNECT_TYPE_TCP:
@@ -1500,9 +1501,10 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
       char *msg = NULL;
       char *server_ip = NULL;
       int server_port = 0;
+      nns_size_t msg_len = 0;
 
-      ret = nns_edge_mqtt_get_message (eh->broker_h, &msg);
-      if (ret != NNS_EDGE_ERROR_NONE || !msg)
+      ret = nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len);
+      if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
         break;
 
       nns_edge_parse_host_string (msg, &server_ip, &server_port);
@@ -1642,7 +1644,7 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
   nns_edge_data_copy (data_h, &new_data_h);
 
   if (!nns_edge_queue_push (eh->send_queue, new_data_h,
-          nns_edge_data_release_handle)) {
+          sizeof (nns_edge_data_h), nns_edge_data_release_handle)) {
     nns_edge_loge ("Failed to send data, cannot push data into queue.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_IO;

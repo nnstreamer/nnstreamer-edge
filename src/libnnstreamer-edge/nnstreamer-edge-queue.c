@@ -10,6 +10,7 @@
  * @bug    No known bugs except for NYI items.
  */
 
+#include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-util.h"
@@ -24,8 +25,7 @@ typedef struct _nns_edge_queue_data_s nns_edge_queue_data_s;
  */
 struct _nns_edge_queue_data_s
 {
-  void *data;
-  nns_edge_data_destroy_cb destroy;
+  nns_edge_raw_data_s data;
   nns_edge_queue_data_s *next;
 };
 
@@ -48,11 +48,11 @@ typedef struct
  * @brief Pop data from queue. If the param 'clear' is true, release old data and return null.
  * @note This function should be called with lock.
  */
-static void *
-_pop_data (nns_edge_queue_s * q, bool clear)
+static bool
+_pop_data (nns_edge_queue_s * q, bool clear, void **data, nns_size_t * size)
 {
   nns_edge_queue_data_s *qdata;
-  void *data = NULL;
+  bool popped = false;
 
   qdata = q->head;
   if (qdata) {
@@ -61,16 +61,20 @@ _pop_data (nns_edge_queue_s * q, bool clear)
       q->head = q->tail = NULL;
 
     if (clear) {
-      if (qdata->destroy)
-        qdata->destroy (qdata->data);
+      if (qdata->data.destroy_cb)
+        qdata->data.destroy_cb (qdata->data.data);
     } else {
-      data = qdata->data;
+      if (data)
+        *data = qdata->data.data;
+      if (size)
+        *size = qdata->data.data_len;
+      popped = true;
     }
 
     free (qdata);
   }
 
-  return data;
+  return popped;
 }
 
 /**
@@ -117,7 +121,7 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
   nns_edge_cond_signal (q);
 
   while (q->length > 0U)
-    _pop_data (q, true);
+    _pop_data (q, true, NULL, NULL);
 
   nns_edge_unlock (q);
 
@@ -176,7 +180,7 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
  * @brief Add new data into queue.
  */
 bool
-nns_edge_queue_push (nns_edge_queue_h handle, void *data,
+nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
     nns_edge_data_destroy_cb destroy)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
@@ -193,11 +197,16 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
     return false;
   }
 
+  if (size == 0U) {
+    nns_edge_loge ("[Queue] Invalid param, size should be larger than zero.");
+    return false;
+  }
+
   nns_edge_lock (q);
   if (q->max_data > 0U && q->length >= q->max_data) {
     /* Clear old data in queue if leaky option is 'old'. */
     if (q->leaky == NNS_EDGE_QUEUE_LEAK_OLD) {
-      _pop_data (q, true);
+      _pop_data (q, true, NULL, NULL);
     } else {
       nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
           q->max_data);
@@ -211,8 +220,9 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data,
     goto done;
   }
 
-  qdata->data = data;
-  qdata->destroy = destroy;
+  qdata->data.data = data;
+  qdata->data.data_len = size;
+  qdata->data.destroy_cb = destroy;
 
   if (!q->head)
     q->head = qdata;
@@ -233,9 +243,10 @@ done:
  * @brief Remove and return the first data in queue.
  */
 bool
-nns_edge_queue_pop (nns_edge_queue_h handle, void **data)
+nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+  bool popped = false;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
@@ -247,11 +258,16 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data)
     return false;
   }
 
+  if (!size) {
+    nns_edge_loge ("[Queue] Invalid param, size is null.");
+    return false;
+  }
+
   nns_edge_lock (q);
-  *data = _pop_data (q, false);
+  popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  return (*data != NULL);
+  return (popped && *data != NULL);
 }
 
 /**
@@ -259,9 +275,10 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data)
  */
 bool
 nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
-    void **data)
+    void **data, nns_size_t * size)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+  bool popped = false;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
@@ -270,6 +287,11 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
 
   if (!data) {
     nns_edge_loge ("[Queue] Invalid param, data is null.");
+    return false;
+  }
+
+  if (!size) {
+    nns_edge_loge ("[Queue] Invalid param, size is null.");
     return false;
   }
 
@@ -290,8 +312,8 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
     }
   }
 
-  *data = _pop_data (q, false);
+  popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  return (*data != NULL);
+  return (popped && *data != NULL);
 }
