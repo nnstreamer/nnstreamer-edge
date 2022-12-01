@@ -23,18 +23,13 @@
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-log.h"
 
-typedef void *nns_edge_aitt_h;
-typedef void *nns_edge_aitt_msg_h;
-typedef void *nns_edge_aitt_sub_h;
-
 /**
  * @brief Data structure for aitt handle.
  */
 typedef struct
 {
-  nns_edge_aitt_h aitt_h;
-  nns_edge_aitt_msg_h msg_h;
-  nns_edge_aitt_sub_h sub_h;
+  aitt_h aitt_handle;
+  aitt_sub_h sub_handle;
 } nns_edge_aitt_handle_s;
 
 /**
@@ -66,20 +61,20 @@ nns_edge_aitt_connect (nns_edge_h edge_h)
   option = aitt_option_new ();
   aitt_option_set (option, AITT_OPT_MY_IP, eh->host);
 
-  ah->aitt_h = aitt_new (eh->id, option);
+  ah->aitt_handle = aitt_new (eh->id, option);
   aitt_option_destroy (option);
 
-  if (!ah->aitt_h) {
+  if (!ah->aitt_handle) {
     nns_edge_loge ("Failed to create AITT handle. AITT internal error.");
     SAFE_FREE (ah);
     return NNS_EDGE_ERROR_UNKNOWN;
   }
 
-  if (AITT_ERROR_NONE != aitt_connect (ah->aitt_h, eh->dest_host,
+  if (AITT_ERROR_NONE != aitt_connect (ah->aitt_handle, eh->dest_host,
           eh->dest_port)) {
     nns_edge_loge ("Failed to connect to AITT. IP:port = %s:%d", eh->dest_host,
         eh->dest_port);
-    aitt_destroy (ah->aitt_h);
+    aitt_destroy (ah->aitt_handle);
     SAFE_FREE (ah);
     return NNS_EDGE_ERROR_UNKNOWN;
   }
@@ -106,12 +101,12 @@ nns_edge_aitt_close (nns_edge_h edge_h)
   }
 
   ah = (nns_edge_aitt_handle_s *) eh->broker_h;
-  if (AITT_ERROR_NONE != aitt_disconnect (ah->aitt_h)) {
+  if (AITT_ERROR_NONE != aitt_disconnect (ah->aitt_handle)) {
     nns_edge_loge ("Failed to close AITT handle.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }
-  aitt_destroy (ah->aitt_h);
-  ah->aitt_h = NULL;
+  aitt_destroy (ah->aitt_handle);
+  ah->aitt_handle = NULL;
   SAFE_FREE (eh->broker_h);
   eh->broker_h = NULL;
 
@@ -135,7 +130,7 @@ nns_edge_aitt_is_connected (nns_edge_h edge_h)
   }
 
   ah = (nns_edge_aitt_handle_s *) eh->broker_h;
-  if (!ah || !ah->aitt_h) {
+  if (!ah || !ah->aitt_handle) {
     nns_edge_loge ("AITT handle is not yet connected.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -152,6 +147,7 @@ nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length)
 {
   nns_edge_handle_s *eh;
   nns_edge_aitt_handle_s *ah;
+  int ret;
 
   eh = (nns_edge_handle_s *) edge_h;
 
@@ -167,7 +163,8 @@ nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length)
 
   ah = (nns_edge_aitt_handle_s *) eh->broker_h;
 
-  if (AITT_ERROR_NONE != aitt_publish (ah->aitt_h, eh->topic, data, length)) {
+  ret = aitt_publish (ah->aitt_handle, eh->topic, data, length);
+  if (AITT_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to publish the message. topic: %s", eh->topic);
     return NNS_EDGE_ERROR_IO;
   }
@@ -225,6 +222,7 @@ aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
 {
   nns_edge_handle_s *eh;
   nns_edge_data_h data_h;
+  int ret;
 
   eh = (nns_edge_handle_s *) user_data;
 
@@ -240,8 +238,10 @@ aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
 
   nns_edge_data_deserialize (data_h, (void *) msg);
 
-  _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h,
-      sizeof (nns_edge_data_h), NULL);
+  ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
+      data_h, sizeof (nns_edge_data_h), NULL);
+  if (ret != NNS_EDGE_ERROR_NONE)
+    nns_edge_loge ("Failed to send an event for received message.");
 
   nns_edge_data_destroy (data_h);
 }
@@ -271,9 +271,9 @@ nns_edge_aitt_subscribe (nns_edge_h edge_h)
 
   ah = (nns_edge_aitt_handle_s *) eh->broker_h;
 
-  if (AITT_ERROR_NONE != aitt_subscribe (ah->aitt_h, eh->topic,
-          aitt_cb_message_arrived, eh, &ah->msg_h)) {
-    nns_edge_loge ("Failed to subscribe the topoc: %s", eh->topic);
+  if (AITT_ERROR_NONE != aitt_subscribe (ah->aitt_handle, eh->topic,
+          aitt_cb_message_arrived, eh, &ah->sub_handle)) {
+    nns_edge_loge ("Failed to subscribe the topic: %s", eh->topic);
     return NNS_EDGE_ERROR_UNKNOWN;
   }
   return NNS_EDGE_ERROR_NONE;
