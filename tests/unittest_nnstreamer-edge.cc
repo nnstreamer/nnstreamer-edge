@@ -1909,7 +1909,7 @@ TEST(edgeData, serializeInvalidParam04_n)
 }
 
 /**
- * @brief Derialize meta to edge-data - invalid param.
+ * @brief Deserialize meta to edge-data - invalid param.
  */
 TEST(edgeData, deserializeInvalidParam01_n)
 {
@@ -1937,7 +1937,7 @@ TEST(edgeData, deserializeInvalidParam01_n)
 }
 
 /**
- * @brief Derialize meta to edge-data - invalid param.
+ * @brief Deserialize meta to edge-data - invalid param.
  */
 TEST(edgeData, deserializeInvalidParam02_n)
 {
@@ -1971,7 +1971,7 @@ TEST(edgeData, deserializeInvalidParam02_n)
 }
 
 /**
- * @brief Derialize meta to edge-data - invalid param.
+ * @brief Deserialize meta to edge-data - invalid param.
  */
 TEST(edgeData, deserializeInvalidParam03_n)
 {
@@ -1999,7 +1999,7 @@ TEST(edgeData, deserializeInvalidParam03_n)
 }
 
 /**
- * @brief Derialize meta to edge-data - invalid param.
+ * @brief Deserialize meta to edge-data - invalid param.
  */
 TEST(edgeData, deserializeInvalidParam04_n)
 {
@@ -2074,7 +2074,7 @@ TEST(edgeDataSerialize, normal)
   ret = nns_edge_data_create (&dest_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_deserialize (dest_h, serialized_data);
+  ret = nns_edge_data_deserialize (dest_h, serialized_data, serialized_len);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* Compare data and info */
@@ -2194,21 +2194,21 @@ TEST(edgeDataSerialize, invalidParam04_n)
 }
 
 /**
- * @brief Derialize edge-data - invalid param.
+ * @brief Deserialize edge-data - invalid param.
  */
 TEST(edgeDataDeserialize, invalidParam01_n)
 {
   void *data = NULL;
   int ret;
 
-  ret = nns_edge_data_deserialize (NULL, data);
+  ret = nns_edge_data_deserialize (NULL, data, 10U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   nns_edge_free (data);
 }
 
 /**
- * @brief Derialize edge-data - invalid param.
+ * @brief Deserialize edge-data - invalid param.
  */
 TEST(edgeDataDeserialize, invalidParam02_n)
 {
@@ -2224,13 +2224,13 @@ TEST(edgeDataDeserialize, invalidParam02_n)
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
+  ret = nns_edge_data_serialize (data_h, &data, &data_len);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ed = (nns_edge_data_s *) data_h;
   ed->magic = NNS_EDGE_MAGIC_DEAD;
 
-  ret = nns_edge_data_deserialize (data_h, data);
+  ret = nns_edge_data_deserialize (data_h, data, data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ed->magic = NNS_EDGE_MAGIC;
@@ -2242,11 +2242,13 @@ TEST(edgeDataDeserialize, invalidParam02_n)
 }
 
 /**
- * @brief Derialize edge-data - invalid param.
+ * @brief Deserialize edge-data - invalid param.
  */
 TEST(edgeDataDeserialize, invalidParam03_n)
 {
   nns_edge_data_h data_h;
+  void *data;
+  nns_size_t data_len;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
@@ -2255,8 +2257,44 @@ TEST(edgeDataDeserialize, invalidParam03_n)
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_deserialize (data_h, NULL);
+  ret = nns_edge_data_serialize (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, NULL, data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
+ * @brief Deserialize edge-data - invalid param.
+ */
+TEST(edgeDataDeserialize, invalidParam04_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  nns_size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, data, 1U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
 }
 
 /**

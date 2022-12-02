@@ -55,7 +55,7 @@ int nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h, void **data, nn
 /**
  * @brief Internal function to deserialize memory into metadata.
  */
-int nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h, void *data, nns_size_t data_len);
+int nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h, const void *data, const nns_size_t data_len);
 
 #ifdef __cplusplus
 }
