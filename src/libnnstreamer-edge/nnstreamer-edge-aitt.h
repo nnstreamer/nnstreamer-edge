@@ -19,41 +19,55 @@
 extern "C" {
 #endif /* __cplusplus */
 
+typedef void *nns_edge_aitt_h;
+
 #if defined(ENABLE_AITT)
 /**
  * @brief Create AITT handle and connect to AITT.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
+ * @note This is internal function for AITT.
  */
-int nns_edge_aitt_connect (nns_edge_h edge_h);
+int nns_edge_aitt_connect (const char *id, const char *topic, const char *host, const int port, nns_edge_aitt_h *handle);
 
 /**
  * @brief Release the AITT handle.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
+ * @note This is internal function for AITT.
  */
-int nns_edge_aitt_close (nns_edge_h edge_h);
+int nns_edge_aitt_close (nns_edge_aitt_h handle);
+
+/**
+ * @brief Publish raw data.
+ * @note This is internal function for AITT.
+ */
+int nns_edge_aitt_publish (nns_edge_aitt_h handle, const void *data, const int length);
+
+/**
+ * @brief Subscribe a topic.
+ * @note This is internal function for AITT.
+ */
+int nns_edge_aitt_subscribe (nns_edge_aitt_h handle);
+
+/**
+ * @brief Set event callback for new message.
+ */
+int nns_edge_aitt_set_event_callback (nns_edge_aitt_h handle, nns_edge_event_cb cb, void *user_data);
 
 /**
  * @brief Check whether aitt handle exists or not.
  */
-int nns_edge_aitt_is_connected (nns_edge_h edge_h);
+int nns_edge_aitt_is_connected (nns_edge_aitt_h handle);
 
 /**
- * @brief Publish raw data.
- * @note This is internal function forAITT. You should call this with edge-handle lock.
+ * @brief Internal util function to send edge-data.
  */
-int nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length);
-
-/**
- * @brief Subscribe a topic.
- * @note This is internal function for AITT. You should call this with edge-handle lock.
- */
-int nns_edge_aitt_subscribe (nns_edge_h edge_h);
+int nns_edge_aitt_send_data (nns_edge_aitt_h handle, nns_edge_data_h data_h);
 #else
 #define nns_edge_aitt_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_send_data(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #endif /* ENABLE_AITT */
 
 #ifdef __cplusplus
