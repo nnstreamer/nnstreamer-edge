@@ -17,6 +17,46 @@
 #include "nnstreamer-edge-util.h"
 
 /**
+ * @brief Internal util function to invoke event callback.
+ */
+int
+nns_edge_event_invoke_callback (nns_edge_event_cb event_cb, void *user_data,
+    nns_edge_event_e event, void *data, nns_size_t data_len,
+    nns_edge_data_destroy_cb destroy_cb)
+{
+  nns_edge_event_h event_h;
+  int ret;
+
+  /* If event callback is null, return ok. */
+  if (!event_cb) {
+    nns_edge_logw ("The event callback is null, do nothing!");
+    return NNS_EDGE_ERROR_NONE;
+  }
+
+  ret = nns_edge_event_create (event, &event_h);
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to create new edge event.");
+    return ret;
+  }
+
+  if (data) {
+    ret = nns_edge_event_set_data (event_h, data, data_len, destroy_cb);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to handle edge event due to invalid event data.");
+      goto error;
+    }
+  }
+
+  ret = event_cb (event_h, user_data);
+  if (ret != NNS_EDGE_ERROR_NONE)
+    nns_edge_logw ("The event callback returns error (%d).", ret);
+
+error:
+  nns_edge_event_destroy (event_h);
+  return ret;
+}
+
+/**
  * @brief Create nnstreamer edge event.
  */
 int

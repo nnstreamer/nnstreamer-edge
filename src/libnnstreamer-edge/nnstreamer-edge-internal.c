@@ -463,52 +463,6 @@ _nns_edge_transfer_data (nns_edge_conn_s * conn, nns_edge_data_h data_h,
 }
 
 /**
- * @brief Internal function to invoke event callback.
- * @note This function should be called with handle lock.
- */
-static int
-_nns_edge_invoke_event_cb (nns_edge_handle_s * eh, nns_edge_event_e event,
-    void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb)
-{
-  nns_edge_event_h event_h;
-  int ret;
-
-  if (!eh) {
-    nns_edge_loge ("Invalid param, given edge handle is null.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
-
-  /* If event callback is null, return ok. */
-  if (!eh->event_cb) {
-    nns_edge_logw ("The event callback is null, do nothing!");
-    return NNS_EDGE_ERROR_NONE;
-  }
-
-  ret = nns_edge_event_create (event, &event_h);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to create new edge event.");
-    return ret;
-  }
-
-  if (data) {
-    ret = nns_edge_event_set_data (event_h, data, data_len, destroy_cb);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to handle edge event due to invalid event data.");
-      goto error;
-    }
-  }
-
-  ret = eh->event_cb (event_h, eh->user_data);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("The event callback returns error.");
-  }
-
-error:
-  nns_edge_event_destroy (event_h);
-  return ret;
-}
-
-/**
  * @brief Close connection
  */
 static bool
@@ -765,8 +719,9 @@ _nns_edge_message_handler (void *thread_data)
       nns_edge_data_set_info (data_h, "client_id", val);
       SAFE_FREE (val);
 
-      ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
-          data_h, sizeof (nns_edge_data_h), NULL);
+      ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+          NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h, sizeof (nns_edge_data_h),
+          NULL);
       if (ret != NNS_EDGE_ERROR_NONE) {
         /* Try to get next request if server does not accept data from client. */
         nns_edge_logw ("The server does not accept data from client.");
@@ -784,8 +739,8 @@ _nns_edge_message_handler (void *thread_data)
         ("Received error from client, remove connection of client (ID: %lld).",
         (long long) client_id);
     _nns_edge_remove_connection (eh, client_id);
-    _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CONNECTION_CLOSED,
-        NULL, 0, NULL);
+    nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+        NNS_EDGE_EVENT_CONNECTION_CLOSED, NULL, 0, NULL);
   }
 
   return NULL;
@@ -964,8 +919,8 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
     client_id = eh->client_id = cmd.info.client_id;
 
     /* Check compatibility. */
-    ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CAPABILITY,
-        cmd.mem[0], cmd.info.mem_size[0], NULL);
+    ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+        NNS_EDGE_EVENT_CAPABILITY, cmd.mem[0], cmd.info.mem_size[0], NULL);
     _nns_edge_cmd_clear (&cmd);
 
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -1460,8 +1415,8 @@ nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_CALLBACK_RELEASED,
-      NULL, 0, NULL);
+  ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+      NNS_EDGE_EVENT_CALLBACK_RELEASED, NULL, 0, NULL);
   if (ret != NNS_EDGE_ERROR_NONE) {
     nns_edge_loge ("Failed to set new event callback.");
     nns_edge_unlock (eh);

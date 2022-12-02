@@ -173,47 +173,6 @@ nns_edge_aitt_publish (nns_edge_h edge_h, const void *data, const int length)
 }
 
 /**
- * @brief Internal function to invoke event callback.
- * @note This function should be called with handle lock.
- */
-static int
-_nns_edge_invoke_event_cb (nns_edge_handle_s * eh, nns_edge_event_e event,
-    void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb)
-{
-  nns_edge_event_h event_h;
-  int ret;
-
-  /* If event callback is null, return ok. */
-  if (!eh->event_cb) {
-    nns_edge_logw ("AITT: The event callback is null, do nothing!");
-    return NNS_EDGE_ERROR_NONE;
-  }
-
-  ret = nns_edge_event_create (event, &event_h);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to create new edge event.");
-    return ret;
-  }
-
-  if (data) {
-    ret = nns_edge_event_set_data (event_h, data, data_len, destroy_cb);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to handle edge event due to invalid event data.");
-      goto error;
-    }
-  }
-
-  ret = eh->event_cb (event_h, eh->user_data);
-  if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("The event callback returns error.");
-  }
-
-error:
-  nns_edge_event_destroy (event_h);
-  return ret;
-}
-
-/**
  * @brief Callback function to be called when a message is arrived.
  */
 static void
@@ -238,8 +197,8 @@ aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
 
   nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
 
-  ret = _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
-      data_h, sizeof (nns_edge_data_h), NULL);
+  ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+      NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h, sizeof (nns_edge_data_h), NULL);
   if (ret != NNS_EDGE_ERROR_NONE)
     nns_edge_loge ("Failed to send an event for received message.");
 
