@@ -21,6 +21,11 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
+ * @brief Internal util function to invoke event callback.
+ */
+int nns_edge_event_invoke_callback (nns_edge_event_cb event_cb, void *user_data, nns_edge_event_e event, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
+
+/**
  * @brief Create nnstreamer edge event.
  * @note This is internal function for edge event.
  */
