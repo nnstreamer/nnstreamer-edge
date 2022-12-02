@@ -61,9 +61,9 @@ int nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data, nns_size_
 
 /**
  * @brief Deserialize metadata in edge data.
- * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ * @note This is internal function, DO NOT export this.
  */
-int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data, nns_size_t data_len);
+int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, const void *data, const nns_size_t data_len);
 
 /**
  * @brief Serialize entire edge data (meta data + raw data).
@@ -73,9 +73,9 @@ int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t *da
 
 /**
  * @brief Deserialize entire edge data (meta data + raw data).
- * @note This is internal function, DO NOT export this. Caller should release the returned value using free().
+ * @note This is internal function, DO NOT export this.
  */
-int nns_edge_data_deserialize (nns_edge_data_h data_h, void *data);
+int nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data, const nns_size_t data_len);
 
 #ifdef __cplusplus
 }

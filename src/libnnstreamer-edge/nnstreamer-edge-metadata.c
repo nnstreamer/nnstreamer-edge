@@ -329,7 +329,7 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
  */
 int
 nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
-    void *data, nns_size_t data_len)
+    const void *data, const nns_size_t data_len)
 {
   nns_edge_metadata_s *meta;
   char *key, *value;

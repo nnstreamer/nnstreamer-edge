@@ -414,8 +414,8 @@ nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
  * @brief Deserialize metadata in edge data.
  */
 int
-nns_edge_data_deserialize_meta (nns_edge_data_h data_h, void *data,
-    nns_size_t data_len)
+nns_edge_data_deserialize_meta (nns_edge_data_h data_h, const void *data,
+    const nns_size_t data_len)
 {
   nns_edge_data_s *ed;
   int ret;
@@ -517,13 +517,14 @@ done:
  * @brief Deserialize metadata in edge data.
  */
 int
-nns_edge_data_deserialize (nns_edge_data_h data_h, void *data)
+nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
+    const nns_size_t data_len)
 {
   nns_edge_data_s *ed;
   nns_edge_data_header_s *header;
   int ret;
   unsigned int n;
-  nns_size_t meta_len;
+  nns_size_t total;
   char *ptr;
 
   ed = (nns_edge_data_s *) data_h;
@@ -536,28 +537,38 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, void *data)
 
   if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    goto error;
   }
 
-  ptr = (char *) data;
-  header = (nns_edge_data_header_s *) ptr;
+  header = (nns_edge_data_header_s *) data;
+
+  /* Check mem size */
+  total = sizeof (nns_edge_data_header_s) + header->meta_len;
+  for (n = 0; n < header->num_mem; n++) {
+    total += header->data_len[n];
+  }
+
+  if (total != data_len) {
+    nns_edge_loge ("Invalid data size to deserialize edge data.");
+    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    goto error;
+  }
+
+  ptr = (char *) data + sizeof (nns_edge_data_header_s);
 
   ed->num = header->num_mem;
   for (n = 0; n < ed->num; n++) {
+    ed->data[n].data = nns_edge_memdup (ptr, header->data_len[n]);
     ed->data[n].data_len = header->data_len[n];
-  }
-  meta_len = header->meta_len;
+    ed->data[n].destroy_cb = nns_edge_free;
 
-  ptr += sizeof (nns_edge_data_header_s);
-
-  for (n = 0; n < ed->num; n++) {
-    ed->data[n].data = nns_edge_memdup (ptr, ed->data[n].data_len);
-    ptr += ed->data[n].data_len;
+    ptr += header->data_len[n];
   }
 
-  ret = nns_edge_metadata_deserialize (ed->metadata, ptr, meta_len);
+  ret = nns_edge_metadata_deserialize (ed->metadata, ptr, header->meta_len);
 
+error:
   nns_edge_unlock (ed);
   return ret;
 }

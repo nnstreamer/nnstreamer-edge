@@ -238,7 +238,7 @@ aitt_cb_message_arrived (aitt_msg_h msg_handle, const void *msg,
     return;
   }
 
-  nns_edge_data_deserialize (data_h, (void *) msg);
+  nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
 
   _nns_edge_invoke_event_cb (eh, NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h,
       sizeof (nns_edge_data_h), NULL);
