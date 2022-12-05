@@ -232,7 +232,7 @@ _nns_edge_cmd_init (nns_edge_cmd_s * cmd, nns_edge_cmd_e c, int64_t cid)
     return;
 
   memset (cmd, 0, sizeof (nns_edge_cmd_s));
-  cmd->info.magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (&cmd->info, NNS_EDGE_MAGIC);
   cmd->info.cmd = c;
   cmd->info.client_id = cid;
   cmd->info.num = 0;
@@ -250,7 +250,7 @@ _nns_edge_cmd_clear (nns_edge_cmd_s * cmd)
   if (!cmd)
     return;
 
-  cmd->info.magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (&cmd->info, NNS_EDGE_MAGIC_DEAD);
 
   for (i = 0; i < cmd->info.num; i++) {
     SAFE_FREE (cmd->mem[i]);
@@ -276,7 +276,7 @@ _nns_edge_cmd_is_valid (nns_edge_cmd_s * cmd)
 
   command = (int) cmd->info.cmd;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (&cmd->info) ||
+  if (!nns_edge_handle_is_valid (&cmd->info) ||
       (command < 0 || command >= _NNS_EDGE_CMD_END)) {
     return false;
   }
@@ -632,7 +632,7 @@ _nns_edge_message_handler (void *thread_data)
     struct pollfd poll_fd;
 
     /* Validate edge handle */
-    if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+    if (!nns_edge_handle_is_valid (eh)) {
       nns_edge_loge ("The edge handle is invalid, it would be expired.");
       break;
     }
@@ -1177,7 +1177,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   }
 
   nns_edge_lock_init (eh);
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC);
   eh->id = STR_IS_VALID (id) ? nns_edge_strdup (id) :
       nns_edge_strdup_printf ("%lld", (long long) nns_edge_generate_id ());
   eh->connect_type = connect_type;
@@ -1212,13 +1212,12 @@ nns_edge_start (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   if (eh->port <= 0) {
     eh->port = nns_edge_get_available_port ();
@@ -1308,13 +1307,13 @@ nns_edge_release_handle (nns_edge_h edge_h)
     nns_edge_loge ("Invalid param, given edge handle is null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
-  nns_edge_lock (eh);
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   switch (eh->connect_type) {
     case NNS_EDGE_CONNECT_TYPE_HYBRID:
@@ -1332,7 +1331,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   }
 
   /* Clear event callback and handles */
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC_DEAD);
   eh->event_cb = NULL;
   eh->user_data = NULL;
   eh->broker_h = NULL;
@@ -1389,13 +1388,12 @@ nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
       NNS_EDGE_EVENT_CALLBACK_RELEASED, NULL, 0, NULL);
@@ -1437,13 +1435,12 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   if (!eh->event_cb) {
     nns_edge_loge ("NNStreamer-edge event callback is not registered.");
@@ -1547,17 +1544,15 @@ nns_edge_disconnect (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (eh);
   _nns_edge_remove_all_connection (eh);
-
   nns_edge_unlock (eh);
+
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -1607,13 +1602,12 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   if (!_nns_edge_is_connected (eh)) {
     nns_edge_loge ("There is no available connection.");
@@ -1666,13 +1660,12 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     SAFE_FREE (eh->caps_str);
@@ -1765,13 +1758,12 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (eh);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (eh)) {
+  if (!nns_edge_handle_is_valid (eh)) {
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
-    nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (eh);
 
   if (0 == strcasecmp (key, "CAPS") || 0 == strcasecmp (key, "CAPABILITY")) {
     *value = nns_edge_strdup (eh->caps_str);
