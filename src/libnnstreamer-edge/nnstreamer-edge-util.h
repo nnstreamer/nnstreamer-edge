@@ -70,6 +70,15 @@ extern "C" {
 #define nns_edge_cond_signal(h) do { pthread_cond_signal (&(h)->cond); } while (0)
 
 /**
+ * @brief Internal data structure for raw data.
+ */
+typedef struct {
+  void *data;
+  nns_size_t data_len;
+  nns_edge_data_destroy_cb destroy_cb;
+} nns_edge_raw_data_s;
+
+/**
  * @brief Generate client ID.
  */
 int64_t nns_edge_generate_id (void);

@@ -18,7 +18,9 @@
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
-#include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-queue.h"
+#include "nnstreamer-edge-aitt.h"
+#include "nnstreamer-edge-mqtt.h"
 
 #ifndef PTHREAD_CREATE_JOINABLE
 #define PTHREAD_CREATE_JOINABLE 0
@@ -30,6 +32,46 @@
 
 #define N_BACKLOG 10
 #define DEFAULT_TIMEOUT_SEC 10
+
+/**
+ * @brief Data structure for edge handle.
+ */
+typedef struct
+{
+  uint32_t magic;
+  pthread_mutex_t lock;
+  char *id;
+  char *topic;
+  nns_edge_connect_type_e connect_type;
+  char *host; /**< host name or IP address */
+  int port; /**< port number (0~65535, default 0 to get available port.) */
+  char *dest_host; /**< destination IP address (broker or target device) */
+  int dest_port; /**< destination port number (broker or target device) */
+  nns_edge_node_type_e node_type;
+  nns_edge_metadata_h metadata;
+
+  /* Edge event callback and user data */
+  nns_edge_event_cb event_cb;
+  void *user_data;
+
+  int64_t client_id;
+  char *caps_str;
+
+  /* list of connection data */
+  void *connections;
+
+  /* socket listener */
+  bool listening;
+  int listener_fd;
+  pthread_t listener_thread;
+
+  /* thread and queue to send data */
+  nns_edge_queue_h send_queue;
+  pthread_t send_thread;
+
+  /* MQTT or AITT handle */
+  void *broker_h;
+} nns_edge_handle_s;
 
 /**
  * @brief enum for nnstreamer edge query commands.

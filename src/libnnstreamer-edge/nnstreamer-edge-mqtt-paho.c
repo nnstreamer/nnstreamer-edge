@@ -15,7 +15,7 @@
 #endif
 
 #include <MQTTAsync.h>
-#include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"

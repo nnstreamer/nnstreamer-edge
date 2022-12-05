@@ -12,7 +12,7 @@
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-metadata.h"
-#include "nnstreamer-edge-internal.h"
+#include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"
