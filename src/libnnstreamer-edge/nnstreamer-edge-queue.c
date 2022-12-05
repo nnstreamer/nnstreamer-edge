@@ -10,7 +10,6 @@
  * @bug    No known bugs except for NYI items.
  */
 
-#include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-util.h"

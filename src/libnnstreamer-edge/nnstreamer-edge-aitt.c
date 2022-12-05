@@ -17,9 +17,9 @@
 #include <stdbool.h>
 #include <aitt_c.h>
 
+#include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
-#include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-log.h"
 

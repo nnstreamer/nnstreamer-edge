@@ -12,9 +12,18 @@
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
-#include "nnstreamer-edge-internal.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
+
+/**
+ * @brief Internal data structure for edge event.
+ */
+typedef struct
+{
+  uint32_t magic;
+  nns_edge_event_e event;
+  nns_edge_raw_data_s data;
+} nns_edge_event_s;
 
 /**
  * @brief Internal util function to invoke event callback.
