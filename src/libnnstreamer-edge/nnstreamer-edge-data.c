@@ -34,7 +34,7 @@ nns_edge_data_create (nns_edge_data_h * data_h)
   }
 
   nns_edge_lock_init (ed);
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (ed, NNS_EDGE_MAGIC);
   nns_edge_metadata_create (&ed->metadata);
 
   *data_h = ed;
@@ -56,15 +56,13 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_lock (ed);
+  nns_edge_handle_set_magic (ed, NNS_EDGE_MAGIC_DEAD);
 
   for (i = 0; i < ed->num; i++) {
     if (ed->data[i].destroy_cb)
@@ -107,15 +105,11 @@ nns_edge_data_is_valid (nns_edge_data_h data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, edge data handle is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_unlock (ed);
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -141,13 +135,12 @@ nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h * new_data_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, edge data handle is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (ed);
 
   ret = nns_edge_data_create (new_data_h);
   if (ret != NNS_EDGE_ERROR_NONE) {
@@ -206,13 +199,12 @@ nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (ed);
 
   if (ed->num >= NNS_EDGE_DATA_LIMIT) {
     nns_edge_loge ("Cannot add data, the maximum number of edge data is %d.",
@@ -250,13 +242,12 @@ nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+
+  nns_edge_lock (ed);
 
   if (index >= ed->num) {
     nns_edge_loge
@@ -292,17 +283,15 @@ nns_edge_data_get_count (nns_edge_data_h data_h, unsigned int *count)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   *count = ed->num;
-
   nns_edge_unlock (ed);
+
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -327,17 +316,15 @@ nns_edge_data_set_info (nns_edge_data_h data_h, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   ret = nns_edge_metadata_set (ed->metadata, key, value);
-
   nns_edge_unlock (ed);
+
   return ret;
 }
 
@@ -366,17 +353,15 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   ret = nns_edge_metadata_get (ed->metadata, key, value);
-
   nns_edge_unlock (ed);
+
   return ret;
 }
 
@@ -396,17 +381,15 @@ nns_edge_data_serialize_meta (nns_edge_data_h data_h, void **data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   ret = nns_edge_metadata_serialize (ed->metadata, data, data_len);
-
   nns_edge_unlock (ed);
+
   return ret;
 }
 
@@ -426,17 +409,15 @@ nns_edge_data_deserialize_meta (nns_edge_data_h data_h, const void *data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   ret = nns_edge_metadata_deserialize (ed->metadata, data, data_len);
-
   nns_edge_unlock (ed);
+
   return ret;
 }
 
@@ -460,14 +441,12 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    nns_edge_unlock (ed);
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   header_len = sizeof (nns_edge_data_header_s);
 
   data_len = 0;
@@ -533,14 +512,12 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_lock (ed);
-
-  if (!NNS_EDGE_MAGIC_IS_VALID (ed)) {
+  if (!nns_edge_handle_is_valid (ed)) {
     nns_edge_loge ("Invalid param, given edge data is invalid.");
-    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-    goto error;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ed);
   header = (nns_edge_data_header_s *) data;
 
   /* Check mem size */

@@ -55,7 +55,8 @@ extern "C" {
 
 #define NNS_EDGE_MAGIC 0xfeedfeed
 #define NNS_EDGE_MAGIC_DEAD 0xdeaddead
-#define NNS_EDGE_MAGIC_IS_VALID(h) ((h) && (h)->magic == NNS_EDGE_MAGIC)
+#define nns_edge_handle_is_valid(h) ((h) && *((uint32_t *)(h)) == NNS_EDGE_MAGIC)
+#define nns_edge_handle_set_magic(h,m) do { if (h) *((uint32_t *)(h)) = (m); } while (0)
 
 #define nns_edge_lock_init(h) do { pthread_mutex_init (&(h)->lock, NULL); } while (0)
 #define nns_edge_lock_destroy(h) do { pthread_mutex_destroy (&(h)->lock); } while (0)

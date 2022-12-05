@@ -319,20 +319,18 @@ TEST(edge, startInvalidParam01_n)
 TEST(edge, startInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_start (edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -355,20 +353,18 @@ TEST(edge, releaseHandleInvalidParam01_n)
 TEST(edge, releaseHandleInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -422,7 +418,6 @@ TEST(edge, setEventCbInvalidParam01_n)
 TEST(edge, setEventCbInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   ne_test_data_s *_td;
   int ret;
 
@@ -433,13 +428,12 @@ TEST(edge, setEventCbInvalidParam02_n)
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, _td);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -464,7 +458,6 @@ TEST(edge, connectInvalidParam01_n)
 TEST(edge, connectInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
@@ -474,13 +467,12 @@ TEST(edge, connectInvalidParam02_n)
   ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_connect (edge_h, "127.0.0.1", 80);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -574,20 +566,18 @@ TEST(edge, disconnectInvalidParam01_n)
 TEST(edge, disconnectInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_disconnect (edge_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -621,7 +611,6 @@ TEST(edge, sendInvalidParam02_n)
 {
   nns_edge_h edge_h;
   nns_edge_data_h data_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
@@ -634,13 +623,12 @@ TEST(edge, sendInvalidParam02_n)
   ret = nns_edge_data_set_info (data_h, "client_id", "10");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_send (edge_h, data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -685,20 +673,18 @@ TEST(edge, setInfoInvalidParam01_n)
 TEST(edge, setInfoInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   int ret;
 
   ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_set_info (edge_h, "caps", "temp-caps");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -952,7 +938,6 @@ TEST(edge, getInfoInvalidParam01_n)
 TEST(edge, getInfoInvalidParam02_n)
 {
   nns_edge_h edge_h;
-  nns_edge_handle_s *eh;
   char *value;
   int ret;
 
@@ -960,13 +945,12 @@ TEST(edge, getInfoInvalidParam02_n)
       NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  eh = (nns_edge_handle_s *) edge_h;
-  eh->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_get_info (edge_h, "temp-key", &value);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  eh->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1079,19 +1063,17 @@ TEST(edgeData, destroyInvalidParam01_n)
 TEST(edgeData, destroyInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1132,19 +1114,17 @@ TEST(edgeData, validateInvalidParam01_n)
 TEST(edgeData, validateInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_is_valid (data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1228,19 +1208,17 @@ TEST(edgeData, copyInvalidParam01_n)
 TEST(edgeData, copyInvalidParam02_n)
 {
   nns_edge_data_h src_h, desc_h;
-  nns_edge_data_s *ed;
   int ret;
 
   ret = nns_edge_data_create (&src_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) src_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (src_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_copy (src_h, &desc_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (src_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (src_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1320,7 +1298,6 @@ TEST(edgeData, addInvalidParam01_n)
 TEST(edgeData, addInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -1332,13 +1309,12 @@ TEST(edgeData, addInvalidParam02_n)
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_add (data_h, data, data_len, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1453,7 +1429,6 @@ TEST(edgeData, getInvalidParam01_n)
 TEST(edgeData, getInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data, *result;
   nns_size_t data_len, result_len;
   int ret;
@@ -1468,13 +1443,12 @@ TEST(edgeData, getInvalidParam02_n)
   ret = nns_edge_data_add (data_h, data, data_len, NULL);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_get (data_h, 0, &result, &result_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1588,7 +1562,6 @@ TEST(edgeData, getCountInvalidParam01_n)
 TEST(edgeData, getCountInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   unsigned int count;
@@ -1604,13 +1577,12 @@ TEST(edgeData, getCountInvalidParam02_n)
   ret = nns_edge_data_add (data_h, data, data_len, NULL);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_get_count (data_h, &count);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1664,19 +1636,17 @@ TEST(edgeData, setInfoInvalidParam01_n)
 TEST(edgeData, setInfoInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1736,7 +1706,6 @@ TEST(edgeData, getInfoInvalidParam01_n)
 TEST(edgeData, getInfoInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   char *value = NULL;
   int ret;
 
@@ -1746,13 +1715,12 @@ TEST(edgeData, getInfoInvalidParam02_n)
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_get_info (data_h, "temp-key", &value);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1841,7 +1809,6 @@ TEST(edgeData, serializeInvalidParam01_n)
 TEST(edgeData, serializeInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -1852,13 +1819,12 @@ TEST(edgeData, serializeInvalidParam02_n)
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1942,7 +1908,6 @@ TEST(edgeData, deserializeInvalidParam01_n)
 TEST(edgeData, deserializeInvalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -1956,13 +1921,12 @@ TEST(edgeData, deserializeInvalidParam02_n)
   ret = nns_edge_data_serialize_meta (data_h, &data, &data_len);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_deserialize_meta (data_h, data, data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2126,7 +2090,6 @@ TEST(edgeDataSerialize, invalidParam01_n)
 TEST(edgeData, invalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -2137,13 +2100,12 @@ TEST(edgeData, invalidParam02_n)
   ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_serialize (data_h, &data, &data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2213,7 +2175,6 @@ TEST(edgeDataDeserialize, invalidParam01_n)
 TEST(edgeDataDeserialize, invalidParam02_n)
 {
   nns_edge_data_h data_h;
-  nns_edge_data_s *ed;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -2227,13 +2188,12 @@ TEST(edgeDataDeserialize, invalidParam02_n)
   ret = nns_edge_data_serialize (data_h, &data, &data_len);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ed = (nns_edge_data_s *) data_h;
-  ed->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_data_deserialize (data_h, data, data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ed->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2337,7 +2297,6 @@ TEST(edgeEvent, destroyInvalidParam01_n)
 TEST(edgeEvent, destroyInvalidParam02_n)
 {
   nns_edge_event_h event_h;
-  nns_edge_event_s *ee;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -2352,13 +2311,12 @@ TEST(edgeEvent, destroyInvalidParam02_n)
   ret = nns_edge_event_set_data (event_h, data, data_len, free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ee = (nns_edge_event_s *) event_h;
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2441,7 +2399,6 @@ TEST(edgeEvent, setDataInvalidParam03_n)
 TEST(edgeEvent, setDataInvalidParam04_n)
 {
   nns_edge_event_h event_h;
-  nns_edge_event_s *ee;
   void *data;
   nns_size_t data_len;
   int ret;
@@ -2453,13 +2410,12 @@ TEST(edgeEvent, setDataInvalidParam04_n)
   ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ee = (nns_edge_event_s *) event_h;
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_event_set_data (event_h, data, data_len, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2524,19 +2480,17 @@ TEST(edgeEvent, getTypeInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   nns_edge_event_e event;
-  nns_edge_event_s *ee;
   int ret;
 
   ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ee = (nns_edge_event_s *) event_h;
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_event_get_type (event_h, &event);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2649,19 +2603,17 @@ TEST(edgeEvent, parseNewDataInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   nns_edge_data_h data_h;
-  nns_edge_event_s *ee;
   int ret;
 
   ret = nns_edge_event_create (NNS_EDGE_EVENT_NEW_DATA_RECEIVED, &event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ee = (nns_edge_event_s *) event_h;
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_event_parse_new_data (event_h, &data_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2747,20 +2699,18 @@ TEST(edgeEvent, parseCapabilityInvalidParam02_n)
 TEST(edgeEvent, parseCapabilityInvalidParam03_n)
 {
   nns_edge_event_h event_h;
-  nns_edge_event_s *ee;
   char *caps = NULL;
   int ret;
 
   ret = nns_edge_event_create (NNS_EDGE_EVENT_CAPABILITY, &event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ee = (nns_edge_event_s *) event_h;
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
 
   ret = nns_edge_event_parse_capability (event_h, &caps);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);

@@ -80,7 +80,7 @@ nns_edge_event_create (nns_edge_event_e event, nns_edge_event_h * event_h)
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-  ee->magic = NNS_EDGE_MAGIC;
+  nns_edge_handle_set_magic (ee, NNS_EDGE_MAGIC);
   ee->event = event;
 
   *event_h = ee;
@@ -97,12 +97,12 @@ nns_edge_event_destroy (nns_edge_event_h event_h)
 
   ee = (nns_edge_event_s *) event_h;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (ee)) {
+  if (!nns_edge_handle_is_valid (ee)) {
     nns_edge_loge ("Invalid param, given edge event is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  ee->magic = NNS_EDGE_MAGIC_DEAD;
+  nns_edge_handle_set_magic (ee, NNS_EDGE_MAGIC_DEAD);
 
   if (ee->data.destroy_cb)
     ee->data.destroy_cb (ee->data.data);
@@ -122,7 +122,7 @@ nns_edge_event_set_data (nns_edge_event_h event_h, void *data,
 
   ee = (nns_edge_event_s *) event_h;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (ee)) {
+  if (!nns_edge_handle_is_valid (ee)) {
     nns_edge_loge ("Invalid param, given edge event is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -153,7 +153,7 @@ nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e * event)
 
   ee = (nns_edge_event_s *) event_h;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (ee)) {
+  if (!nns_edge_handle_is_valid (ee)) {
     nns_edge_loge ("Invalid param, given edge event is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -178,7 +178,7 @@ nns_edge_event_parse_new_data (nns_edge_event_h event_h,
 
   ee = (nns_edge_event_s *) event_h;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (ee)) {
+  if (!nns_edge_handle_is_valid (ee)) {
     nns_edge_loge ("Invalid param, given edge event is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
@@ -206,7 +206,7 @@ nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability)
 
   ee = (nns_edge_event_s *) event_h;
 
-  if (!NNS_EDGE_MAGIC_IS_VALID (ee)) {
+  if (!nns_edge_handle_is_valid (ee)) {
     nns_edge_loge ("Invalid param, given edge event is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
