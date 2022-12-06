@@ -3706,8 +3706,6 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_HYBRID,
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &server_h);
   nns_edge_set_event_callback (server_h, _test_edge_hybrid_event_cb, _td_server);
-  nns_edge_set_info (server_h, "HOST", "localhost");
-  nns_edge_set_info (server_h, "PORT", "0");
   nns_edge_set_info (server_h, "DEST_HOST", "127.0.0.1");
   nns_edge_set_info (server_h, "DEST_PORT", "1883");
   nns_edge_set_info (server_h, "TOPIC", "temp-mqtt-topic");
@@ -3720,8 +3718,6 @@ TEST(edgeMqtt, connectLocal)
      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
   nns_edge_set_event_callback (client_h, _test_edge_hybrid_event_cb, _td_client);
   nns_edge_set_info (client_h, "CAPS", "test client");
-  nns_edge_set_info (client_h, "HOST", "localhost");
-  nns_edge_set_info (client_h, "port", "0");
   nns_edge_set_info (client_h, "TOPIC", "temp-mqtt-topic");
   _td_client->handle = client_h;
 
