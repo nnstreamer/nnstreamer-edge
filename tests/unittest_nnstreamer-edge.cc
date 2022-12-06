@@ -2258,6 +2258,65 @@ TEST(edgeDataDeserialize, invalidParam04_n)
 }
 
 /**
+ * @brief Util to check serialized data - invalid param.
+ */
+TEST(edgeDataIsSerialized, invalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_data_is_serialized (NULL, 1U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Util to check serialized data - invalid param.
+ */
+TEST(edgeDataIsSerialized, invalidParam02_n)
+{
+  void *data;
+  int ret;
+
+  data = nns_edge_malloc (100U);
+  ASSERT_TRUE (data != NULL);
+  memset (data, 0, 100U);
+
+  /* invalid data key */
+  ret = nns_edge_data_is_serialized (data, 100U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
+ * @brief Util to check serialized data - invalid param.
+ */
+TEST(edgeDataIsSerialized, invalidParam03_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  nns_size_t data_len;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* invalid data size */
+  ret = nns_edge_data_is_serialized (data, 1U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_free (data);
+}
+
+/**
  * @brief Create edge event - invalid param.
  */
 TEST(edgeEvent, createInvalidParam01_n)

@@ -56,6 +56,12 @@ int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t *da
  */
 int nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data, const nns_size_t data_len);
 
+/**
+ * @brief Check given data is serialized buffer.
+ * @note This is internal function, DO NOT export this.
+ */
+int nns_edge_data_is_serialized (const void *data, const nns_size_t data_len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

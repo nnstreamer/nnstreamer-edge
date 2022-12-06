@@ -14,11 +14,14 @@
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 
+#define NNS_EDGE_DATA_KEY (0xeddaedda)
+
 /**
  * @brief Internal data structure for the header of the serialzied edge data.
  */
 typedef struct
 {
+  uint32_t key;
   uint32_t num_mem;
   nns_size_t data_len[NNS_EDGE_DATA_LIMIT];
   nns_size_t meta_len;
@@ -472,6 +475,7 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
   header_len = sizeof (nns_edge_data_header_s);
 
   data_len = 0;
+  edata_header.key = NNS_EDGE_DATA_KEY;
   edata_header.num_mem = ed->num;
   for (n = 0; n < ed->num; n++) {
     edata_header.data_len[n] = ed->data[n].data_len;
@@ -525,7 +529,6 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
   nns_edge_data_header_s *header;
   int ret;
   unsigned int n;
-  nns_size_t total;
   char *ptr;
 
   ed = (nns_edge_data_s *) data_h;
@@ -539,21 +542,12 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  ret = nns_edge_data_is_serialized (data, data_len);
+  if (ret != NNS_EDGE_ERROR_NONE)
+    return ret;
+
   nns_edge_lock (ed);
   header = (nns_edge_data_header_s *) data;
-
-  /* Check mem size */
-  total = sizeof (nns_edge_data_header_s) + header->meta_len;
-  for (n = 0; n < header->num_mem; n++) {
-    total += header->data_len[n];
-  }
-
-  if (total != data_len) {
-    nns_edge_loge ("Invalid data size to deserialize edge data.");
-    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-    goto error;
-  }
-
   ptr = (char *) data + sizeof (nns_edge_data_header_s);
 
   ed->num = header->num_mem;
@@ -567,7 +561,40 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
 
   ret = nns_edge_metadata_deserialize (ed->metadata, ptr, header->meta_len);
 
-error:
   nns_edge_unlock (ed);
   return ret;
+}
+
+/**
+ * @brief Check given data is serialized buffer.
+ */
+int
+nns_edge_data_is_serialized (const void *data, const nns_size_t data_len)
+{
+  nns_edge_data_header_s *header;
+  nns_size_t total;
+  unsigned int n;
+
+  if (!data) {
+    nns_edge_loge ("Invalid param, given data is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  header = (nns_edge_data_header_s *) data;
+  if (header->key != NNS_EDGE_DATA_KEY) {
+    nns_edge_loge ("Invalid param, given data has invalid format.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  /* Check mem size */
+  total = sizeof (nns_edge_data_header_s) + header->meta_len;
+  for (n = 0; n < header->num_mem; n++)
+    total += header->data_len[n];
+
+  if (total != data_len) {
+    nns_edge_loge ("Invalid param, given data has invalid data size.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  return NNS_EDGE_ERROR_NONE;
 }
