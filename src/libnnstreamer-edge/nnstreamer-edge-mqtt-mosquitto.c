@@ -79,7 +79,7 @@ _nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
   struct mosquitto *handle;
   int ver = MQTT_PROTOCOL_V311; /** @todo check mqtt version (TizenRT repo) */
 
-  nns_edge_logi ("Trying to connect MQTT (ID:%s, URL:%s:%d).", id, host, port);
+  nns_edge_logd ("Trying to connect MQTT (ID:%s, URL:%s:%d).", id, host, port);
 
   bh = (nns_edge_broker_s *) calloc (1, sizeof (nns_edge_broker_s));
   if (!bh) {
@@ -200,7 +200,7 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
   handle = bh->mqtt_h;
 
   if (handle) {
-    nns_edge_logi ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
+    nns_edge_logd ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
         bh->id, bh->host, bh->port);
 
     /* Clear retained message */
