@@ -51,7 +51,7 @@ _free_test_data (ne_test_data_s *_td)
   if (!_td)
     return;
 
-  free (_td);
+  SAFE_FREE (_td);
 }
 
 /**
@@ -160,7 +160,7 @@ TEST(edgeAitt, connectLocal)
   nns_edge_set_info (server_h, "DEST_PORT", "1883");
   nns_edge_set_info (server_h, "TOPIC", "AITT_TEST_TOPIC");
   _td_server->handle = server_h;
-  nns_edge_free (val);
+  SAFE_FREE (val);
 
   /* Prepare client */
   nns_edge_create_handle ("temp-receiver", NNS_EDGE_CONNECT_TYPE_AITT,

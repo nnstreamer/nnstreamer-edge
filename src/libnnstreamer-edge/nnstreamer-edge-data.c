@@ -513,7 +513,7 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
   *len = total;
 
 done:
-  nns_edge_free (meta_serialized);
+  SAFE_FREE (meta_serialized);
   nns_edge_unlock (ed);
   return ret;
 }
