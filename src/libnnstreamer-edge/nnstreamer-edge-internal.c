@@ -66,6 +66,7 @@ typedef struct
   pthread_t listener_thread;
 
   /* thread and queue to send data */
+  bool sending;
   nns_edge_queue_h send_queue;
   pthread_t send_thread;
 
@@ -813,7 +814,14 @@ _nns_edge_send_thread (void *thread_data)
   char *val;
   int ret;
 
-  while (nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h, &data_size)) {
+  eh->sending = true;
+  while (eh->sending &&
+      nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h, &data_size)) {
+    if (!eh->sending) {
+      nns_edge_data_destroy (data_h);
+      break;
+    }
+
     /* Send data to destination */
     switch (eh->connect_type) {
       case NNS_EDGE_CONNECT_TYPE_TCP:
@@ -859,6 +867,8 @@ _nns_edge_send_thread (void *thread_data)
     }
     nns_edge_data_destroy (data_h);
   }
+  eh->sending = false;
+
   return NULL;
 }
 
@@ -1231,6 +1241,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->broker_h = NULL;
   eh->connections = NULL;
   eh->listening = false;
+  eh->sending = false;
   eh->listener_fd = -1;
   nns_edge_metadata_create (&eh->metadata);
   nns_edge_queue_create (&eh->send_queue);
@@ -1382,6 +1393,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->send_queue = NULL;
 
   if (eh->send_thread) {
+    eh->sending = false;
     pthread_join (eh->send_thread, NULL);
     eh->send_thread = 0;
   }
