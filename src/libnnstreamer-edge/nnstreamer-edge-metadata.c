@@ -138,7 +138,7 @@ nns_edge_metadata_destroy (nns_edge_metadata_h metadata_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
   nns_edge_metadata_free (meta);
-  free (meta);
+  SAFE_FREE (meta);
 
   return NNS_EDGE_ERROR_NONE;
 }

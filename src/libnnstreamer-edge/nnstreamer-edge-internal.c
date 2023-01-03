@@ -516,7 +516,7 @@ _nns_edge_release_connection_data (nns_edge_conn_data_s * cdata)
   if (cdata) {
     _nns_edge_close_connection (cdata->src_conn);
     _nns_edge_close_connection (cdata->sink_conn);
-    free (cdata);
+    SAFE_FREE (cdata);
   }
 }
 
@@ -1752,7 +1752,7 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
       char *v = nns_edge_strndup (value, s - value);
 
       limit = (unsigned int) strtoull (v, NULL, 10);
-      nns_edge_free (v);
+      SAFE_FREE (v);
 
       if (strcasecmp (s + 1, "NEW") == 0) {
         leaky = NNS_EDGE_QUEUE_LEAK_NEW;

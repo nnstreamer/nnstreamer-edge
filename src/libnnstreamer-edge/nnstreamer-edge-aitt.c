@@ -299,6 +299,6 @@ nns_edge_aitt_send_data (nns_edge_aitt_h handle, nns_edge_data_h data_h)
   if (NNS_EDGE_ERROR_NONE != ret)
     nns_edge_loge ("Failed to send data to destination.");
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
   return ret;
 }

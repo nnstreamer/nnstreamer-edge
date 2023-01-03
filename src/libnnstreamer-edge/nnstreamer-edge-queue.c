@@ -70,7 +70,7 @@ _pop_data (nns_edge_queue_s * q, bool clear, void **data, nns_size_t * size)
       popped = true;
     }
 
-    free (qdata);
+    SAFE_FREE (qdata);
   }
 
   return popped;
@@ -126,7 +126,7 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
 
   nns_edge_cond_destroy (q);
   nns_edge_lock_destroy (q);
-  free (q);
+  SAFE_FREE (q);
 
   return true;
 }

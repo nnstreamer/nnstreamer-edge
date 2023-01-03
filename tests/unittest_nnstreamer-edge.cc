@@ -55,7 +55,7 @@ _free_test_data (ne_test_data_s *_td)
   if (!_td)
     return;
 
-  free (_td);
+  SAFE_FREE (_td);
 }
 
 /**
@@ -95,11 +95,11 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
       ret = nns_edge_data_get_info (data_h, "test-key1", &val);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       EXPECT_STREQ (val, "test-value1");
-      nns_edge_free (val);
+      SAFE_FREE (val);
       ret = nns_edge_data_get_info (data_h, "test-key2", &val);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       EXPECT_STREQ (val, "test-value2");
-      nns_edge_free (val);
+      SAFE_FREE (val);
 
       if (_td->is_server) {
         /**
@@ -160,7 +160,7 @@ TEST(edge, connectLocal)
   nns_edge_set_info (server_h, "CAPS", "test server");
   nns_edge_set_info (server_h, "QUEUE_SIZE", "10:OLD");
   _td_server->handle = server_h;
-  nns_edge_free (val);
+  SAFE_FREE (val);
 
   /* Prepare client */
   nns_edge_create_handle ("temp-client1", NNS_EDGE_CONNECT_TYPE_TCP,
@@ -256,8 +256,8 @@ TEST(edge, connectLocal)
   EXPECT_TRUE (_td_client1->received > 0);
   EXPECT_TRUE (_td_client2->received > 0);
 
-  nns_edge_free (client1_id);
-  nns_edge_free (client2_id);
+  SAFE_FREE (client1_id);
+  SAFE_FREE (client2_id);
 
   _free_test_data (_td_server);
   _free_test_data (_td_client1);
@@ -865,47 +865,47 @@ TEST(edge, getInfo)
   ret = nns_edge_get_info (edge_h, "ID", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-id");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "capability", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "capa-for-test");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "topic", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "topic-for-test");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "ip", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "165.213.201.100");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "port", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "2000");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "dest_ip", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "165.213.201.101");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "dest_port", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "2001");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "temp-key1", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value1");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_get_info (edge_h, "temp-key2", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value2");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   /* Replace old value */
   ret = nns_edge_set_info (edge_h, "temp-key2", "temp-value2-replaced");
@@ -914,7 +914,7 @@ TEST(edge, getInfo)
   ret = nns_edge_get_info (edge_h, "temp-key2", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value2-replaced");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1157,7 +1157,7 @@ TEST(edgeData, copy)
   ret = nns_edge_data_set_info (src_h, "temp-key2", "temp-data-val2");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_add (src_h, data, data_len, free);
+  ret = nns_edge_data_add (src_h, data, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_copy (src_h, &desc_h);
@@ -1179,12 +1179,12 @@ TEST(edgeData, copy)
   ret = nns_edge_data_get_info (desc_h, "temp-key1", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val1");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_data_get_info (desc_h, "temp-key2", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val2");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_data_destroy (desc_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1270,7 +1270,7 @@ TEST(edgeData, addMaxData_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1289,7 +1289,7 @@ TEST(edgeData, addInvalidParam01_n)
   ret = nns_edge_data_add (NULL, data, data_len, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1319,7 +1319,7 @@ TEST(edgeData, addInvalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1345,7 +1345,7 @@ TEST(edgeData, addInvalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1371,7 +1371,7 @@ TEST(edgeData, addInvalidParam04_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1407,7 +1407,7 @@ TEST(edgeData, get)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1453,7 +1453,7 @@ TEST(edgeData, getInvalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1483,7 +1483,7 @@ TEST(edgeData, getInvalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1512,7 +1512,7 @@ TEST(edgeData, getInvalidParam04_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1541,7 +1541,7 @@ TEST(edgeData, getInvalidParam05_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1587,7 +1587,7 @@ TEST(edgeData, getCountInvalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1616,7 +1616,7 @@ TEST(edgeData, getCountInvalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1899,7 +1899,7 @@ TEST(edgeData, deserializeInvalidParam01_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1931,7 +1931,7 @@ TEST(edgeData, deserializeInvalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1959,7 +1959,7 @@ TEST(edgeData, deserializeInvalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -1987,7 +1987,7 @@ TEST(edgeData, deserializeInvalidParam04_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 
@@ -2024,9 +2024,9 @@ TEST(edgeDataSerialize, normal)
   ret = nns_edge_data_set_info (src_h, "temp-key2", "temp-data-val2");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_add (src_h, data1, data_len, free);
+  ret = nns_edge_data_add (src_h, data1, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
-  ret = nns_edge_data_add (src_h, data2, data_len * 2, free);
+  ret = nns_edge_data_add (src_h, data2, data_len * 2, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_serialize (src_h, &serialized_data, &serialized_len);
@@ -2059,12 +2059,12 @@ TEST(edgeDataSerialize, normal)
   ret = nns_edge_data_get_info (dest_h, "temp-key1", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val1");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_data_get_info (dest_h, "temp-key2", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val2");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_data_destroy (dest_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2166,7 +2166,7 @@ TEST(edgeDataDeserialize, invalidParam01_n)
   ret = nns_edge_data_deserialize (NULL, data, 10U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2198,7 +2198,7 @@ TEST(edgeDataDeserialize, invalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2226,7 +2226,7 @@ TEST(edgeDataDeserialize, invalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2254,7 +2254,7 @@ TEST(edgeDataDeserialize, invalidParam04_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2284,7 +2284,7 @@ TEST(edgeDataIsSerialized, invalidParam02_n)
   ret = nns_edge_data_is_serialized (data, 100U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2313,7 +2313,7 @@ TEST(edgeDataIsSerialized, invalidParam03_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  nns_edge_free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2367,7 +2367,7 @@ TEST(edgeEvent, destroyInvalidParam02_n)
   ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_event_set_data (event_h, data, data_len, free);
+  ret = nns_edge_event_set_data (event_h, data, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
@@ -2397,7 +2397,7 @@ TEST(edgeEvent, setDataInvalidParam01_n)
   ret = nns_edge_event_set_data (NULL, data, data_len, NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2423,7 +2423,7 @@ TEST(edgeEvent, setDataInvalidParam02_n)
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2449,7 +2449,7 @@ TEST(edgeEvent, setDataInvalidParam03_n)
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2479,7 +2479,7 @@ TEST(edgeEvent, setDataInvalidParam04_n)
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -2578,7 +2578,7 @@ TEST(edgeEvent, parseNewData)
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_data_add (data_h, data, data_len, free);
+  ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_data_set_info (data_h, "temp-key1", "temp-data-val1");
@@ -2608,12 +2608,12 @@ TEST(edgeEvent, parseNewData)
   ret = nns_edge_data_get_info (result_h, "temp-key1", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val1");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_data_get_info (result_h, "temp-key2", &result_value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (result_value, "temp-data-val2");
-  free (result_value);
+  SAFE_FREE (result_value);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2716,7 +2716,7 @@ TEST(edgeEvent, parseCapability)
   ret = nns_edge_event_parse_capability (event_h, &caps);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (caps, capability);
-  free (caps);
+  SAFE_FREE (caps);
 
   ret = nns_edge_event_destroy (event_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2996,12 +2996,12 @@ TEST(edgeMeta, copy)
   ret = nns_edge_metadata_get (desc, "temp-key1", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value1");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_metadata_get (desc, "temp-key2", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value2-replaced");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_metadata_destroy (src);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -3077,24 +3077,24 @@ TEST(edgeMeta, serialize)
   ret = nns_edge_metadata_get (desc, "temp-key1", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value1");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_metadata_get (desc, "temp-key2", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value2");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_metadata_get (desc, "temp-key3", &value);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_STREQ (value, "temp-value3");
-  nns_edge_free (value);
+  SAFE_FREE (value);
 
   ret = nns_edge_metadata_destroy (src);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_metadata_destroy (desc);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -3165,7 +3165,7 @@ TEST(edgeMeta, deserializeInvalidParam01_n)
   ret = nns_edge_metadata_deserialize (NULL, data, data_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -3213,7 +3213,7 @@ TEST(edgeMeta, deserializeInvalidParam03_n)
   ret = nns_edge_metadata_destroy (meta);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -3353,7 +3353,7 @@ TEST(edgeQueue, pushDataOnThread)
       EXPECT_EQ (((unsigned int *) result)[j], i * 10U + j);
     EXPECT_EQ (rsize, 5 * sizeof (unsigned int));
 
-    free (result);
+    SAFE_FREE (result);
   }
 
   retry = 0U;
@@ -3417,7 +3417,7 @@ TEST(edgeQueue, setLimit)
 
   EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -3444,12 +3444,12 @@ TEST(edgeQueue, setLeaky)
 
     *((unsigned int *) data) = i + 1;
 
-    res = nns_edge_queue_push (queue_h, data, dsize, free);
+    res = nns_edge_queue_push (queue_h, data, dsize, nns_edge_free);
     if (i < 3U) {
       EXPECT_TRUE (res);
     } else {
       EXPECT_FALSE (res);
-      free (data);
+      SAFE_FREE (data);
     }
   }
 
@@ -3458,13 +3458,13 @@ TEST(edgeQueue, setLeaky)
 
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 1U);
-  free (data);
+  SAFE_FREE (data);
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 2U);
-  free (data);
+  SAFE_FREE (data);
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 3U);
-  free (data);
+  SAFE_FREE (data);
 
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 0U);
@@ -3478,7 +3478,7 @@ TEST(edgeQueue, setLeaky)
 
     *((unsigned int *) data) = i + 1;
 
-    EXPECT_TRUE (nns_edge_queue_push (queue_h, data, dsize, free));
+    EXPECT_TRUE (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free));
   }
 
   len = nns_edge_queue_get_length (queue_h);
@@ -3486,13 +3486,13 @@ TEST(edgeQueue, setLeaky)
 
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 3U);
-  free (data);
+  SAFE_FREE (data);
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 4U);
-  free (data);
+  SAFE_FREE (data);
   EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
   EXPECT_EQ (*((unsigned int *) data), 5U);
-  free (data);
+  SAFE_FREE (data);
 
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 0U);
@@ -3522,7 +3522,7 @@ TEST(edgeQueue, pushInvalidParam01_n)
 
   EXPECT_FALSE (nns_edge_queue_push (NULL, data, dsize, NULL));
 
-  free (data);
+  SAFE_FREE (data);
 }
 
 /**
@@ -3692,7 +3692,7 @@ _test_edge_hybrid_event_cb (nns_edge_event_h event_h, void *user_data)
       ret = nns_edge_data_get_info (data_h, "test-key", &val);
       EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
       EXPECT_STREQ (val, "test-value");
-      nns_edge_free (val);
+      SAFE_FREE (val);
 
       if (_td->is_server) {
         /**
@@ -3809,7 +3809,7 @@ TEST(edgeMqtt, connectLocal)
 
   nns_edge_get_info (client_h, "client_id", &val);
   nns_edge_data_set_info (data_h, "client_id", val);
-  nns_edge_free (val);
+  SAFE_FREE (val);
 
   ret = nns_edge_data_set_info (data_h, "test-key", "test-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
