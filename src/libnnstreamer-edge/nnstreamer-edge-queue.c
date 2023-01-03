@@ -262,6 +262,10 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
     return false;
   }
 
+  /* init data */
+  *data = NULL;
+  *size = 0U;
+
   nns_edge_lock (q);
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
@@ -293,6 +297,10 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
     nns_edge_loge ("[Queue] Invalid param, size is null.");
     return false;
   }
+
+  /* init data */
+  *data = NULL;
+  *size = 0U;
 
   nns_edge_lock (q);
   if (q->length == 0U) {
