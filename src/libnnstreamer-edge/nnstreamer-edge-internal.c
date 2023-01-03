@@ -766,7 +766,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
     int64_t client_id)
 {
   pthread_attr_t attr;
-  int tid;
+  int status;
   nns_edge_thread_data_s *thread_data = NULL;
 
   thread_data =
@@ -784,11 +784,11 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
   thread_data->conn = conn;
   thread_data->client_id = client_id;
 
-  tid = pthread_create (&conn->msg_thread, &attr, _nns_edge_message_handler,
+  status = pthread_create (&conn->msg_thread, &attr, _nns_edge_message_handler,
       thread_data);
   pthread_attr_destroy (&attr);
 
-  if (tid < 0) {
+  if (status != 0) {
     nns_edge_loge ("Failed to create message handler thread.");
     conn->running = false;
     conn->msg_thread = 0;
@@ -879,15 +879,15 @@ static int
 _nns_edge_create_send_thread (nns_edge_handle_s * eh)
 {
   pthread_attr_t attr;
-  int tid;
+  int status;
 
   pthread_attr_init (&attr);
   pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
 
-  tid = pthread_create (&eh->send_thread, &attr, _nns_edge_send_thread, eh);
+  status = pthread_create (&eh->send_thread, &attr, _nns_edge_send_thread, eh);
   pthread_attr_destroy (&attr);
 
-  if (tid < 0) {
+  if (status != 0) {
     nns_edge_loge ("Failed to create sender thread.");
     eh->send_thread = 0;
     return NNS_EDGE_ERROR_IO;
@@ -1151,7 +1151,7 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
   struct sockaddr_in saddr = { 0 };
   socklen_t saddr_len = sizeof (struct sockaddr_in);
   pthread_attr_t attr;
-  int tid;
+  int status;
 
   if (!_fill_socket_addr (&saddr, eh->host, eh->port)) {
     nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
@@ -1172,11 +1172,11 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
 
   pthread_attr_init (&attr);
   pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-  tid = pthread_create (&eh->listener_thread, &attr,
+  status = pthread_create (&eh->listener_thread, &attr,
       _nns_edge_socket_listener_thread, eh);
   pthread_attr_destroy (&attr);
 
-  if (tid < 0) {
+  if (status != 0) {
     nns_edge_loge ("Failed to create listener thread.");
     eh->listening = false;
     eh->listener_thread = 0;
