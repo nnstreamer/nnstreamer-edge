@@ -324,3 +324,27 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
 
   return (popped && *data != NULL);
 }
+
+/**
+ * @brief Clear all data in the queue.
+ * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
+ */
+bool
+nns_edge_queue_clear (nns_edge_queue_h handle)
+{
+  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+
+  if (!q) {
+    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+    return false;
+  }
+
+  nns_edge_lock (q);
+  nns_edge_cond_signal (q);
+
+  while (q->length > 0U)
+    _pop_data (q, true, NULL, NULL);
+
+  nns_edge_unlock (q);
+  return true;
+}
