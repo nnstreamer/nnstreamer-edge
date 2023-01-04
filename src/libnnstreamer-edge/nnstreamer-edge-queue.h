@@ -92,6 +92,14 @@ bool nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size)
  */
 bool nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
 
+/**
+ * @brief Stop waiting for new data and clear all data in the queue.
+ * @param[in] handle The queue handle.
+ * @return true on success.
+ * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
+ */
+bool nns_edge_queue_clear (nns_edge_queue_h handle);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

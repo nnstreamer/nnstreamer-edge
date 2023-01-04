@@ -1389,14 +1389,14 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->user_data = NULL;
   eh->broker_h = NULL;
 
-  nns_edge_queue_destroy (eh->send_queue);
-  eh->send_queue = NULL;
-
+  nns_edge_queue_clear (eh->send_queue);
   if (eh->send_thread) {
     eh->sending = false;
     pthread_join (eh->send_thread, NULL);
     eh->send_thread = 0;
   }
+  nns_edge_queue_destroy (eh->send_queue);
+  eh->send_queue = NULL;
 
   if (eh->listener_thread) {
     eh->listening = false;
