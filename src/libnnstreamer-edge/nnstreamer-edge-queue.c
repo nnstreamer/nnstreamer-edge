@@ -116,13 +116,8 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
     return false;
   }
 
-  nns_edge_lock (q);
-  nns_edge_cond_signal (q);
-
-  while (q->length > 0U)
-    _pop_data (q, true, NULL, NULL);
-
-  nns_edge_unlock (q);
+  /* Stop waiting and clear all data. */
+  nns_edge_queue_clear (handle);
 
   nns_edge_cond_destroy (q);
   nns_edge_lock_destroy (q);
