@@ -26,7 +26,7 @@
 typedef struct
 {
   void *mqtt_h;
-  nns_edge_queue_h server_list;
+  nns_edge_queue_h message_queue;
   char *id;
   char *topic;
   char *host;
@@ -65,7 +65,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   msg_len = (nns_size_t) message->payloadlen;
   msg = nns_edge_memdup (message->payload, msg_len);
   if (msg)
-    nns_edge_queue_push (bh->server_list, msg, msg_len, nns_edge_free);
+    nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
 
   return TRUE;
 }
@@ -138,7 +138,7 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
   bh->host = nns_edge_strdup (host);
   bh->port = port;
   bh->mqtt_h = handle;
-  nns_edge_queue_create (&bh->server_list);
+  nns_edge_queue_create (&bh->message_queue);
 
   MQTTAsync_setCallbacks (handle, bh, NULL, mqtt_cb_message_arrived, NULL);
 
@@ -220,8 +220,8 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     MQTTAsync_destroy (&handle);
   }
 
-  nns_edge_queue_destroy (bh->server_list);
-  bh->server_list = NULL;
+  nns_edge_queue_destroy (bh->message_queue);
+  bh->message_queue = NULL;
 
   SAFE_FREE (bh->id);
   SAFE_FREE (bh->topic);
@@ -368,7 +368,7 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
   bh = (nns_edge_broker_s *) broker_h;
 
   /* Wait for 1 second */
-  if (!nns_edge_queue_wait_pop (bh->server_list, 1000U, msg, msg_len)) {
+  if (!nns_edge_queue_wait_pop (bh->message_queue, 1000U, msg, msg_len)) {
     nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }
