@@ -862,6 +862,11 @@ _nns_edge_send_thread (void *thread_data)
         if (NNS_EDGE_ERROR_NONE != ret)
           nns_edge_loge ("Failed to send data via AITT connection.");
         break;
+      case NNS_EDGE_CONNECT_TYPE_MQTT:
+        ret = nns_edge_mqtt_publish_data (eh->broker_h, data_h);
+        if (NNS_EDGE_ERROR_NONE != ret)
+          nns_edge_loge ("Failed to send data via MQTT connection.");
+        break;
       default:
         break;
     }
@@ -1283,8 +1288,9 @@ nns_edge_start (nns_edge_h edge_h)
 
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
-    if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
-      char *topic, *msg;
+    if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type
+        || NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type) {
+      char *topic;
 
       /** @todo Set unique device name.
        * Device name should be unique. Consider using MAC address later.
@@ -1303,14 +1309,24 @@ nns_edge_start (nns_edge_h edge_h)
         goto done;
       }
 
-      msg = nns_edge_get_host_string (eh->host, eh->port);
+      if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+        char *msg;
+        msg = nns_edge_get_host_string (eh->host, eh->port);
 
-      ret = nns_edge_mqtt_publish (eh->broker_h, msg, strlen (msg) + 1);
-      SAFE_FREE (msg);
+        ret = nns_edge_mqtt_publish (eh->broker_h, msg, strlen (msg) + 1);
+        SAFE_FREE (msg);
 
-      if (NNS_EDGE_ERROR_NONE != ret) {
-        nns_edge_loge ("Failed to publish the meesage to broker.");
-        goto done;
+        if (NNS_EDGE_ERROR_NONE != ret) {
+          nns_edge_loge ("Failed to publish the meesage to broker.");
+          goto done;
+        }
+      } else {
+        ret = nns_edge_mqtt_set_event_callback (eh->broker_h, eh->event_cb,
+            eh->user_data);
+        if (NNS_EDGE_ERROR_NONE != ret) {
+          nns_edge_loge ("Failed to set event callback to MQTT broker.");
+          goto done;
+        }
       }
     } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
       ret = nns_edge_aitt_connect (eh->id, eh->topic, eh->dest_host,
@@ -1370,6 +1386,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
 
   switch (eh->connect_type) {
     case NNS_EDGE_CONNECT_TYPE_HYBRID:
+    case NNS_EDGE_CONNECT_TYPE_MQTT:
       if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh->broker_h)) {
         nns_edge_logw ("Failed to close mqtt connection.");
       }
@@ -1465,6 +1482,71 @@ nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb,
 }
 
 /**
+ * @brief Parse the message received from the MQTT broker and connect to the server directly.
+ */
+static int
+_mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
+{
+  int ret;
+
+  do {
+    char *msg = NULL;
+    char *server_ip = NULL;
+    int server_port = 0;
+    nns_size_t msg_len = 0;
+
+    ret = nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len);
+    if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
+      return ret;
+
+    nns_edge_parse_host_string (msg, &server_ip, &server_port);
+    SAFE_FREE (msg);
+
+    nns_edge_logd ("[DEBUG] Parsed server info: Server [%s:%d] ", server_ip,
+        server_port);
+
+    ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
+    SAFE_FREE (server_ip);
+
+    if (NNS_EDGE_ERROR_NONE == ret) {
+      return ret;
+    }
+  } while (TRUE);
+
+  return ret;
+}
+
+/**
+ * @brief Start subsciption to MQTT message
+ */
+static int
+_nns_edge_start_mqtt_sub (nns_edge_handle_s * eh)
+{
+  char *topic;
+  int ret;
+
+  if (!nns_edge_mqtt_is_connected (eh->broker_h)) {
+    topic = nns_edge_strdup_printf ("edge/inference/+/%s/#", eh->topic);
+
+    ret = nns_edge_mqtt_connect (eh->id, topic, eh->dest_host, eh->dest_port,
+        &eh->broker_h);
+    SAFE_FREE (topic);
+
+    if (NNS_EDGE_ERROR_NONE != ret) {
+      return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+    }
+
+    ret = nns_edge_mqtt_subscribe (eh->broker_h);
+    if (NNS_EDGE_ERROR_NONE != ret) {
+      nns_edge_loge ("Failed to subscribe to topic: %s.", eh->topic);
+      return ret;
+    }
+  }
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Connect to the destination node.
  */
 int
@@ -1506,51 +1588,22 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
   eh->dest_host = nns_edge_strdup (dest_host);
   eh->dest_port = dest_port;
 
-  if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
-    char *topic;
+  if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type
+      || NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type) {
+    ret = _nns_edge_start_mqtt_sub (eh);
+    if (NNS_EDGE_ERROR_NONE != ret)
+      goto done;
 
-    if (!nns_edge_mqtt_is_connected (eh->broker_h)) {
-      topic = nns_edge_strdup_printf ("edge/inference/+/%s/#", eh->topic);
-
-      ret = nns_edge_mqtt_connect (eh->id, topic, dest_host, dest_port,
-          &eh->broker_h);
-      SAFE_FREE (topic);
-
+    if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+      ret = _mqtt_hybrid_direct_connection (eh);
+    } else {
+      ret = nns_edge_mqtt_set_event_callback (eh->broker_h, eh->event_cb,
+          eh->user_data);
       if (NNS_EDGE_ERROR_NONE != ret) {
-        nns_edge_loge ("Connection failure to broker.");
-        goto done;
-      }
-
-      ret = nns_edge_mqtt_subscribe (eh->broker_h);
-      if (NNS_EDGE_ERROR_NONE != ret) {
-        nns_edge_loge ("Failed to subscribe to topic: %s.", eh->topic);
-        goto done;
+        nns_edge_loge ("Failed to set event callback to MQTT broker.");
+        return ret;
       }
     }
-
-    do {
-      char *msg = NULL;
-      char *server_ip = NULL;
-      int server_port = 0;
-      nns_size_t msg_len = 0;
-
-      ret = nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len);
-      if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
-        break;
-
-      nns_edge_parse_host_string (msg, &server_ip, &server_port);
-      SAFE_FREE (msg);
-
-      nns_edge_logd ("[DEBUG] Parsed server info: Server [%s:%d] ", server_ip,
-          server_port);
-
-      ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
-      SAFE_FREE (server_ip);
-
-      if (NNS_EDGE_ERROR_NONE == ret) {
-        break;
-      }
-    } while (TRUE);
   } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
     ret = nns_edge_aitt_connect (eh->id, eh->topic, dest_host, dest_port,
         &eh->broker_h);
@@ -1622,6 +1675,10 @@ _nns_edge_is_connected (nns_edge_h edge_h)
 
   if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type &&
       NNS_EDGE_ERROR_NONE == nns_edge_aitt_is_connected (eh->broker_h))
+    return true;
+
+  if (NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type &&
+      nns_edge_mqtt_is_connected (eh->broker_h))
     return true;
 
   conn_data = (nns_edge_conn_data_s *) eh->connections;
