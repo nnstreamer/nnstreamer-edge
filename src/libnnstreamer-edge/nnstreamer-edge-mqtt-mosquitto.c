@@ -19,6 +19,8 @@
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"
+#include "nnstreamer-edge-data.h"
+#include "nnstreamer-edge-event.h"
 
 /**
  * @brief Data structure for mqtt broker handle.
@@ -32,6 +34,10 @@ typedef struct
   char *host;
   int port;
   bool connected;
+
+  /* event callback for new message */
+  nns_edge_event_cb event_cb;
+  void *user_data;
 } nns_edge_broker_s;
 
 /**
@@ -44,6 +50,7 @@ on_message_callback (struct mosquitto *client, void *data,
   nns_edge_broker_s *bh = (nns_edge_broker_s *) data;
   char *msg = NULL;
   nns_size_t msg_len;
+  int ret;
 
   if (!bh) {
     nns_edge_loge ("Invalid param, given broker handle is invalid.");
@@ -60,8 +67,31 @@ on_message_callback (struct mosquitto *client, void *data,
 
   msg_len = (nns_size_t) message->payloadlen;
   msg = nns_edge_memdup (message->payload, msg_len);
-  if (msg)
-    nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
+
+  if (msg) {
+    if (bh->event_cb) {
+      nns_edge_data_h data_h;
+
+      if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to create data handle in msg thread.");
+        return;
+      }
+
+      nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
+
+      ret = nns_edge_event_invoke_callback (bh->event_cb, bh->user_data,
+          NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h, sizeof (nns_edge_data_h),
+          NULL);
+      if (ret != NNS_EDGE_ERROR_NONE)
+        nns_edge_loge ("Failed to send an event for received message.");
+
+      nns_edge_data_destroy (data_h);
+      SAFE_FREE (msg);
+      return;
+    } else {
+      nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
+    }
+  }
 
   return;
 }
@@ -127,6 +157,8 @@ _nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
   bh->host = nns_edge_strdup (host);
   bh->port = port;
   bh->connected = true;
+  bh->event_cb = NULL;
+  bh->user_data = NULL;
 
   *broker_h = bh;
   return NNS_EDGE_ERROR_NONE;
@@ -219,6 +251,30 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
   SAFE_FREE (bh);
 
   return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Internal util function to send edge-data via MQTT connection.
+ */
+int
+nns_edge_mqtt_publish_data (nns_edge_broker_h handle, nns_edge_data_h data_h)
+{
+  int ret;
+  void *data = NULL;
+  nns_size_t size;
+
+  ret = nns_edge_data_serialize (data_h, &data, &size);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to serialize the edge data.");
+    return ret;
+  }
+
+  ret = nns_edge_mqtt_publish (handle, data, size);
+  if (NNS_EDGE_ERROR_NONE != ret)
+    nns_edge_loge ("Failed to send data to destination.");
+
+  SAFE_FREE (data);
+  return ret;
 }
 
 /**
@@ -353,4 +409,26 @@ nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h)
   bh = (nns_edge_broker_s *) broker_h;
 
   return bh->connected;
+}
+
+/**
+ * @brief Set event callback for new message.
+ */
+int
+nns_edge_mqtt_set_event_callback (nns_edge_broker_h broker_h,
+    nns_edge_event_cb cb, void *user_data)
+{
+  nns_edge_broker_s *bh;
+
+  if (!broker_h) {
+    nns_edge_loge ("Invalid param, given MQTT handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  bh = (nns_edge_broker_s *) broker_h;
+
+  bh->event_cb = cb;
+  bh->user_data = user_data;
+
+  return NNS_EDGE_ERROR_NONE;
 }

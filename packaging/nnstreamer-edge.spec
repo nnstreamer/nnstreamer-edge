@@ -142,6 +142,10 @@ LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-aitt
 %endif
 
+%if 0%{?mqtt_support}
+LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-mqtt
+%endif
+
 %if 0%{?testcoverage}
 # 'lcov' generates the date format with UTC time zone by default. Let's replace UTC with KST.
 # If you can get a root privilege, run ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
@@ -189,6 +193,10 @@ rm -rf %{buildroot}
 
 %if 0%{?aitt_support}
 %{_bindir}/unittest_nnstreamer-edge-aitt
+%endif
+
+%if 0%{?mqtt_support}
+%{_bindir}/unittest_nnstreamer-edge-mqtt
 %endif
 
 %if 0%{?testcoverage}

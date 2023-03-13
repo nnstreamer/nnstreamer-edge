@@ -56,6 +56,17 @@ bool nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h);
  * @brief Get message from mqtt broker. If no message in the queue, it waits up to 1 second for new message.
  */
 int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg, nns_size_t *msg_len);
+
+/**
+ * @brief Internal util function to send edge-data via MQTT connection.
+ */
+int nns_edge_mqtt_publish_data (nns_edge_broker_h handle, nns_edge_data_h data_h);
+
+/**
+ * @brief Set event callback for new message.
+ */
+int nns_edge_mqtt_set_event_callback (nns_edge_broker_h broker_h, nns_edge_event_cb cb, void *user_data);
+
 #else
 /**
  * @todo consider to change code style later.
@@ -72,6 +83,8 @@ int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg, nns_size_
 #define nns_edge_mqtt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_mqtt_is_connected(...) (false)
 #define nns_edge_mqtt_get_message(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_mqtt_publish_data(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_mqtt_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #endif /* ENABLE_MQTT */
 
 #ifdef __cplusplus
