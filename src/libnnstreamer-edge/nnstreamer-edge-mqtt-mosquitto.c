@@ -26,7 +26,7 @@
 typedef struct
 {
   void *mqtt_h;
-  nns_edge_queue_h server_list;
+  nns_edge_queue_h message_queue;
   char *id;
   char *topic;
   char *host;
@@ -61,7 +61,7 @@ on_message_callback (struct mosquitto *client, void *data,
   msg_len = (nns_size_t) message->payloadlen;
   msg = nns_edge_memdup (message->payload, msg_len);
   if (msg)
-    nns_edge_queue_push (bh->server_list, msg, msg_len, nns_edge_free);
+    nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
 
   return;
 }
@@ -120,7 +120,7 @@ _nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
     goto error;
   }
 
-  nns_edge_queue_create (&bh->server_list);
+  nns_edge_queue_create (&bh->message_queue);
   bh->mqtt_h = handle;
   bh->id = nns_edge_strdup (id);
   bh->topic = nns_edge_strdup (topic);
@@ -211,8 +211,8 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     mosquitto_lib_cleanup ();
   }
 
-  nns_edge_queue_destroy (bh->server_list);
-  bh->server_list = NULL;
+  nns_edge_queue_destroy (bh->message_queue);
+  bh->message_queue = NULL;
   SAFE_FREE (bh->id);
   SAFE_FREE (bh->topic);
   SAFE_FREE (bh->host);
@@ -329,7 +329,7 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
   bh = (nns_edge_broker_s *) broker_h;
 
   /* Wait for 1 second */
-  if (!nns_edge_queue_wait_pop (bh->server_list, 1000U, msg, msg_len)) {
+  if (!nns_edge_queue_wait_pop (bh->message_queue, 1000U, msg, msg_len)) {
     nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }
