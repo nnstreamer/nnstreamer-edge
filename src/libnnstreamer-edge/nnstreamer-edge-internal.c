@@ -49,6 +49,7 @@ typedef struct
   int dest_port; /**< destination port number (broker or target device) */
   nns_edge_node_type_e node_type;
   nns_edge_metadata_h metadata;
+  bool is_started;
 
   /* Edge event callback and user data */
   nns_edge_event_cb event_cb;
@@ -1242,6 +1243,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->dest_host = nns_edge_strdup ("localhost");
   eh->dest_port = 0;
   eh->node_type = node_type;
+  eh->is_started = false;
   eh->broker_h = NULL;
   eh->connections = NULL;
   eh->listening = false;
@@ -1358,6 +1360,7 @@ nns_edge_start (nns_edge_h edge_h)
   }
 
 done:
+  eh->is_started = (ret == NNS_EDGE_ERROR_NONE);
   nns_edge_unlock (eh);
   return ret;
 }
@@ -1404,6 +1407,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->event_cb = NULL;
   eh->user_data = NULL;
   eh->broker_h = NULL;
+  eh->is_started = false;
 
   nns_edge_queue_clear (eh->send_queue);
   if (eh->send_thread) {
@@ -1576,6 +1580,11 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
   }
 
   nns_edge_lock (eh);
+  if (!eh->is_started) {
+    nns_edge_loge ("Invalid state, the edge handle is not started.");
+    nns_edge_unlock (eh);
+    return NNS_EDGE_ERROR_IO;
+  }
 
   if (!eh->event_cb) {
     nns_edge_loge ("NNStreamer-edge event callback is not registered.");

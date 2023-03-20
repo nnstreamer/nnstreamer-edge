@@ -550,6 +550,29 @@ TEST(edge, connectInvalidParam05_n)
 }
 
 /**
+ * @brief Connect - invalid param.
+ */
+TEST(edge, connectInvalidParam06_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* not started */
+  ret = nns_edge_connect (edge_h, "127.0.0.1", 80);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Disconnect - invalid param.
  */
 TEST(edge, disconnectInvalidParam01_n)
