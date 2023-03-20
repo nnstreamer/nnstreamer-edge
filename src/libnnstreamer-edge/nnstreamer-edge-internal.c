@@ -150,8 +150,7 @@ typedef struct
 } nns_edge_thread_data_s;
 
 /**
- * @brief Set socket option.
- * @todo handle connection type (TCP/UDP).
+ * @brief Set socket option. nnstreamer-edge handles TCP connection now.
  */
 static void
 _set_socket_option (int fd)
