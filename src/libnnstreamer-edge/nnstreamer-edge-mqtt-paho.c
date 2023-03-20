@@ -78,6 +78,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
 
       if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
         nns_edge_loge ("Failed to create data handle in msg thread.");
+        SAFE_FREE (msg);
         return TRUE;
       }
 

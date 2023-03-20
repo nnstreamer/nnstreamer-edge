@@ -1504,7 +1504,7 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
 
     ret = nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len);
     if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
-      return ret;
+      break;
 
     nns_edge_parse_host_string (msg, &server_ip, &server_port);
     SAFE_FREE (msg);
@@ -1515,9 +1515,8 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
     SAFE_FREE (server_ip);
 
-    if (NNS_EDGE_ERROR_NONE == ret) {
-      return ret;
-    }
+    if (NNS_EDGE_ERROR_NONE == ret)
+      break;
   } while (TRUE);
 
   return ret;
@@ -1613,7 +1612,7 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
           eh->user_data);
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Failed to set event callback to MQTT broker.");
-        return ret;
+        goto done;
       }
     }
   } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {

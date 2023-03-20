@@ -74,6 +74,7 @@ on_message_callback (struct mosquitto *client, void *data,
 
       if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
         nns_edge_loge ("Failed to create data handle in msg thread.");
+        SAFE_FREE (msg);
         return;
       }
 
