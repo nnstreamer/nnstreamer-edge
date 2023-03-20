@@ -1169,9 +1169,13 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
     return false;
   }
 
-  if (bind (eh->listener_fd, (struct sockaddr *) &saddr, saddr_len) < 0 ||
-      listen (eh->listener_fd, N_BACKLOG) < 0) {
+  if (bind (eh->listener_fd, (struct sockaddr *) &saddr, saddr_len) < 0) {
     nns_edge_loge ("Failed to create listener, cannot bind socket.");
+    goto error;
+  }
+
+  if (listen (eh->listener_fd, N_BACKLOG) < 0) {
+    nns_edge_loge ("Failed to create listener, cannot listen socket.");
     goto error;
   }
 
