@@ -50,6 +50,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   nns_edge_broker_s *bh;
   char *msg = NULL;
   nns_size_t msg_len;
+  int ret;
 
   UNUSED (topic);
   UNUSED (topic_len);
@@ -77,7 +78,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
 
       if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
         nns_edge_loge ("Failed to create data handle in msg thread.");
-        return;
+        return TRUE;
       }
 
       nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
@@ -90,8 +91,8 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
 
       nns_edge_data_destroy (data_h);
       SAFE_FREE (msg);
-      return;
     } else {
+      /* Push received message into msg queue. DO NOT free msg here. */
       nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
     }
   }

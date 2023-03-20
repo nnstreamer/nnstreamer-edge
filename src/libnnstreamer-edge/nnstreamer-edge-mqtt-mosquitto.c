@@ -87,8 +87,8 @@ on_message_callback (struct mosquitto *client, void *data,
 
       nns_edge_data_destroy (data_h);
       SAFE_FREE (msg);
-      return;
     } else {
+      /* Push received message into msg queue. DO NOT free msg here. */
       nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
     }
   }
