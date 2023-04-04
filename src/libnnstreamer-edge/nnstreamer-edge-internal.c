@@ -1037,11 +1037,6 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   /* Send capability and info to check compatibility. */
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
-    if (!STR_IS_VALID (eh->caps_str)) {
-      nns_edge_loge ("Cannot accept socket, invalid server capability.");
-      goto error;
-    }
-
     _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_CAPABILITY, client_id);
     cmd.info.num = 1;
     cmd.info.mem_size[0] = strlen (eh->caps_str) + 1;
@@ -1253,6 +1248,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->listening = false;
   eh->sending = false;
   eh->listener_fd = -1;
+  eh->caps_str = nns_edge_strdup ("");
   nns_edge_metadata_create (&eh->metadata);
   nns_edge_queue_create (&eh->send_queue);
 
