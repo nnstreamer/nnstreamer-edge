@@ -438,7 +438,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam1_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_get_message (NULL, &msg, &msg_len);
+  ret = nns_edge_mqtt_get_message (NULL, &msg, &msg_len, 0U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -457,7 +457,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam2_n)
   ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_mqtt_get_message (broker_h, NULL, &msg_len);
+  ret = nns_edge_mqtt_get_message (broker_h, NULL, &msg_len, 0U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_close (broker_h);
@@ -479,7 +479,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam3_n)
   ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_mqtt_get_message (broker_h, &msg, NULL);
+  ret = nns_edge_mqtt_get_message (broker_h, &msg, NULL, 0U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_close (broker_h);
@@ -502,7 +502,7 @@ TEST(edgeMqttHybrid, getMessageWithinTimeout_n)
   ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_mqtt_get_message (broker_h, &msg, &msg_len);
+  ret = nns_edge_mqtt_get_message (broker_h, &msg, &msg_len, 1000U);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_close (broker_h);

@@ -1502,7 +1502,8 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     int server_port = 0;
     nns_size_t msg_len = 0;
 
-    ret = nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len);
+    ret =
+        nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len, 0U);
     if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
       break;
 

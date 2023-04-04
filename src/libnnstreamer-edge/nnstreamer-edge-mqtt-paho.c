@@ -404,11 +404,11 @@ nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h)
 }
 
 /**
- * @brief Get message from mqtt broker.
+ * @brief Get message from mqtt broker within timeout (0 for infinite timeout).
  */
 int
 nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
-    nns_size_t * msg_len)
+    nns_size_t * msg_len, unsigned int timeout)
 {
   nns_edge_broker_s *bh;
 
@@ -424,8 +424,11 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
 
   bh = (nns_edge_broker_s *) broker_h;
 
-  /* Wait for 1 second */
-  if (!nns_edge_queue_wait_pop (bh->message_queue, 1000U, msg, msg_len)) {
+  /*
+   * The time to wait for new data, in milliseconds.
+   * (Default: 0 for infinite timeout)
+   */
+  if (!nns_edge_queue_wait_pop (bh->message_queue, timeout, msg, msg_len)) {
     nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
     return NNS_EDGE_ERROR_UNKNOWN;
   }
