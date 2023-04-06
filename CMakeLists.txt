@@ -41,6 +41,7 @@ SET(INCLUDE_INSTALL_DIR "${PREFIX}/include")
 SET(SOURCE_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(INCLUDE_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/include)
 SET(NNS_EDGE_SRC_DIR  ${SOURCE_DIR}/libnnstreamer-edge)
+SET(NNS_EDGE_LIB_NAME nnstreamer-edge)
 
 # Build options and required packages
 SET(REQUIRE_PKGS "")
