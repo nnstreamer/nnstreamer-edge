@@ -1,5 +1,4 @@
 # NNStreamer-Edge library
-SET(NNS_EDGE_LIB_NAME nnstreamer-edge)
 SET(NNS_EDGE_SRCS
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-metadata.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-data.c
