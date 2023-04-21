@@ -178,12 +178,25 @@ _fill_socket_addr (struct sockaddr_in *saddr, const char *host, const int port)
   saddr->sin_port = htons (port);
 
   if ((saddr->sin_addr.s_addr = inet_addr (host)) == INADDR_NONE) {
-    struct hostent *ent = gethostbyname (host);
+    int ret;
+    char *port_str = NULL;
+    struct addrinfo hints;
+    struct addrinfo *addrs = NULL;
 
-    if (!ent)
+    memset (&hints, 0, sizeof (hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (port > 0)
+      port_str = nns_edge_strdup_printf ("%d", port);
+    ret = getaddrinfo (host, port_str, &hints, &addrs);
+    SAFE_FREE (port_str);
+
+    if (ret != 0 || addrs == NULL)
       return false;
 
-    memmove (&saddr->sin_addr, ent->h_addr, ent->h_length);
+    memcpy (saddr, addrs->ai_addr, addrs->ai_addrlen);
+    freeaddrinfo (addrs);
   }
 
   return true;
