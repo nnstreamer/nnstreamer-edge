@@ -22,16 +22,14 @@
 #include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-mqtt.h"
 
-#ifndef PTHREAD_CREATE_JOINABLE
-#define PTHREAD_CREATE_JOINABLE 0
-#endif
-
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
 
+/**
+ * @brief The maximum length of pending connections to accept socket.
+ */
 #define N_BACKLOG 10
-#define DEFAULT_TIMEOUT_SEC 10
 
 /**
  * @brief Data structure for edge handle.
@@ -169,11 +167,7 @@ _set_socket_option (int fd)
 static bool
 _fill_socket_addr (struct sockaddr_in *saddr, const char *host, const int port)
 {
-  /**
-   * @todo handle protocol
-   * 1. support edge connection type (TCP/UDP)
-   * 2. ipv4 and ipv6
-   */
+  /** @todo handle protocol (ipv4 and ipv6) */
   saddr->sin_family = AF_INET;
   saddr->sin_port = htons (port);
 

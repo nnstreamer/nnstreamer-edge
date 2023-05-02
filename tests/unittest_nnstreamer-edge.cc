@@ -2092,7 +2092,7 @@ TEST(edgeDataSerialize, normal)
   ret = nns_edge_data_destroy (dest_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  SAFE_FREE(serialized_data);
+  SAFE_FREE (serialized_data);
 }
 
 
@@ -3583,7 +3583,7 @@ TEST(edgeQueue, pushInvalidParam03_n)
 
   EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
 
-  SAFE_FREE(data);
+  SAFE_FREE (data);
 }
 
 /**
