@@ -18,7 +18,7 @@ Summary:    Common library set for nnstreamer-edge
 # 1. CMake : ./CMakeLists.txt
 # 2. Ubuntu : ./debian/changelog
 # 3. Tizen : ./packaging/nnstreamer-edge.spec
-Version:    0.2.1
+Version:    0.2.2
 Release:    1
 Group:      Machine Learning/ML Framework
 Packager:   Sangjung Woo <sangjung.woo@samsung.com>
@@ -206,6 +206,9 @@ rm -rf %{buildroot}
 %endif # unittest
 
 %changelog
+* Fri Jun 02 2023 Sangjung Woo <sangjung.woo@samsung.com>
+- Release of 0.2.2 (LTS for TizenRT)
+
 * Fri Sep 30 2022 Sangjung Woo <sangjung.woo@samsung.com>
 - Start development of 0.2.1 for Tizen 7.5 release (0.2.2)
 
