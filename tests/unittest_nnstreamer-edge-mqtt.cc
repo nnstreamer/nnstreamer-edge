@@ -704,6 +704,20 @@ TEST(edgeMqtt, checkConnectionInvalidParam_n)
 }
 
 /**
+ * @brief Set event callback with invalid param.
+ */
+TEST(edgeMqtt, setEventCallbackInvalidParam_n)
+{
+  int ret = -1;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_mqtt_set_event_callback (NULL, NULL, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Main gtest
  */
 int
