@@ -45,7 +45,7 @@ $ sudo systemctl start mosquitto
 ### Build and Run test
 ```
 # cd $NNST_EDGE_ROOT
-$ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_TEST=ON -DMQTT_SUPPORT=ON
+$ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib -DENABLE_TEST=ON -DMQTT_SUPPORT=ON
 $ make -C build install
 
 # Run test
