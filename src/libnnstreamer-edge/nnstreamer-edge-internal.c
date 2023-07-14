@@ -1667,31 +1667,41 @@ nns_edge_disconnect (nns_edge_h edge_h)
 /**
  * @brief Check whether edge is connected or not.
  */
-static bool
-_nns_edge_is_connected (nns_edge_h edge_h)
+int
+nns_edge_is_connected (nns_edge_h edge_h)
 {
   nns_edge_handle_s *eh = (nns_edge_handle_s *) edge_h;
   nns_edge_conn_data_s *conn_data;
   nns_edge_conn_s *conn;
 
+  if (!eh) {
+    nns_edge_loge ("Invalid param, given edge handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_handle_is_valid (eh)) {
+    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
   if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type &&
       NNS_EDGE_ERROR_NONE == nns_edge_aitt_is_connected (eh->broker_h))
-    return true;
+    return NNS_EDGE_ERROR_NONE;
 
   if (NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type &&
       nns_edge_mqtt_is_connected (eh->broker_h))
-    return true;
+    return NNS_EDGE_ERROR_NONE;
 
   conn_data = (nns_edge_conn_data_s *) eh->connections;
   while (conn_data) {
     conn = conn_data->sink_conn;
     if (_nns_edge_check_connection (conn)) {
-      return true;
+      return NNS_EDGE_ERROR_NONE;
     }
     conn_data = conn_data->next;
   }
 
-  return false;
+  return NNS_EDGE_ERROR_CONNECTION_FAILURE;
 }
 
 /**
@@ -1721,7 +1731,7 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
 
   nns_edge_lock (eh);
 
-  if (!_nns_edge_is_connected (eh)) {
+  if (NNS_EDGE_ERROR_NONE != nns_edge_is_connected (eh)) {
     nns_edge_loge ("There is no available connection.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_IO;
