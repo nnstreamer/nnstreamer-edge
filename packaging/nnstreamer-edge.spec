@@ -182,7 +182,7 @@ rm -rf %{buildroot}
 %{_libdir}/libnnstreamer-edge.so*
 
 %files devel
-%{_includedir}/nnstreamer-edge.h
+%{_includedir}/nnstreamer/nnstreamer-edge.h
 %{_libdir}/pkgconfig/nnstreamer-edge.pc
 
 %if 0%{?unit_test}
