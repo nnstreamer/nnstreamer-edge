@@ -170,7 +170,7 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
  * //  - All connection type: HOST, PORT
  * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
  *
- * // Set infomation for query-client of TCP connection.
+ * // Set information for query-client of TCP connection.
  * ret = nns_edge_set_info (edge_h, "HOST", "127.0.0.1");
  * ret = nns_edge_set_info (edge_h, "PORT", "1234");
  * ret = nns_edge_set_info (edge_h, "CAPS", "CAPABILITY_STRING");
@@ -293,8 +293,7 @@ int nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h);
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  * @retval #NNS_EDGE_ERROR_IO No available connection.
  */
-int
-nns_edge_is_connected (nns_edge_h edge_h);
+int nns_edge_is_connected (nns_edge_h edge_h);
 
 /**
  * @brief Set nnstreamer edge info.
@@ -408,7 +407,7 @@ int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
  * @note See NNS_EDGE_DATA_LIMIT, the maximum number of raw data in handle.
  * @param[in] data_h The edge data handle.
  * @param[in] data The raw data.
- * @param[in] data_len data length.
+ * @param[in] data_len The byte size of the data.
  * @param[in] destroy_cb The callback for destroying the added data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -423,7 +422,7 @@ int nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len, 
  * @param[in] data_h The edge data handle.
  * @param[in] index The index of the data to get.
  * @param[out] data The data in the data handle.
- * @param[out] data_len Byte size of the data.
+ * @param[out] data_len The byte size of the data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
