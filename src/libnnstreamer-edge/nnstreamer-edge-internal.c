@@ -91,7 +91,7 @@ typedef enum
 typedef struct
 {
   uint32_t magic;
-  nns_edge_cmd_e cmd;
+  uint32_t cmd; /**< enum for query commands, see nns_edge_cmd_e. */
   int64_t client_id;
 
   /* memory info */
