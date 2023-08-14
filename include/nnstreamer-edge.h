@@ -474,6 +474,14 @@ int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **valu
  */
 void nns_edge_set_log_level (nns_edge_log_level_e level);
 
+/**
+ * @brief Get the version of nnstreamer-edge.
+ * @param[out] major MAJOR.minor.micro, won't set if it's null.
+ * @param[out] minor major.MINOR.micro, won't set if it's null.
+ * @param[out] micro major.minor.MICRO, won't set if it's null.
+ */
+void nns_edge_get_version (unsigned int *major, unsigned int *minor, unsigned int *micro);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
