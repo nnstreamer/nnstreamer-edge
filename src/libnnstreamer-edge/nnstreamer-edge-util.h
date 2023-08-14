@@ -17,6 +17,7 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -82,6 +83,16 @@ typedef struct {
  * @brief Generate client ID.
  */
 int64_t nns_edge_generate_id (void);
+
+/**
+ * @brief Generate the version key.
+ */
+uint64_t nns_edge_generate_version_key (void);
+
+/**
+ * @brief Parse the version key.
+ */
+bool nns_edge_parse_version_key (const uint64_t version_key, unsigned int *major, unsigned int *minor, unsigned int *micro);
 
 /**
  * @brief Get available port number.

@@ -3827,6 +3827,23 @@ TEST(edgeQueue, waitPopInvalidParam03_n)
 }
 
 /**
+ * @brief Util to get the version.
+ */
+TEST(edgeUtil, getVersion)
+{
+  unsigned int major1, minor1, micro1;
+  unsigned int major2, minor2, micro2;
+  uint64_t ver_key;
+
+  nns_edge_get_version (&major1, &minor1, &micro1);
+  ver_key = nns_edge_generate_version_key ();
+  EXPECT_TRUE (nns_edge_parse_version_key (ver_key, &major2, &minor2, &micro2));
+  EXPECT_EQ (major1, major2);
+  EXPECT_EQ (minor1, minor2);
+  EXPECT_EQ (micro1, micro2);
+}
+
+/**
  * @brief Main gtest
  */
 int

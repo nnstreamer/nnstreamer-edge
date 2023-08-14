@@ -33,6 +33,54 @@ nns_edge_generate_id (void)
 }
 
 /**
+ * @brief Get the version of nnstreamer-edge.
+ */
+void
+nns_edge_get_version (unsigned int *major, unsigned int *minor,
+    unsigned int *micro)
+{
+  if (major)
+    *major = VERSION_MAJOR;
+  if (minor)
+    *minor = VERSION_MINOR;
+  if (micro)
+    *micro = VERSION_MICRO;
+}
+
+/**
+ * @brief Generate the version key.
+ */
+uint64_t
+nns_edge_generate_version_key (void)
+{
+  unsigned int major, minor, micro;
+
+  nns_edge_get_version (&major, &minor, &micro);
+
+  return (0xefdd000000000000ULL | (micro << 24) | (major << 12) | minor);
+}
+
+/**
+ * @brief Parse the version key.
+ */
+bool
+nns_edge_parse_version_key (const uint64_t version_key, unsigned int *major,
+    unsigned int *minor, unsigned int *micro)
+{
+  if ((version_key & 0xffff000000000000ULL) != 0xefdd000000000000ULL)
+    return false;
+
+  if (minor)
+    *minor = (unsigned int) (version_key & 0xfff);
+  if (major)
+    *major = (unsigned int) ((version_key >> 12) & 0xfff);
+  if (micro)
+    *micro = (unsigned int) ((version_key >> 24) & 0xfff);
+
+  return true;
+}
+
+/**
  * @brief Internal util function to get available port number.
  */
 int
