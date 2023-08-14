@@ -248,6 +248,42 @@ nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len,
 }
 
 /**
+ * @brief Remove raw data in edge data.
+ */
+int
+nns_edge_data_clear (nns_edge_data_h data_h)
+{
+  nns_edge_data_s *ed;
+  unsigned int i;
+
+  ed = (nns_edge_data_s *) data_h;
+  if (!ed) {
+    nns_edge_loge ("Invalid param, given edge data handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_handle_is_valid (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (ed);
+
+  for (i = 0; i < ed->num; i++) {
+    if (ed->data[i].destroy_cb)
+      ed->data[i].destroy_cb (ed->data[i].data);
+    ed->data[i].data = NULL;
+    ed->data[i].data_len = 0;
+    ed->data[i].destroy_cb = NULL;
+  }
+  ed->num = 0;
+
+  nns_edge_unlock (ed);
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Get the n'th edge data.
  */
 int
@@ -385,6 +421,37 @@ nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value)
 
   nns_edge_lock (ed);
   ret = nns_edge_metadata_get (ed->metadata, key, value);
+  nns_edge_unlock (ed);
+
+  return ret;
+}
+
+/**
+ * @brief Clear information of edge data.
+ */
+int
+nns_edge_data_clear_info (nns_edge_data_h data_h)
+{
+  nns_edge_data_s *ed;
+  int ret;
+
+  ed = (nns_edge_data_s *) data_h;
+  if (!ed) {
+    nns_edge_loge ("Invalid param, given edge data handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_handle_is_valid (ed)) {
+    nns_edge_loge ("Invalid param, given edge data is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (ed);
+  ret = nns_edge_metadata_destroy (ed->metadata);
+  if (NNS_EDGE_ERROR_NONE != ret)
+    goto done;
+  ret = nns_edge_metadata_create (&ed->metadata);
+done:
   nns_edge_unlock (ed);
 
   return ret;
