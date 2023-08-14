@@ -417,6 +417,16 @@ int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
 int nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
 
 /**
+ * @brief Remove raw data in edge data.
+ * @param[in] data_h The edge data handle.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_data_clear (nns_edge_data_h data_h);
+
+/**
  * @brief Get the n'th edge data.
  * @note DO NOT release returned data. You should copy the data to another buffer if the returned data is necessary.
  * @param[in] data_h The edge data handle.
@@ -467,6 +477,16 @@ int nns_edge_data_set_info (nns_edge_data_h data_h, const char *key, const char 
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value);
+
+/**
+ * @brief Clear information of edge data.
+ * @param[in] data_h The edge data handle.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_data_clear_info (nns_edge_data_h data_h);
 
 /**
  * @brief Set the logging level. Default value is NNS_EDGE_LOG_INFO.

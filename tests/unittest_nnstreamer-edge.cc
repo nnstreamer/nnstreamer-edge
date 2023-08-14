@@ -1058,6 +1058,78 @@ TEST(edge, getInfoInvalidParam06_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
+
+/**
+ * @brief Clear info of edge-data - invalid param.
+ */
+TEST(edgeData, clearInfoInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_data_clear_info (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Clear info of edge-data - invalid param.
+ */
+TEST(edgeData, clearInfoInvalidParam02_n)
+{
+  nns_edge_data_h data_h;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
+
+  ret = nns_edge_data_clear_info (data_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Clear info of edge data.
+ */
+TEST(edgeData, clearInfo)
+{
+  nns_edge_data_h data_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_STREQ ("temp-value", value);
+  SAFE_FREE (value);
+
+  ret = nns_edge_data_clear_info (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_STREQ ("temp-value", value);
+  SAFE_FREE (value);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
 /**
  * @brief Create edge-data - invalid param.
  */
@@ -2134,6 +2206,76 @@ TEST(edgeData, invalidParam02_n)
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Clear raw data in edge-data - invalid param.
+ */
+TEST(edgeData, clearInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_data_clear (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Clear raw data in edge-data - invalid param.
+ */
+TEST(edgeData, clearInvalidParam02_n)
+{
+  nns_edge_data_h data_h;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC_DEAD);
+
+  ret = nns_edge_data_clear (data_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+
+/**
+ * @brief Clear raw data in edge-data.
+ */
+TEST(edgeData, clear)
+{
+  nns_edge_data_h data_h;
+  void *data, *result;
+  nns_size_t data_len, result_len;
+  unsigned int count;
+  int ret;
+
+  data_len = 10U * sizeof (int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_count (data_h, &count);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE , ret);
+  EXPECT_EQ (1U, count);
+
+  ret = nns_edge_data_clear (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_count (data_h, &count);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (0U, count);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 }
 
 /**
