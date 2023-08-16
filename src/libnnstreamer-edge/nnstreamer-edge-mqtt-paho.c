@@ -216,6 +216,7 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
   MQTTAsync handle;
   MQTTAsync_disconnectOptions options = MQTTAsync_disconnectOptions_initializer;
   unsigned int wait_count;
+  MQTTAsync_responseOptions ropts = MQTTAsync_responseOptions_initializer;
 
   if (!broker_h) {
     nns_edge_loge ("Invalid param, given broker handle is invalid.");
@@ -231,8 +232,9 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
 
     options.context = bh;
 
-    /* Clear retained message */
-    MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, NULL);
+    /* Clear retained message and wait up to 1 second before removing the message. */
+    MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
+    MQTTAsync_waitForCompletion (handle, ropts.token, 1000U);
 
     wait_count = 0U;
     do {
