@@ -298,21 +298,8 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   *size = 0U;
 
   nns_edge_lock (q);
-  if (q->length == 0U) {
-    if (timeout > 0) {
-      struct timespec ts;
-      struct timeval now;
-
-      gettimeofday (&now, NULL);
-
-      ts.tv_sec = now.tv_sec + timeout / 1000;
-      ts.tv_nsec = now.tv_usec * 1000 + (timeout % 1000) * 1000000;
-
-      nns_edge_cond_timedwait (q, &ts);
-    } else {
-      nns_edge_cond_wait (q);
-    }
-  }
+  if (q->length == 0U)
+    nns_edge_cond_wait_until (q, timeout);
 
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
