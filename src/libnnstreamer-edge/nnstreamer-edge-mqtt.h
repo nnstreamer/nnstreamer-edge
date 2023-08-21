@@ -60,7 +60,7 @@ int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg, nns_size_
 /**
  * @brief Internal util function to send edge-data via MQTT connection.
  */
-int nns_edge_mqtt_publish_data (nns_edge_broker_h handle, nns_edge_data_h data_h);
+int nns_edge_mqtt_publish_data (nns_edge_broker_h broker_h, nns_edge_data_h data_h);
 
 /**
  * @brief Set event callback for new message.
