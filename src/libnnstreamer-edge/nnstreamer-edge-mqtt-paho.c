@@ -268,7 +268,7 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
  * @brief Internal util function to send edge-data via MQTT connection.
  */
 int
-nns_edge_mqtt_publish_data (nns_edge_broker_h handle, nns_edge_data_h data_h)
+nns_edge_mqtt_publish_data (nns_edge_broker_h broker_h, nns_edge_data_h data_h)
 {
   int ret;
   void *data = NULL;
@@ -280,7 +280,7 @@ nns_edge_mqtt_publish_data (nns_edge_broker_h handle, nns_edge_data_h data_h)
     return ret;
   }
 
-  ret = nns_edge_mqtt_publish (handle, data, size);
+  ret = nns_edge_mqtt_publish (broker_h, data, size);
   if (NNS_EDGE_ERROR_NONE != ret)
     nns_edge_loge ("Failed to send data to destination.");
 
