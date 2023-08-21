@@ -15,7 +15,6 @@
 #define __NNSTREAMER_EDGE_QUEUE_H__
 
 #include <stdbool.h>
-#include <sys/time.h>
 #include "nnstreamer-edge.h"
 
 #ifdef __cplusplus

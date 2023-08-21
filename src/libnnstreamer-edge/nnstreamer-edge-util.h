@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <limits.h>
 #include "nnstreamer-edge.h"
@@ -67,7 +68,18 @@ extern "C" {
 #define nns_edge_cond_init(h) do { pthread_cond_init (&(h)->cond, NULL); } while (0)
 #define nns_edge_cond_destroy(h) do { pthread_cond_destroy (&(h)->cond); } while (0)
 #define nns_edge_cond_wait(h) do { pthread_cond_wait (&(h)->cond, &(h)->lock); } while (0)
-#define nns_edge_cond_timedwait(h,t) do { pthread_cond_timedwait (&(h)->cond, &(h)->lock, (t)); } while (0)
+#define nns_edge_cond_wait_until(h,ms) do { \
+    if ((ms) > 0) { \
+      struct timespec ts; \
+      struct timeval now; \
+      gettimeofday (&now, NULL); \
+      ts.tv_sec = now.tv_sec + (ms) / 1000; \
+      ts.tv_nsec = now.tv_usec * 1000 + ((ms) % 1000) * 1000000; \
+      pthread_cond_timedwait (&(h)->cond, &(h)->lock, &ts); \
+    } else { \
+      pthread_cond_wait (&(h)->cond, &(h)->lock); \
+    } \
+  } while (0)
 #define nns_edge_cond_signal(h) do { pthread_cond_signal (&(h)->cond); } while (0)
 
 /**
