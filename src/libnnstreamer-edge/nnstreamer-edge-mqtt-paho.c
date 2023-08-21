@@ -424,7 +424,7 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
 
   bh = (nns_edge_broker_s *) broker_h;
 
-  /*
+  /**
    * The time to wait for new data, in milliseconds.
    * (Default: 0 for infinite timeout)
    */
