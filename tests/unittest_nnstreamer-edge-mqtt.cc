@@ -613,7 +613,6 @@ TEST(edgeMqtt, connectLocal)
   nns_edge_set_info (client2_h, "TOPIC", "MQTT_TEST_TOPIC");
   _td_client2->handle = client2_h;
 
-
   ret = nns_edge_start (server_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_start (client1_h);

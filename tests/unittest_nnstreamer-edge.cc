@@ -1058,7 +1058,6 @@ TEST(edge, getInfoInvalidParam06_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
-
 /**
  * @brief Clear info of edge-data - invalid param.
  */
@@ -2240,7 +2239,6 @@ TEST(edgeData, clearInvalidParam02_n)
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 }
-
 
 /**
  * @brief Clear raw data in edge-data.
