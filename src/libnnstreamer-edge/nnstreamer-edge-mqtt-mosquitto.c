@@ -222,11 +222,11 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
 }
 
 /**
- * @brief publish callback.
+ * @brief Publish callback for clearing retained message.
  * @note This callback is called both if the message is sent successfully or if the broker responded with an error.
  */
 static void
-_publish_cb (struct mosquitto *mosq, void *obj, int mid)
+_clear_retained_cb (struct mosquitto *mosq, void *obj, int mid)
 {
   nns_edge_broker_s *bh = NULL;
 
@@ -239,6 +239,36 @@ _publish_cb (struct mosquitto *mosq, void *obj, int mid)
   bh->cleared = true;
   nns_edge_cond_signal (bh);
   nns_edge_unlock (bh);
+}
+
+/**
+ * @brief Clear retained message.
+ */
+static void
+_nns_edge_clear_retained (nns_edge_broker_s * bh)
+{
+  struct mosquitto *handle;
+  unsigned int wait = 0U;
+
+  if (!bh)
+    return;
+
+  handle = bh->mqtt_h;
+  if (handle) {
+    nns_edge_lock (bh);
+    bh->cleared = false;
+
+    mosquitto_publish_callback_set (handle, _clear_retained_cb);
+    mosquitto_publish (handle, NULL, bh->topic, 0, NULL, 1, true);
+
+    /* Wait up to 10 seconds. */
+    while (!bh->cleared && ++wait < 1000U)
+      nns_edge_cond_wait_until (bh, 10);
+
+    mosquitto_publish_callback_set (handle, NULL);
+    bh->cleared = true;
+    nns_edge_unlock (bh);
+  }
 }
 
 /**
@@ -263,18 +293,7 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     nns_edge_logd ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
         bh->id, bh->host, bh->port);
 
-    /* Clear retained message and wait up to 1 second before removing the message. */
-    mosquitto_publish_callback_set (handle, _publish_cb);
-    mosquitto_publish (handle, NULL, bh->topic, 0, NULL, 1, true);
-
-    nns_edge_lock (bh);
-    if (!bh->cleared) {
-      nns_edge_cond_wait_until (bh, 1000U);
-    }
-    bh->cleared = true;
-    nns_edge_cond_destroy (bh);
-    nns_edge_unlock (bh);
-    nns_edge_lock_destroy (bh);
+    _nns_edge_clear_retained (bh);
 
     mosquitto_disconnect (handle);
     mosquitto_destroy (handle);
@@ -283,6 +302,8 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
 
   nns_edge_queue_destroy (bh->message_queue);
   bh->message_queue = NULL;
+  nns_edge_lock_destroy (bh);
+  nns_edge_cond_destroy (bh);
   SAFE_FREE (bh->id);
   SAFE_FREE (bh->topic);
   SAFE_FREE (bh->host);

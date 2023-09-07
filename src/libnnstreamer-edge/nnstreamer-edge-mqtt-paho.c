@@ -214,9 +214,9 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
 {
   nns_edge_broker_s *bh;
   MQTTAsync handle;
-  MQTTAsync_disconnectOptions options = MQTTAsync_disconnectOptions_initializer;
-  unsigned int wait_count;
+  MQTTAsync_disconnectOptions dopts = MQTTAsync_disconnectOptions_initializer;
   MQTTAsync_responseOptions ropts = MQTTAsync_responseOptions_initializer;
+  unsigned int wait_count;
 
   if (!broker_h) {
     nns_edge_loge ("Invalid param, given broker handle is invalid.");
@@ -230,26 +230,25 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     nns_edge_logd ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
         bh->id, bh->host, bh->port);
 
-    options.context = bh;
-
-    /* Clear retained message and wait up to 1 second before removing the message. */
+    /* Clear retained message and wait up to 10 seconds before removing the message. */
     MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
-    MQTTAsync_waitForCompletion (handle, ropts.token, 1000U);
+    MQTTAsync_waitForCompletion (handle, ropts.token, 10000U);
+
+    /* Wait for message transfer, 10 milliseconds. */
+    dopts.timeout = 10;
+    dopts.context = bh;
 
     wait_count = 0U;
     do {
-      if (MQTTAsync_disconnect (handle, &options) != MQTTASYNC_SUCCESS) {
+      if (MQTTAsync_disconnect (handle, &dopts) != MQTTASYNC_SUCCESS) {
         nns_edge_loge ("Failed to disconnect MQTT.");
         break;
       }
 
-      if (wait_count > 500U) {
+      if (++wait_count > 500U) {
         nns_edge_loge ("Failed to disconnect MQTT, timed out.");
         break;
       }
-
-      usleep (10000);
-      wait_count++;
     } while (MQTTAsync_isConnected (handle));
 
     MQTTAsync_destroy (&handle);
