@@ -92,6 +92,7 @@ typedef struct
 {
   uint32_t magic;
   uint32_t cmd; /**< enum for query commands, see nns_edge_cmd_e. */
+  uint64_t version;
   int64_t client_id;
 
   /* memory info */
@@ -284,6 +285,7 @@ _nns_edge_cmd_init (nns_edge_cmd_s * cmd, nns_edge_cmd_e c, int64_t cid)
   memset (cmd, 0, sizeof (nns_edge_cmd_s));
   nns_edge_handle_set_magic (&cmd->info, NNS_EDGE_MAGIC);
   cmd->info.cmd = c;
+  cmd->info.version = nns_edge_generate_version_key ();
   cmd->info.client_id = cid;
   cmd->info.num = 0;
   cmd->info.meta_size = 0;
@@ -309,8 +311,11 @@ _nns_edge_cmd_clear (nns_edge_cmd_s * cmd)
 
   SAFE_FREE (cmd->meta);
 
-  cmd->info.num = 0U;
-  cmd->info.meta_size = 0U;
+  cmd->info.cmd = _NNS_EDGE_CMD_ERROR;
+  cmd->info.version = 0;
+  cmd->info.client_id = 0;
+  cmd->info.num = 0;
+  cmd->info.meta_size = 0;
 }
 
 /**
@@ -330,6 +335,17 @@ _nns_edge_cmd_is_valid (nns_edge_cmd_s * cmd)
       (command < 0 || command >= _NNS_EDGE_CMD_END)) {
     return false;
   }
+
+  if (!nns_edge_parse_version_key (cmd->info.version, NULL, NULL, NULL))
+    return false;
+
+  /**
+   * @todo The number of memories in data.
+   * Total number of memories in edge-data should be less than NNS_EDGE_DATA_LIMIT.
+   * Fetch nns-edge version info and check allowed memories if NNS_EDGE_DATA_LIMIT is updated.
+   */
+  if (cmd->info.num > NNS_EDGE_DATA_LIMIT)
+    return false;
 
   return true;
 }
