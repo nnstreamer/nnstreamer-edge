@@ -22,6 +22,7 @@
 typedef struct
 {
   uint32_t key;
+  uint64_t version;
   uint32_t num_mem;
   nns_size_t data_len[NNS_EDGE_DATA_LIMIT];
   nns_size_t meta_len;
@@ -543,6 +544,7 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
 
   data_len = 0;
   edata_header.key = NNS_EDGE_DATA_KEY;
+  edata_header.version = nns_edge_generate_version_key ();
   edata_header.num_mem = ed->num;
   for (n = 0; n < ed->num; n++) {
     edata_header.data_len[n] = ed->data[n].data_len;
@@ -650,6 +652,21 @@ nns_edge_data_is_serialized (const void *data, const nns_size_t data_len)
   header = (nns_edge_data_header_s *) data;
   if (header->key != NNS_EDGE_DATA_KEY) {
     nns_edge_loge ("Invalid param, given data has invalid format.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_parse_version_key (header->version, NULL, NULL, NULL)) {
+    nns_edge_loge ("Invalid param, given data has invalid version.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  /**
+   * @todo The number of memories in data.
+   * Total number of memories in edge-data should be less than NNS_EDGE_DATA_LIMIT.
+   * Fetch nns-edge version info and check allowed memories if NNS_EDGE_DATA_LIMIT is updated.
+   */
+  if (header->num_mem > NNS_EDGE_DATA_LIMIT) {
+    nns_edge_loge ("Invalid param, given data has invalid memories.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
