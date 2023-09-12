@@ -1,3 +1,9 @@
+nnstreamer-edge (0.2.4.0) unstable xenial bionic focal; urgency=medium
+
+  * 0.2.4 Release (Tizen 8.0 M2)
+
+ -- Sangjung Woo <sangjung.woo@samsung.com>  Tue, 12 Sep 2023 12:40:00 +0900
+
 nnstreamer-edge (0.2.3.0) unstable xenial bionic focal; urgency=medium
 
   * 0.2.3 Start development of 0.2.3 for Tizen 8.0 release (0.2.4)
