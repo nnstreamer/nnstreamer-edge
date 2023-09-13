@@ -23,10 +23,10 @@ typedef void *nns_edge_aitt_h;
 
 #if defined(ENABLE_AITT)
 /**
- * @brief Create AITT handle and connect to AITT.
+ * @brief Connect to AITT.
  * @note This is internal function for AITT.
  */
-int nns_edge_aitt_connect (const char *id, const char *topic, const char *host, const int port, nns_edge_aitt_h *handle);
+int nns_edge_aitt_connect (nns_edge_aitt_h handle, const char *id, const char *topic, const char *host, const int port);
 
 /**
  * @brief Release the AITT handle.
@@ -60,6 +60,22 @@ int nns_edge_aitt_is_connected (nns_edge_aitt_h handle);
  * @brief Internal util function to send edge-data.
  */
 int nns_edge_aitt_send_data (nns_edge_aitt_h handle, nns_edge_data_h data_h);
+
+/**
+ * @brief Internal util function to set AITT option.
+ */
+int nns_edge_aitt_set_option (nns_edge_aitt_h handle, const char *key, const char *value);
+
+/**
+ * @brief Internal util function to get AITT option.
+ */
+const char *nns_edge_aitt_get_option (nns_edge_aitt_h handle, const char *key);
+
+/**
+ * @brief Create AITT handle.
+ */
+int nns_edge_aitt_create (nns_edge_aitt_h *handle);
+
 #else
 #define nns_edge_aitt_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
@@ -68,6 +84,9 @@ int nns_edge_aitt_send_data (nns_edge_aitt_h handle, nns_edge_data_h data_h);
 #define nns_edge_aitt_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_send_data(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_set_option(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_get_option(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_create(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #endif /* ENABLE_AITT */
 
 #ifdef __cplusplus

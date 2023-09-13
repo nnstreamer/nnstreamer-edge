@@ -262,11 +262,17 @@ TEST(edgeAitt, connectInvalidParam1_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect (NULL, "temp-aitt-topic", "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (handle, NULL, "temp-aitt-topic", "127.0.0.1", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_aitt_connect ("", "temp-aitt-topic", "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_connect (handle, "", "temp-aitt-topic", "127.0.0.1", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -280,11 +286,17 @@ TEST(edgeAitt, connectInvalidParam2_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", NULL, "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", NULL, "127.0.0.1", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "", "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "", "127.0.0.1", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -298,11 +310,17 @@ TEST(edgeAitt, connectInvalidParam3_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", NULL, 1883, &handle);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", NULL, 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", "", 1883, &handle);
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -315,9 +333,14 @@ TEST(edgeAitt, connectInvalidParam4_n)
 
   if (!_check_mqtt_broker ())
     return;
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 0, &handle);
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 0);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -326,12 +349,19 @@ TEST(edgeAitt, connectInvalidParam4_n)
 TEST(edgeAitt, connectInvalidParam5_n)
 {
   int ret = -1;
+  nns_edge_aitt_h handle;
 
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883, NULL);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (NULL, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -375,7 +405,10 @@ TEST(edgeAitt, publishInvalidParam2_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* data is null */
@@ -398,7 +431,10 @@ TEST(edgeAitt, publishInvalidParam3_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_aitt_connect ("temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883, &handle);
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 1883);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* data length is 0 */
@@ -435,6 +471,175 @@ TEST(edgeAitt, checkConnectionInvalidParam_n)
 
   ret = nns_edge_aitt_is_connected (NULL);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set and get AITT option.
+ */
+TEST(edgeAitt, setGetOption_p)
+{
+  int ret = -1;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "custom-broker", "true");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("true", nns_edge_aitt_get_option (handle, "custom-broker"));
+
+  ret = nns_edge_aitt_set_option (handle, "clean-session", "true");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("true", nns_edge_aitt_get_option (handle, "clean-session"));
+
+  ret = nns_edge_aitt_set_option (handle, "service-id", "test_service_id");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("test_service_id", nns_edge_aitt_get_option (handle, "service-id"));
+
+  ret = nns_edge_aitt_set_option (handle, "location-id", "test_location_id");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("test_location_id", nns_edge_aitt_get_option (handle, "location-id"));
+
+  ret = nns_edge_aitt_set_option (handle, "root-ca", "root_ca_path");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("root_ca_path", nns_edge_aitt_get_option (handle, "root-ca"));
+
+  ret = nns_edge_aitt_set_option (handle, "custom-rw-file", "custom_rw_file_path");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ ("custom_rw_file_path", nns_edge_aitt_get_option (handle, "custom-rw-file"));
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief create AITT handle with invalid param.
+ */
+TEST(edgeAitt, createInvalidParam_n)
+{
+  int ret = -1;
+
+  ret = nns_edge_aitt_create (NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief set AITT option with invalid param.
+ */
+TEST(edgeAitt, setOptionInvalidParam_n)
+{
+  int ret = -1;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (NULL, "custom-broker", "true");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, NULL, "true");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "custom-broker", NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "custom-broker", "not_boolean_str");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Set custom option even it's not a custom broker.
+ */
+TEST(edgeAitt, setOptionNoCustomBroker_n)
+{
+  int ret = -1;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "custom-broker", "false");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "service-id", "test_service_id");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "location-id", "test_location_id");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "root-ca", "root_ca_path");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "custom-rw-file", "custom_rw_file_path");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief set AITT option with invalid key.
+ */
+TEST(edgeAitt, setOptionInvalidkey_n)
+{
+  int ret = -1;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_set_option (handle, "invalid_key", "true");
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief get AITT option with invalid param.
+ */
+TEST(edgeAitt, getOptionInvalidParam_n)
+{
+  int ret = -1;
+  const char *ret_str = NULL;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret_str = nns_edge_aitt_get_option (handle, "custom-broker");
+  EXPECT_STREQ (ret_str, "false");
+
+  ret_str = nns_edge_aitt_get_option (NULL, "custom-broker");
+  EXPECT_STREQ (ret_str, NULL);
+
+  ret_str = nns_edge_aitt_get_option (handle, NULL);
+  EXPECT_STREQ (ret_str, NULL);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief get AITT option with invalid key.
+ */
+TEST(edgeAitt, getOptionInvalidkey_n)
+{
+  int ret = -1;
+  const char *ret_str = NULL;
+  nns_edge_aitt_h handle;
+
+  ret = nns_edge_aitt_create (&handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret_str = nns_edge_aitt_get_option (handle, "invalid_key");
+  EXPECT_STREQ (ret_str, NULL);
+
+  ret = nns_edge_aitt_close (handle);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**

@@ -1261,6 +1261,15 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   nns_edge_metadata_create (&eh->metadata);
   nns_edge_queue_create (&eh->send_queue);
 
+  if (NNS_EDGE_CONNECT_TYPE_AITT == connect_type) {
+    int ret = nns_edge_aitt_create (&eh->broker_h);
+    if (NNS_EDGE_ERROR_NONE != ret) {
+      nns_edge_loge ("Failed to create AITT handle.");
+      nns_edge_release_handle (eh);
+      return ret;
+    }
+  }
+
   *edge_h = eh;
   return NNS_EDGE_ERROR_NONE;
 }
@@ -1339,8 +1348,8 @@ nns_edge_start (nns_edge_h edge_h)
         }
       }
     } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
-      ret = nns_edge_aitt_connect (eh->id, eh->topic, eh->dest_host,
-          eh->dest_port, &eh->broker_h);
+      ret = nns_edge_aitt_connect (eh->broker_h, eh->id, eh->topic,
+          eh->dest_host, eh->dest_port);
       if (NNS_EDGE_ERROR_NONE != ret) {
         nns_edge_loge ("Failed to connect to AITT broker.");
         goto done;
@@ -1622,8 +1631,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
       }
     }
   } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
-    ret = nns_edge_aitt_connect (eh->id, eh->topic, dest_host, dest_port,
-        &eh->broker_h);
+    ret = nns_edge_aitt_connect (eh->broker_h, eh->id, eh->topic, dest_host,
+        dest_port);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to connect to AITT broker. %s:%d", dest_host,
           dest_port);
@@ -1863,6 +1872,18 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     }
 
     nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
+  } else if (0 == strcasecmp (key, "my-ip") ||
+      0 == strcasecmp (key, "clean-session") ||
+      0 == strcasecmp (key, "custom-broker") ||
+      0 == strcasecmp (key, "service-id") ||
+      0 == strcasecmp (key, "location-id") ||
+      0 == strcasecmp (key, "root-ca") ||
+      0 == strcasecmp (key, "custom-rw-file")) {
+    if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
+      ret = nns_edge_aitt_set_option (eh->broker_h, key, value);
+    } else {
+      nns_edge_metadata_set (eh->metadata, key, value);
+    }
   } else {
     ret = nns_edge_metadata_set (eh->metadata, key, value);
   }

@@ -38,17 +38,17 @@ typedef struct
   /* event callback for new message */
   nns_edge_event_cb event_cb;
   void *user_data;
+  aitt_option_h option;
 } nns_edge_aitt_handle_s;
 
 /**
  * @brief Create AITT handle and connect to AITT.
  */
 int
-nns_edge_aitt_connect (const char *id, const char *topic, const char *host,
-    const int port, nns_edge_aitt_h * handle)
+nns_edge_aitt_connect (nns_edge_aitt_h handle, const char *id,
+    const char *topic, const char *host, const int port)
 {
   nns_edge_aitt_handle_s *ah;
-  aitt_option_h option;
 
   if (!STR_IS_VALID (id)) {
     nns_edge_loge ("Invalid param, given id is invalid.");
@@ -74,20 +74,11 @@ nns_edge_aitt_connect (const char *id, const char *topic, const char *host,
     nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+  ah = (nns_edge_aitt_handle_s *) handle;
 
   nns_edge_logd ("Create AITT instance: broker address: %s:%d", host, port);
 
-  ah = (nns_edge_aitt_handle_s *) calloc (1, sizeof (nns_edge_aitt_handle_s));
-  if (!ah) {
-    nns_edge_loge ("Failed to allocate memory for AITT handle.");
-    return NNS_EDGE_ERROR_OUT_OF_MEMORY;
-  }
-
-  option = aitt_option_new ();
-  aitt_option_set (option, AITT_OPT_MY_IP, "localhost");
-
-  ah->aitt_handle = aitt_new (id, option);
-  aitt_option_destroy (option);
+  ah->aitt_handle = aitt_new (id, ah->option);
 
   if (!ah->aitt_handle) {
     nns_edge_loge ("Failed to create AITT handle. AITT internal error.");
@@ -107,7 +98,6 @@ nns_edge_aitt_connect (const char *id, const char *topic, const char *host,
   ah->host = nns_edge_strdup (host);
   ah->port = port;
 
-  *handle = ah;
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -140,6 +130,8 @@ nns_edge_aitt_close (nns_edge_aitt_h handle)
     ah->aitt_handle = NULL;
   }
 
+  if (ah->option)
+    aitt_option_destroy (ah->option);
   SAFE_FREE (ah->id);
   SAFE_FREE (ah->topic);
   SAFE_FREE (ah->host);
@@ -301,4 +293,140 @@ nns_edge_aitt_send_data (nns_edge_aitt_h handle, nns_edge_data_h data_h)
 
   SAFE_FREE (data);
   return ret;
+}
+
+/**
+ * @brief Parse aitt option from the key.
+ */
+static aitt_option_e
+_nns_edge_parse_aitt_option (const char *key)
+{
+  aitt_option_e aitt_opt;
+
+  if (0 == strcasecmp (key, "my-ip"))
+    aitt_opt = AITT_OPT_UNKNOWN;
+  else if (0 == strcasecmp (key, "clean-session"))
+    aitt_opt = AITT_OPT_CLEAN_SESSION;
+  else if (0 == strcasecmp (key, "custom-broker"))
+    aitt_opt = AITT_OPT_CUSTOM_BROKER;
+  else if (0 == strcasecmp (key, "service-id"))
+    aitt_opt = AITT_OPT_SERVICE_ID;
+  else if (0 == strcasecmp (key, "location-id"))
+    aitt_opt = AITT_OPT_LOCATION_ID;
+  else if (0 == strcasecmp (key, "root-ca"))
+    aitt_opt = AITT_OPT_ROOT_CA;
+  else if (0 == strcasecmp (key, "custom-rw-file"))
+    aitt_opt = AITT_OPT_CUSTOM_RW_FILE;
+  else
+    aitt_opt = AITT_OPT_UNKNOWN;
+
+  return aitt_opt;
+}
+
+/**
+ * @brief Internal util function to set AITT option.
+ */
+int
+nns_edge_aitt_set_option (nns_edge_aitt_h handle, const char *key,
+    const char *value)
+{
+  nns_edge_aitt_handle_s *ah;
+  aitt_option_e aitt_opt;
+
+  if (!handle) {
+    nns_edge_loge ("Invalid param, given AITT handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!key) {
+    nns_edge_loge
+        ("The parameter, 'key' is NULL. It should be a valid const char*");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!value) {
+    nns_edge_loge
+        ("The parameter, 'value' is NULL. It should be a valid const char*");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ah = (nns_edge_aitt_handle_s *) handle;
+
+  aitt_opt = _nns_edge_parse_aitt_option (key);
+  if (AITT_OPT_UNKNOWN == aitt_opt) {
+    nns_edge_loge ("Invalid AITT option key: %s, please check the key", key);
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (AITT_ERROR_NONE != aitt_option_set (ah->option, aitt_opt, value)) {
+    nns_edge_loge ("Failed to set AITT option, key:value= %s:%s", key, value);
+    return NNS_EDGE_ERROR_UNKNOWN;
+  }
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Internal util function to get AITT option.
+ */
+const char *
+nns_edge_aitt_get_option (nns_edge_aitt_h handle, const char *key)
+{
+  nns_edge_aitt_handle_s *ah;
+  aitt_option_e aitt_opt;
+
+  if (!handle) {
+    nns_edge_loge ("Invalid param, given AITT handle is invalid.");
+    return NULL;
+  }
+
+  if (!key) {
+    nns_edge_loge
+        ("The parameter, 'key' is NULL. It should be a valid const char*");
+    return NULL;
+  }
+
+  ah = (nns_edge_aitt_handle_s *) handle;
+
+  aitt_opt = _nns_edge_parse_aitt_option (key);
+  if (AITT_OPT_UNKNOWN == aitt_opt) {
+    nns_edge_loge ("Invalid AITT option key: %s, please check the key", key);
+    return NULL;
+  }
+
+  return aitt_option_get (ah->option, aitt_opt);
+}
+
+
+/**
+ * @brief Create AITT handle.
+ */
+int
+nns_edge_aitt_create (nns_edge_aitt_h * handle)
+{
+  nns_edge_aitt_handle_s *ah;
+  aitt_option_h option;
+
+  if (!handle) {
+    nns_edge_loge ("Invalid param, handle should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  ah = (nns_edge_aitt_handle_s *) calloc (1, sizeof (nns_edge_aitt_handle_s));
+  if (!ah) {
+    nns_edge_loge ("Failed to allocate memory for AITT handle.");
+    return NNS_EDGE_ERROR_OUT_OF_MEMORY;
+  }
+
+  option = aitt_option_new ();
+  if (!option) {
+    nns_edge_loge ("Failed to allocate memory for AITT handle.");
+    nns_edge_free (ah);
+    return NNS_EDGE_ERROR_UNKNOWN;
+  }
+  ah->option = option;
+
+  *handle = ah;
+
+  return NNS_EDGE_ERROR_NONE;
 }
