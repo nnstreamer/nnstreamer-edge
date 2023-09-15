@@ -22,6 +22,8 @@ extern "C" {
 typedef void *nns_edge_aitt_h;
 
 #if defined(ENABLE_AITT)
+#include <aitt_c.h>
+
 /**
  * @brief Connect to AITT.
  * @note This is internal function for AITT.
@@ -39,6 +41,11 @@ int nns_edge_aitt_close (nns_edge_aitt_h handle);
  * @note This is internal function for AITT.
  */
 int nns_edge_aitt_publish (nns_edge_aitt_h handle, const void *data, const int length);
+
+/**
+ * @brief Publish raw data with protocol and QoS.
+ */
+int nns_edge_aitt_publish_full (nns_edge_aitt_h handle, const void *data, const int length, aitt_protocol_e protocol, aitt_qos_e qos);
 
 /**
  * @brief Subscribe a topic.
@@ -80,6 +87,7 @@ int nns_edge_aitt_create (nns_edge_aitt_h *handle);
 #define nns_edge_aitt_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_close(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_publish(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_aitt_publish_full(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_subscribe(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_aitt_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
