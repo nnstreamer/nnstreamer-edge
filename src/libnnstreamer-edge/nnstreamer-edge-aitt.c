@@ -338,13 +338,13 @@ nns_edge_aitt_set_option (nns_edge_aitt_h handle, const char *key,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!key) {
+  if (!STR_IS_VALID (key)) {
     nns_edge_loge
         ("The parameter, 'key' is NULL. It should be a valid const char*");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (!value) {
+  if (!STR_IS_VALID (value)) {
     nns_edge_loge
         ("The parameter, 'value' is NULL. It should be a valid const char*");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
@@ -380,7 +380,7 @@ nns_edge_aitt_get_option (nns_edge_aitt_h handle, const char *key)
     return NULL;
   }
 
-  if (!key) {
+  if (!STR_IS_VALID (key)) {
     nns_edge_loge
         ("The parameter, 'key' is NULL. It should be a valid const char*");
     return NULL;
@@ -396,7 +396,6 @@ nns_edge_aitt_get_option (nns_edge_aitt_h handle, const char *key)
 
   return aitt_option_get (ah->option, aitt_opt);
 }
-
 
 /**
  * @brief Create AITT handle.
