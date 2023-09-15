@@ -15,7 +15,6 @@
 #endif
 
 #include <stdbool.h>
-#include <aitt_c.h>
 
 #include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-data.h"
@@ -39,6 +38,7 @@ typedef struct
   nns_edge_event_cb event_cb;
   void *user_data;
   aitt_option_h option;
+  aitt_protocol_e protocol;
 } nns_edge_aitt_handle_s;
 
 /**
@@ -170,6 +170,25 @@ nns_edge_aitt_publish (nns_edge_aitt_h handle, const void *data,
     const int length)
 {
   nns_edge_aitt_handle_s *ah;
+
+  if (!handle) {
+    nns_edge_loge ("Invalid param, given AITT handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+  ah = (nns_edge_aitt_handle_s *) handle;
+
+  return nns_edge_aitt_publish_full (handle, data, length, ah->protocol,
+      AITT_QOS_AT_MOST_ONCE);
+}
+
+/**
+ * @brief Publish raw data with protocol and QoS.
+ */
+int
+nns_edge_aitt_publish_full (nns_edge_aitt_h handle, const void *data,
+    const int length, aitt_protocol_e protocol, aitt_qos_e qos)
+{
+  nns_edge_aitt_handle_s *ah;
   int ret;
 
   if (!handle) {
@@ -184,7 +203,8 @@ nns_edge_aitt_publish (nns_edge_aitt_h handle, const void *data,
 
   ah = (nns_edge_aitt_handle_s *) handle;
 
-  ret = aitt_publish (ah->aitt_handle, ah->topic, data, length);
+  ret = aitt_publish_full (ah->aitt_handle, ah->topic,
+      data, length, protocol, qos);
   if (AITT_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to publish the message. topic: %s", ah->topic);
     return NNS_EDGE_ERROR_IO;
@@ -352,15 +372,29 @@ nns_edge_aitt_set_option (nns_edge_aitt_h handle, const char *key,
 
   ah = (nns_edge_aitt_handle_s *) handle;
 
-  aitt_opt = _nns_edge_parse_aitt_option (key);
-  if (AITT_OPT_UNKNOWN == aitt_opt) {
-    nns_edge_loge ("Invalid AITT option key: %s, please check the key", key);
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
+  if (0 == strcasecmp (key, "protocol")) {
+    if (0 == strcasecmp (value, "TCP")) {
+      ah->protocol = AITT_TYPE_TCP;
+    } else if (0 == strcasecmp (value, "MQTT")) {
+      ah->protocol = AITT_TYPE_MQTT;
+    } else if (0 == strcasecmp (value, "TCP_SECURE") ||
+        0 == strcasecmp (value, "TCP-SECURE")) {
+      ah->protocol = AITT_TYPE_TCP_SECURE;
+    } else {
+      nns_edge_logw ("Invalid AITT procotol. Please check the value: %s",
+          value);
+    }
+  } else {
+    aitt_opt = _nns_edge_parse_aitt_option (key);
+    if (AITT_OPT_UNKNOWN == aitt_opt) {
+      nns_edge_loge ("Invalid AITT option key: %s, please check the key", key);
+      return NNS_EDGE_ERROR_INVALID_PARAMETER;
+    }
 
-  if (AITT_ERROR_NONE != aitt_option_set (ah->option, aitt_opt, value)) {
-    nns_edge_loge ("Failed to set AITT option, key:value= %s:%s", key, value);
-    return NNS_EDGE_ERROR_UNKNOWN;
+    if (AITT_ERROR_NONE != aitt_option_set (ah->option, aitt_opt, value)) {
+      nns_edge_loge ("Failed to set AITT option, key:value= %s:%s", key, value);
+      return NNS_EDGE_ERROR_UNKNOWN;
+    }
   }
 
   return NNS_EDGE_ERROR_NONE;
@@ -424,6 +458,7 @@ nns_edge_aitt_create (nns_edge_aitt_h * handle)
     return NNS_EDGE_ERROR_UNKNOWN;
   }
   ah->option = option;
+  ah->protocol = AITT_TYPE_TCP;
 
   *handle = ah;
 
