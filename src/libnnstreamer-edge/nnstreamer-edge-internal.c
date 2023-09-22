@@ -1214,6 +1214,7 @@ int
 nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
     nns_edge_node_type_e node_type, nns_edge_h * edge_h)
 {
+  int ret = NNS_EDGE_ERROR_NONE;
   nns_edge_handle_s *eh;
 
   if (connect_type < 0 || connect_type >= NNS_EDGE_CONNECT_TYPE_UNKNOWN) {
@@ -1258,20 +1259,29 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh->sending = false;
   eh->listener_fd = -1;
   eh->caps_str = nns_edge_strdup ("");
-  nns_edge_metadata_create (&eh->metadata);
+
+  ret = nns_edge_metadata_create (&eh->metadata);
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to create edge metadata");
+    goto error;
+  }
+
   nns_edge_queue_create (&eh->send_queue);
 
   if (NNS_EDGE_CONNECT_TYPE_AITT == connect_type) {
-    int ret = nns_edge_aitt_create (&eh->broker_h);
+    ret = nns_edge_aitt_create (&eh->broker_h);
     if (NNS_EDGE_ERROR_NONE != ret) {
       nns_edge_loge ("Failed to create AITT handle.");
-      nns_edge_release_handle (eh);
-      return ret;
+      goto error;
     }
   }
 
   *edge_h = eh;
   return NNS_EDGE_ERROR_NONE;
+
+error:
+  nns_edge_release_handle (eh);
+  return ret;
 }
 
 /**
