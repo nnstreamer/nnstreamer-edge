@@ -1524,7 +1524,7 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     nns_edge_parse_host_string (msg, &server_ip, &server_port);
     SAFE_FREE (msg);
 
-    nns_edge_logd ("[DEBUG] Parsed server info: Server [%s:%d] ", server_ip,
+    nns_edge_logd ("Parsed server info: Server [%s:%d] ", server_ip,
         server_port);
 
     ret = _nns_edge_connect_to (eh, eh->client_id, server_ip, server_port);
