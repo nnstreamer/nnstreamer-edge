@@ -79,20 +79,20 @@ _pop_data (nns_edge_queue_s * q, bool clear, void **data, nns_size_t * size)
 /**
  * @brief Create queue.
  */
-bool
+int
 nns_edge_queue_create (nns_edge_queue_h * handle)
 {
   nns_edge_queue_s *q;
 
   if (!handle) {
     nns_edge_loge ("[Queue] Invalid param, handle is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   q = calloc (1, sizeof (nns_edge_queue_s));
   if (!q) {
     nns_edge_loge ("[Queue] Failed to allocate new memory.");
-    return false;
+    return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
   nns_edge_lock_init (q);
@@ -100,20 +100,20 @@ nns_edge_queue_create (nns_edge_queue_h * handle)
   q->leaky = NNS_EDGE_QUEUE_LEAK_NEW;
 
   *handle = q;
-  return true;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
  * @brief Destroy queue.
  */
-bool
+int
 nns_edge_queue_destroy (nns_edge_queue_h handle)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   /* Stop waiting and clear all data. */
@@ -123,7 +123,7 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
   nns_edge_lock_destroy (q);
   SAFE_FREE (q);
 
-  return true;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
@@ -150,7 +150,7 @@ nns_edge_queue_get_length (nns_edge_queue_h handle)
 /**
  * @brief Set the max length of the queue.
  */
-bool
+int
 nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
     nns_edge_queue_leak_e leaky)
 {
@@ -158,7 +158,7 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   nns_edge_lock (q);
@@ -167,33 +167,33 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
     q->leaky = leaky;
   nns_edge_unlock (q);
 
-  return true;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
  * @brief Add new data into queue.
  */
-bool
+int
 nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
     nns_edge_data_destroy_cb destroy)
 {
+  int ret = NNS_EDGE_ERROR_NONE;
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   nns_edge_queue_data_s *qdata;
-  bool pushed = false;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (!data) {
     nns_edge_loge ("[Queue] Invalid param, data is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (size == 0U) {
     nns_edge_loge ("[Queue] Invalid param, size should be larger than zero.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   nns_edge_lock (q);
@@ -204,6 +204,7 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
     } else {
       nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
           q->max_data);
+      ret = NNS_EDGE_ERROR_IO;
       goto done;
     }
   }
@@ -211,6 +212,7 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
   qdata = calloc (1, sizeof (nns_edge_queue_data_s));
   if (!qdata) {
     nns_edge_loge ("[Queue] Failed to allocate new memory for data.");
+    ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
     goto done;
   }
 
@@ -224,37 +226,36 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
     q->tail->next = qdata;
   q->tail = qdata;
   q->length++;
-  pushed = true;
 
 done:
   nns_edge_cond_signal (q);
   nns_edge_unlock (q);
 
-  return pushed;
+  return ret;
 }
 
 /**
  * @brief Remove and return the first data in queue.
  */
-bool
+int
 nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
 {
-  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   bool popped = false;
+  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (!data) {
     nns_edge_loge ("[Queue] Invalid param, data is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (!size) {
     nns_edge_loge ("[Queue] Invalid param, size is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   /* init data */
@@ -265,13 +266,15 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  return (popped && *data != NULL);
+  if (!popped || *data == NULL)
+    return NNS_EDGE_ERROR_IO;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
  * @brief Remove and return the first data in queue. If queue is empty, wait until new data is added in the queue.
  */
-bool
+int
 nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
     void **data, nns_size_t * size)
 {
@@ -280,17 +283,17 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (!data) {
     nns_edge_loge ("[Queue] Invalid param, data is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   if (!size) {
     nns_edge_loge ("[Queue] Invalid param, size is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   /* init data */
@@ -304,21 +307,23 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  return (popped && *data != NULL);
+  if (!popped || *data == NULL)
+    return NNS_EDGE_ERROR_IO;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
  * @brief Clear all data in the queue.
  * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
  */
-bool
+int
 nns_edge_queue_clear (nns_edge_queue_h handle)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return false;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   nns_edge_lock (q);
@@ -328,5 +333,5 @@ nns_edge_queue_clear (nns_edge_queue_h handle)
     _pop_data (q, true, NULL, NULL);
 
   nns_edge_unlock (q);
-  return true;
+  return NNS_EDGE_ERROR_NONE;
 }

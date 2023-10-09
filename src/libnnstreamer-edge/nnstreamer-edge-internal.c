@@ -834,7 +834,8 @@ _nns_edge_send_thread (void *thread_data)
 
   eh->sending = true;
   while (eh->sending &&
-      nns_edge_queue_wait_pop (eh->send_queue, 0U, &data_h, &data_size)) {
+      NNS_EDGE_ERROR_NONE == nns_edge_queue_wait_pop (eh->send_queue, 0U,
+          &data_h, &data_size)) {
     if (!eh->sending) {
       nns_edge_data_destroy (data_h);
       break;
@@ -1266,7 +1267,11 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
     goto error;
   }
 
-  nns_edge_queue_create (&eh->send_queue);
+  ret = nns_edge_queue_create (&eh->send_queue);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to create edge queue");
+    goto error;
+  }
 
   if (NNS_EDGE_CONNECT_TYPE_AITT == connect_type) {
     ret = nns_edge_aitt_create (&eh->broker_h);
@@ -1745,6 +1750,7 @@ nns_edge_is_connected (nns_edge_h edge_h)
 int
 nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
 {
+  int ret = NNS_EDGE_ERROR_NONE;
   nns_edge_handle_s *eh;
   nns_edge_data_h new_data_h;
 
@@ -1781,15 +1787,16 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
   /* Create new data handle and push it into send-queue. */
   nns_edge_data_copy (data_h, &new_data_h);
 
-  if (!nns_edge_queue_push (eh->send_queue, new_data_h,
-          sizeof (nns_edge_data_h), nns_edge_data_release_handle)) {
+  ret = nns_edge_queue_push (eh->send_queue, new_data_h,
+      sizeof (nns_edge_data_h), nns_edge_data_release_handle);
+  if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to send data, cannot push data into queue.");
     nns_edge_unlock (eh);
-    return NNS_EDGE_ERROR_IO;
+    return ret;
   }
 
   nns_edge_unlock (eh);
-  return NNS_EDGE_ERROR_NONE;
+  return ret;
 }
 
 /**

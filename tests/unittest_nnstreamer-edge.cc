@@ -3402,7 +3402,8 @@ _test_thread_edge_queue_push (void *thread_data)
         ((unsigned int *) data)[j] = i * 10U + j;
     }
 
-    EXPECT_TRUE (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free));
+    EXPECT_EQ (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free),
+      NNS_EDGE_ERROR_NONE);
   }
 
   return NULL;
@@ -3435,22 +3436,22 @@ TEST(edgeQueue, pushData)
   for (i = 0; i < 5U; i++)
     ((unsigned int *) data3)[i] = i + 30U;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data1, dsize, NULL));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data1, dsize, NULL), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 1U);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data2, dsize, NULL));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data2, dsize, NULL), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 2U);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data3, dsize, NULL));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data3, dsize, NULL), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 3U);
 
   rsize = 0U;
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &result, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &result, &rsize), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 2U);
   EXPECT_EQ (result, data1);
@@ -3459,7 +3460,7 @@ TEST(edgeQueue, pushData)
     EXPECT_EQ (((unsigned int *) result)[i], i + 10U);
 
   rsize = 0U;
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &result, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &result, &rsize), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 1U);
   EXPECT_EQ (result, data2);
@@ -3468,7 +3469,7 @@ TEST(edgeQueue, pushData)
     EXPECT_EQ (((unsigned int *) result)[i], i + 20U);
 
   rsize = 0U;
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &result, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &result, &rsize), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 0U);
   EXPECT_EQ (result, data3);
@@ -3476,19 +3477,19 @@ TEST(edgeQueue, pushData)
   for (i = 0; i < 5U; i++)
     EXPECT_EQ (((unsigned int *) result)[i], i + 30U);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data1, dsize, nns_edge_free));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data1, dsize, nns_edge_free), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 1U);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data2, dsize, nns_edge_free));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data2, dsize, nns_edge_free), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 2U);
 
-  EXPECT_TRUE (nns_edge_queue_push (queue_h, data3, dsize, nns_edge_free));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data3, dsize, nns_edge_free), NNS_EDGE_ERROR_NONE);
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 3U);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3501,7 +3502,7 @@ TEST(edgeQueue, pushDataOnThread)
   pthread_attr_t attr;
   unsigned int i, j, len, retry;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
   pthread_attr_init (&attr);
   pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
@@ -3512,7 +3513,7 @@ TEST(edgeQueue, pushDataOnThread)
     void *result = NULL;
     nns_size_t rsize = 0U;
 
-    EXPECT_TRUE (nns_edge_queue_wait_pop (queue_h, 0U, &result, &rsize));
+    EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &result, &rsize), NNS_EDGE_ERROR_NONE);
 
     for (j = 0; j < 5U; j++)
       EXPECT_EQ (((unsigned int *) result)[j], i * 10U + j);
@@ -3527,7 +3528,7 @@ TEST(edgeQueue, pushDataOnThread)
     len = nns_edge_queue_get_length (queue_h);
   } while (len < 3U && retry++ < 200U);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3535,7 +3536,7 @@ TEST(edgeQueue, pushDataOnThread)
  */
 TEST(edgeQueue, createInvalidParam01_n)
 {
-  EXPECT_FALSE (nns_edge_queue_create (NULL));
+  EXPECT_EQ (nns_edge_queue_create (NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
@@ -3543,7 +3544,7 @@ TEST(edgeQueue, createInvalidParam01_n)
  */
 TEST(edgeQueue, destroyInvalidParam01_n)
 {
-  EXPECT_FALSE (nns_edge_queue_destroy (NULL));
+  EXPECT_EQ (nns_edge_queue_destroy (NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
@@ -3571,8 +3572,8 @@ TEST(edgeQueue, setLimit)
   data = malloc (dsize);
   ASSERT_TRUE (data != NULL);
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
-  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_NONE);
 
   for (i = 0; i < 5U; i++)
     nns_edge_queue_push (queue_h, data, dsize, NULL);
@@ -3580,7 +3581,7 @@ TEST(edgeQueue, setLimit)
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 3U);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (data);
 }
@@ -3594,12 +3595,12 @@ TEST(edgeQueue, setLeaky)
   void *data;
   nns_size_t dsize, rsize;
   unsigned int i, len;
-  bool res;
+  int ret;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
   /* leaky option new */
-  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW));
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_NONE);
 
   dsize = sizeof (unsigned int);
 
@@ -3609,11 +3610,11 @@ TEST(edgeQueue, setLeaky)
 
     *((unsigned int *) data) = i + 1;
 
-    res = nns_edge_queue_push (queue_h, data, dsize, nns_edge_free);
+    ret = nns_edge_queue_push (queue_h, data, dsize, nns_edge_free);
     if (i < 3U) {
-      EXPECT_TRUE (res);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
     } else {
-      EXPECT_FALSE (res);
+      EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
       SAFE_FREE (data);
     }
   }
@@ -3621,13 +3622,13 @@ TEST(edgeQueue, setLeaky)
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 3U);
 
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 1U);
   SAFE_FREE (data);
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 2U);
   SAFE_FREE (data);
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 3U);
   SAFE_FREE (data);
 
@@ -3635,7 +3636,7 @@ TEST(edgeQueue, setLeaky)
   EXPECT_EQ (len, 0U);
 
   /* leaky option old */
-  EXPECT_TRUE (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_OLD));
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_OLD), NNS_EDGE_ERROR_NONE);
 
   for (i = 0; i < 5U; i++) {
     data = malloc (dsize);
@@ -3643,26 +3644,26 @@ TEST(edgeQueue, setLeaky)
 
     *((unsigned int *) data) = i + 1;
 
-    EXPECT_TRUE (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free));
+    EXPECT_EQ (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free), NNS_EDGE_ERROR_NONE);
   }
 
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 3U);
 
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 3U);
   SAFE_FREE (data);
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 4U);
   SAFE_FREE (data);
-  EXPECT_TRUE (nns_edge_queue_pop (queue_h, &data, &rsize));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &rsize), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (*((unsigned int *) data), 5U);
   SAFE_FREE (data);
 
   len = nns_edge_queue_get_length (queue_h);
   EXPECT_EQ (len, 0U);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3670,7 +3671,7 @@ TEST(edgeQueue, setLeaky)
  */
 TEST(edgeQueue, setLimitInvalidParam01_n)
 {
-  EXPECT_FALSE (nns_edge_queue_set_limit (NULL, 5U, NNS_EDGE_QUEUE_LEAK_NEW));
+  EXPECT_EQ (nns_edge_queue_set_limit (NULL, 5U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
@@ -3685,7 +3686,7 @@ TEST(edgeQueue, pushInvalidParam01_n)
   data = malloc (dsize);
   ASSERT_TRUE (data != NULL);
 
-  EXPECT_FALSE (nns_edge_queue_push (NULL, data, dsize, NULL));
+  EXPECT_EQ (nns_edge_queue_push (NULL, data, dsize, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
   SAFE_FREE (data);
 }
@@ -3698,12 +3699,12 @@ TEST(edgeQueue, pushInvalidParam02_n)
   nns_edge_queue_h queue_h;
   nns_size_t dsize;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
   dsize = 5 * sizeof (unsigned int);
-  EXPECT_FALSE (nns_edge_queue_push (queue_h, NULL, dsize, NULL));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, NULL, dsize, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3714,14 +3715,14 @@ TEST(edgeQueue, pushInvalidParam03_n)
   nns_edge_queue_h queue_h;
   void *data;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
   data = malloc (5 * sizeof (unsigned int));
   ASSERT_TRUE (data != NULL);
 
-  EXPECT_FALSE (nns_edge_queue_push (queue_h, data, 0U, NULL));
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data, 0U, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (data);
 }
@@ -3734,7 +3735,7 @@ TEST(edgeQueue, popInvalidParam01_n)
   void *data;
   nns_size_t size;
 
-  EXPECT_FALSE (nns_edge_queue_pop (NULL, &data, &size));
+  EXPECT_EQ (nns_edge_queue_pop (NULL, &data, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
@@ -3745,11 +3746,11 @@ TEST(edgeQueue, popInvalidParam02_n)
   nns_edge_queue_h queue_h;
   nns_size_t size;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_FALSE (nns_edge_queue_pop (queue_h, NULL, &size));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, NULL, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3760,11 +3761,11 @@ TEST(edgeQueue, popInvalidParam03_n)
   nns_edge_queue_h queue_h;
   void *data;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_FALSE (nns_edge_queue_pop (queue_h, &data, NULL));
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3776,11 +3777,11 @@ TEST(edgeQueue, waitPopTimedout)
   void *data;
   nns_size_t size;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_FALSE (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size));
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size), NNS_EDGE_ERROR_IO);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3791,7 +3792,7 @@ TEST(edgeQueue, waitPopInvalidParam01_n)
   void *data;
   nns_size_t size;
 
-  EXPECT_FALSE (nns_edge_queue_wait_pop (NULL, 0U, &data, &size));
+  EXPECT_EQ (nns_edge_queue_wait_pop (NULL, 0U, &data, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
@@ -3802,11 +3803,11 @@ TEST(edgeQueue, waitPopInvalidParam02_n)
   nns_edge_queue_h queue_h;
   nns_size_t size;
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_FALSE (nns_edge_queue_wait_pop (queue_h, 0U, NULL, &size));
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, NULL, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
@@ -3816,12 +3817,11 @@ TEST(edgeQueue, waitPopInvalidParam03_n)
 {
   nns_edge_queue_h queue_h;
   void *data;
+  EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
 
-  EXPECT_TRUE (nns_edge_queue_create (&queue_h));
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &data, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 
-  EXPECT_FALSE (nns_edge_queue_wait_pop (queue_h, 0U, &data, NULL));
-
-  EXPECT_TRUE (nns_edge_queue_destroy (queue_h));
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
 }
 
 /**
