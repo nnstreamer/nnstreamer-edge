@@ -35,16 +35,21 @@ typedef enum {
 /**
  * @brief Create queue.
  * @param[out] handle Newly created handle.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-bool nns_edge_queue_create (nns_edge_queue_h *handle);
+int nns_edge_queue_create (nns_edge_queue_h *handle);
 
 /**
  * @brief Destroy queue.
  * @param[in] handle The queue handle.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-bool nns_edge_queue_destroy (nns_edge_queue_h handle);
+int nns_edge_queue_destroy (nns_edge_queue_h handle);
 
 /**
  * @brief Get the length of the queue.
@@ -58,9 +63,11 @@ unsigned int nns_edge_queue_get_length (nns_edge_queue_h handle);
  * @param[in] handle The queue handle.
  * @param[in] limit The max data in queue. Default 0 means unlimited.
  * @param[in] leaky The queue leaky option.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_edge_queue_leak_e leaky);
+int nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_edge_queue_leak_e leaky);
 
 /**
  * @brief Add new data into queue.
@@ -68,18 +75,24 @@ bool nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_
  * @param[in] data The data to be added.
  * @param[in] size The size of pushed data.
  * @param[in] destroy Nullable, the callback function to release data.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
-bool nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size, nns_edge_data_destroy_cb destroy);
+int nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size, nns_edge_data_destroy_cb destroy);
 
 /**
  * @brief Remove and return the first data in queue.
  * @param[in] handle The queue handle.
  * @param[out] data The data in the queue.
  * @param[out] size The size of data.
- * @return true on success. false if queue is empty.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ * @retval #NNS_EDGE_ERROR_IO
  */
-bool nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
+int nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
 
 /**
  * @brief Remove and return the first data in queue. If queue is empty, wait until new data is added in the queue.
@@ -87,17 +100,22 @@ bool nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size)
  * @param[in] timeout The time to wait for new data, in milliseconds. (0 for infinite timeout)
  * @param[out] data The data in the queue.
  * @param[out] size The size of data.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ * @retval #NNS_EDGE_ERROR_IO
  */
-bool nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
+int nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
 
 /**
  * @brief Stop waiting for new data and clear all data in the queue.
  * @param[in] handle The queue handle.
- * @return true on success.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
  */
-bool nns_edge_queue_clear (nns_edge_queue_h handle);
+int nns_edge_queue_clear (nns_edge_queue_h handle);
 
 #ifdef __cplusplus
 }
