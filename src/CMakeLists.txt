@@ -4,10 +4,12 @@ SET(NNS_EDGE_SRCS
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-data.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-event.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-internal.c
-    ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-log.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-util.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-queue.c
 )
+IF (NOT ENABLE_TIZEN)
+    SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-log.c)
+ENDIF()
 
 IF(MQTT_SUPPORT)
     IF(MOSQUITTO_LIB)

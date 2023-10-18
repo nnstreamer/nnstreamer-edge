@@ -13,7 +13,6 @@ NNSTREAMER_EDGE_SRCS := \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-data.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-event.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-internal.c \
-    $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-log.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-metadata.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-queue.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-util.c

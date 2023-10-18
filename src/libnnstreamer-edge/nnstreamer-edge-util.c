@@ -13,7 +13,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdarg.h>
-
+#include <inttypes.h>
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 
@@ -174,7 +174,7 @@ nns_edge_malloc (nns_size_t size)
     mem = malloc (size);
 
   if (!mem)
-    nns_edge_loge ("Failed to allocate memory (%llu).", size);
+    nns_edge_loge ("Failed to allocate memory (%" PRIu64 ").", size);
 
   return mem;
 }
