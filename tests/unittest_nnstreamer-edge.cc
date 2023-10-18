@@ -826,8 +826,6 @@ TEST(edge, setInfoInvalidParam08_n)
   /* Invalid port number */
   ret = nns_edge_set_info (edge_h, "port", "-1");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
-  ret = nns_edge_set_info (edge_h, "port", "0");
-  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_set_info (edge_h, "port", "77777");
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 

@@ -336,7 +336,7 @@ TEST(edgeAitt, connectInvalidParam4_n)
   ret = nns_edge_aitt_create (&handle);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
-  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", 0);
+  ret = nns_edge_aitt_connect (handle, "temp-aitt-id", "temp-aitt-topic", "127.0.0.1", -1);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_aitt_close (handle);

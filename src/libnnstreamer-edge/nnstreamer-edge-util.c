@@ -149,6 +149,10 @@ nns_edge_parse_port_number (const char *port_str)
 
   port = (int) strtoll (port_str, NULL, 10);
 
+  if (port == 0) {
+    port = nns_edge_get_available_port ();
+  }
+
   if (!PORT_IS_VALID (port)) {
     nns_edge_loge ("Invalid port number %d.", port);
     port = -1;
