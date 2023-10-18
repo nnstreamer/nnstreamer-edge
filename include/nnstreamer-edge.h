@@ -310,7 +310,7 @@ int nns_edge_is_connected (nns_edge_h edge_h);
  * ---------------------|--------------------------------------------------------------
  * CAPS or CAPABILITY   | capability strings.
  * IP or HOST           | IP address of the node to accept connection from other node.
- * PORT                 | Port of the node to accept connection from other node. The value should be 0 or higher.
+ * PORT                 | Port of the node to accept connection from other node. The value should be 0 or higher, if the port is set to 0 then the available port is allocated.
  * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP address of the broker.
  * DEST_PORT            | Port of the destination node. In case of TCP connection, it is the port number of the destination node, and in the case of Hybrid or AITT connection, it is the port number of the broker. The value should be 0 or higher.
  * TOPIC                | Topic used to publish/subscribe to/from the broker.
