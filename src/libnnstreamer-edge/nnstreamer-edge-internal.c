@@ -38,6 +38,7 @@ typedef struct
 {
   uint32_t magic;
   pthread_mutex_t lock;
+  pthread_cond_t cond;
   char *id;
   char *topic;
   nns_edge_connect_type_e connect_type;
@@ -833,6 +834,7 @@ _nns_edge_send_thread (void *thread_data)
   int ret;
 
   eh->sending = true;
+  nns_edge_cond_signal (eh);
   while (eh->sending &&
       NNS_EDGE_ERROR_NONE == nns_edge_queue_wait_pop (eh->send_queue, 0U,
           &data_h, &data_size)) {
@@ -905,6 +907,9 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
   int status;
 
   status = pthread_create (&eh->send_thread, NULL, _nns_edge_send_thread, eh);
+  while (!eh->sending) {
+    nns_edge_cond_wait (eh);
+  }
 
   if (status != 0) {
     nns_edge_loge ("Failed to create sender thread.");
@@ -1244,6 +1249,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   }
 
   nns_edge_lock_init (eh);
+  nns_edge_cond_init (eh);
   nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC);
   eh->id = STR_IS_VALID (id) ? nns_edge_strdup (id) :
       nns_edge_strdup_printf ("%lld", (long long) nns_edge_generate_id ());
@@ -1473,6 +1479,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   SAFE_FREE (eh->caps_str);
 
   nns_edge_unlock (eh);
+  nns_edge_cond_destroy (eh);
   nns_edge_lock_destroy (eh);
   SAFE_FREE (eh);
 
