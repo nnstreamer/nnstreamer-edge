@@ -151,6 +151,11 @@ typedef struct
 } nns_edge_thread_data_s;
 
 /**
+ * @brief Parse the message received from the MQTT broker and connect to the server directly.
+ */
+static int _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh);
+
+/**
  * @brief Set socket option. nnstreamer-edge handles TCP connection now.
  */
 static void
@@ -775,8 +780,17 @@ _nns_edge_message_handler (void *thread_data)
         ("Received error from client, remove connection of client (ID: %lld).",
         (long long) client_id);
     _nns_edge_remove_connection (eh, client_id);
-    nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
-        NNS_EDGE_EVENT_CONNECTION_CLOSED, NULL, 0, NULL);
+    ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
+
+    if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+      nns_edge_logi ("Connection lost! Reconnect to available node.");
+      ret = _mqtt_hybrid_direct_connection (eh);
+    }
+
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+          NNS_EDGE_EVENT_CONNECTION_CLOSED, NULL, 0, NULL);
+    }
   }
 
   return NULL;
@@ -1630,6 +1644,12 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
     nns_edge_loge ("NNStreamer-edge event callback is not registered.");
     nns_edge_unlock (eh);
     return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+  }
+
+  if (NNS_EDGE_ERROR_NONE == nns_edge_is_connected (eh)) {
+    nns_edge_logi ("NNStreamer-edge is already connected.");
+    nns_edge_unlock (eh);
+    return NNS_EDGE_ERROR_NONE;
   }
 
   SAFE_FREE (eh->dest_host);
