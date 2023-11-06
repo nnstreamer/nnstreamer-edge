@@ -31,7 +31,7 @@ typedef int64_t nns_ssize_t;
 /**
  * @brief The maximum number of data instances that nnstreamer-edge data may have.
  */
-#define NNS_EDGE_DATA_LIMIT (16)
+#define NNS_EDGE_DATA_LIMIT (256)
 
 /**
  * @brief Enumeration for the error codes of nnstreamer-edge (linux standard error, sync with tizen error code).
