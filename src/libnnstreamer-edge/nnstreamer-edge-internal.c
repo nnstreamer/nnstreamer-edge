@@ -1283,13 +1283,13 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
 
   ret = nns_edge_metadata_create (&eh->metadata);
   if (ret != NNS_EDGE_ERROR_NONE) {
-    nns_edge_loge ("Failed to create edge metadata");
+    nns_edge_loge ("Failed to create edge metadata.");
     goto error;
   }
 
   ret = nns_edge_queue_create (&eh->send_queue);
   if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to create edge queue");
+    nns_edge_loge ("Failed to create edge queue.");
     goto error;
   }
 
@@ -1816,11 +1816,8 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
 
   ret = nns_edge_queue_push (eh->send_queue, new_data_h,
       sizeof (nns_edge_data_h), nns_edge_data_release_handle);
-  if (NNS_EDGE_ERROR_NONE != ret) {
+  if (NNS_EDGE_ERROR_NONE != ret)
     nns_edge_loge ("Failed to send data, cannot push data into queue.");
-    nns_edge_unlock (eh);
-    return ret;
-  }
 
   nns_edge_unlock (eh);
   return ret;
