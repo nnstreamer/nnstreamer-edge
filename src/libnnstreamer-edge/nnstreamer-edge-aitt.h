@@ -44,6 +44,7 @@ int nns_edge_aitt_publish (nns_edge_aitt_h handle, const void *data, const int l
 
 /**
  * @brief Publish raw data with protocol and QoS.
+ * @note This is internal function for AITT.
  */
 int nns_edge_aitt_publish_full (nns_edge_aitt_h handle, const void *data, const int length, aitt_protocol_e protocol, aitt_qos_e qos);
 

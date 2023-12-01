@@ -173,7 +173,7 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
   bh->user_data = NULL;
   ret = nns_edge_queue_create (&bh->message_queue);
   if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to create message queue");
+    nns_edge_loge ("Failed to create message queue.");
     goto error;
   }
 
@@ -435,12 +435,10 @@ nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg,
    * (Default: 0 for infinite timeout)
    */
   ret = nns_edge_queue_wait_pop (bh->message_queue, timeout, msg, msg_len);
-  if (NNS_EDGE_ERROR_NONE != ret) {
+  if (NNS_EDGE_ERROR_NONE != ret)
     nns_edge_loge ("Failed to get message from mqtt broker within timeout.");
-    return ret;
-  }
 
-  return NNS_EDGE_ERROR_NONE;
+  return ret;
 }
 
 /**

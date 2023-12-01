@@ -266,9 +266,7 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  if (!popped || *data == NULL)
-    return NNS_EDGE_ERROR_IO;
-  return NNS_EDGE_ERROR_NONE;
+  return (popped && *data != NULL) ? NNS_EDGE_ERROR_NONE : NNS_EDGE_ERROR_IO;
 }
 
 /**
@@ -307,9 +305,7 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
-  if (!popped || *data == NULL)
-    return NNS_EDGE_ERROR_IO;
-  return NNS_EDGE_ERROR_NONE;
+  return (popped && *data != NULL) ? NNS_EDGE_ERROR_NONE : NNS_EDGE_ERROR_IO;
 }
 
 /**
