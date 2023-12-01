@@ -847,8 +847,11 @@ _nns_edge_send_thread (void *thread_data)
   char *val;
   int ret;
 
+  nns_edge_lock (eh);
   eh->sending = true;
   nns_edge_cond_signal (eh);
+  nns_edge_unlock (eh);
+
   while (eh->sending &&
       NNS_EDGE_ERROR_NONE == nns_edge_queue_wait_pop (eh->send_queue, 0U,
           &data_h, &data_size)) {
@@ -914,6 +917,7 @@ _nns_edge_send_thread (void *thread_data)
 
 /**
  * @brief Create thread to send data.
+ * @note This should be called with lock.
  */
 static int
 _nns_edge_create_send_thread (nns_edge_handle_s * eh)
@@ -921,15 +925,16 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
   int status;
 
   status = pthread_create (&eh->send_thread, NULL, _nns_edge_send_thread, eh);
-  while (!eh->sending) {
-    nns_edge_cond_wait (eh);
-  }
 
   if (status != 0) {
     nns_edge_loge ("Failed to create sender thread.");
     eh->send_thread = 0;
+    eh->sending = false;
     return NNS_EDGE_ERROR_IO;
   }
+
+  /* Wait for starting thread. */
+  nns_edge_cond_wait (eh);
 
   return NNS_EDGE_ERROR_NONE;
 }
