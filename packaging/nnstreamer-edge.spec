@@ -18,6 +18,7 @@ Summary:    Common library set for nnstreamer-edge
 # 1. CMake : ./CMakeLists.txt
 # 2. Ubuntu : ./debian/changelog
 # 3. Tizen : ./packaging/nnstreamer-edge.spec
+# 4. TizenRT : ./tools/build_TizenRT/Makefile
 Version:    0.2.5
 Release:    1
 Group:      Machine Learning/ML Framework
