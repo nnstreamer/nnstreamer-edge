@@ -53,6 +53,12 @@
 -include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
 
+# Set nnstreamer-edge version
+VERSION = 0.2.5
+VERSION_MAJOR = $(word 1,$(subst ., ,$(VERSION)))
+VERSION_MINOR = $(word 2,$(subst ., ,$(VERSION)))
+VERSION_MICRO = $(word 3,$(subst ., ,$(VERSION)))
+
 ASRCS		=
 CSRCS		= src/libnnstreamer-edge/nnstreamer-edge-data.c \
 		src/libnnstreamer-edge/nnstreamer-edge-event.c \
@@ -62,10 +68,11 @@ CSRCS		= src/libnnstreamer-edge/nnstreamer-edge-data.c \
 		src/libnnstreamer-edge/nnstreamer-edge-queue.c \
 		src/libnnstreamer-edge/nnstreamer-edge-util.c
 
-CFLAGS += -I ./include -DDEBUG=0
+CFLAGS += -I./include -DDEBUG=0
+CFLAGS += -DVERSION=\"$(VERSION)\" -DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO)
 
 ifeq ($(CONFIG_NETUTILS_MQTT),y)
-	CFLAGS += -I ../mosquitto
+	CFLAGS += -I../mosquitto -I../include/mosquitto
 	CFLAGS += -DENABLE_MQTT=1
 	CSRCS += src/libnnstreamer-edge/nnstreamer-edge-mqtt-mosquitto.c
 endif
