@@ -214,7 +214,7 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
   }
 
   if (!broker_h) {
-    nns_edge_loge ("Invalid param, mqtt_h should not be null.");
+    nns_edge_loge ("Invalid param, broker_h should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -303,6 +303,9 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     mosquitto_destroy (handle);
     mosquitto_lib_cleanup ();
   }
+
+  bh->mqtt_h = NULL;
+  bh->connected = false;
 
   nns_edge_queue_destroy (bh->message_queue);
   bh->message_queue = NULL;
