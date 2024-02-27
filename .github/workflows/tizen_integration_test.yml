@@ -9,6 +9,14 @@ on:
 jobs:
   build:
 
+    strategy:
+      matrix:
+        include:
+          - aarch: "-A x86_64"
+          - aarch: "-A i586"
+          - aarch: "-A armv7l"
+          - aarch: "-A aarch64"
+
     runs-on: ubuntu-20.04
 
     steps:
@@ -21,9 +29,12 @@ jobs:
     - name: configure GBS
       run: cp .github/workflows/tizen.gbs.conf ~/.gbs.conf
     - name: run GBS
-      run: gbs build
+      run: gbs build ${{ matrix.aarch }}
     - name: get nnstreamer-main
       run: git clone https://github.com/nnstreamer/nnstreamer.git
     - name: run GBS on nnstreamer with unit test
-      run: pushd nnstreamer && gbs build --define "edge_test 1" && popd
+      run: |
+        pushd nnstreamer
+        gbs build ${{ matrix.aarch }} --define "edge_test 1"
+        popd
 ## @todo run nnstreamer-edge related test cases only
