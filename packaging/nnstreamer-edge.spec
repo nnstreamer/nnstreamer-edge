@@ -2,12 +2,10 @@
 
 # Default features for Tizen releases
 %define     mqtt_support 1
-%define     aitt_support 1
 
 # Define features for TV releases
 %if "%{?profile}" == "tv"
 %define     mqtt_support 0
-%define     aitt_support 0
 %endif
 
 %bcond_with tizen
@@ -35,10 +33,6 @@ BuildRequires:  pkgconfig(dlog)
 
 %if 0%{?mqtt_support}
 BuildRequires:  pkgconfig(libmosquitto)
-%endif
-
-%if 0%{?aitt_support}
-BuildRequires:  aitt-devel
 %endif
 
 %if 0%{?unit_test}
@@ -93,12 +87,6 @@ HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %define enable_mqtt -DMQTT_SUPPORT=OFF
 %endif
 
-%if 0%{?aitt_support}
-%define enable_aitt -DAITT_SUPPORT=ON
-%else
-%define enable_aitt -DAITT_SUPPORT=OFF
-%endif
-
 %prep
 %setup -q
 cp %{SOURCE1001} .
@@ -125,7 +113,7 @@ pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DVERSION=%{version} \
-    %{enable_tizen} %{enable_unittest} %{enable_mqtt} %{enable_aitt}
+    %{enable_tizen} %{enable_unittest} %{enable_mqtt}
 
 make %{?jobs:-j%jobs}
 popd
@@ -138,10 +126,6 @@ popd
 
 %if 0%{?unit_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
-
-%if 0%{?aitt_support}
-LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-aitt
-%endif
 
 %if 0%{?mqtt_support}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-mqtt
@@ -191,10 +175,6 @@ rm -rf %{buildroot}
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/unittest_nnstreamer-edge
-
-%if 0%{?aitt_support}
-%{_bindir}/unittest_nnstreamer-edge-aitt
-%endif
 
 %if 0%{?mqtt_support}
 %{_bindir}/unittest_nnstreamer-edge-mqtt
