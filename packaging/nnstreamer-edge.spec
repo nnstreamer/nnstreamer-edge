@@ -146,9 +146,9 @@ find . -name "*.gcno" -exec sh -c 'touch -a "${1%.gcno}.gcda"' _ {} \;
 find . -name "CMakeCCompilerId*.gcda" -delete
 find . -name "CMakeCXXCompilerId*.gcda" -delete
 # Generate report
-lcov -t 'NNStreamer-edge unittest coverage' -o unittest.info -c -d . -b $(pwd) --no-external
+lcov -t 'NNStreamer-edge unittest coverage' -o unittest.info -c -d . -b $(pwd) --no-external --ignore-errors mismatch
 # Exclude test files.
-lcov -r unittest.info "*/tests/*" -o unittest-filtered.info
+lcov -r unittest.info "*/tests/*" -o unittest-filtered.info --ignore-errors graph,unused
 # Visualize the report
 genhtml -o result unittest-filtered.info -t "NNStreamer-edge %{version}-%{release} ${VCS}" --ignore-errors source -p ${RPM_BUILD_DIR}
 
