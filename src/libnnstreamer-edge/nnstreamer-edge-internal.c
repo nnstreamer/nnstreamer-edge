@@ -486,11 +486,25 @@ _nns_edge_transfer_data (nns_edge_conn_s * conn, nns_edge_data_h data_h,
 
   _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_TRANSFER_DATA, client_id);
 
-  nns_edge_data_get_count (data_h, &cmd.info.num);
-  for (i = 0; i < cmd.info.num; i++)
-    nns_edge_data_get (data_h, i, &cmd.mem[i], &cmd.info.mem_size[i]);
+  ret = nns_edge_data_get_count (data_h, &cmd.info.num);
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to get data count");
+    return ret;
+  }
 
-  nns_edge_data_serialize_meta (data_h, &cmd.meta, &cmd.info.meta_size);
+  for (i = 0; i < cmd.info.num; i++) {
+    ret = nns_edge_data_get (data_h, i, &cmd.mem[i], &cmd.info.mem_size[i]);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to get data");
+      return ret;
+    }
+  }
+
+  ret = nns_edge_data_serialize_meta (data_h, &cmd.meta, &cmd.info.meta_size);
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to serialize meta");
+    return ret;
+  }
 
   ret = _nns_edge_cmd_send (conn, &cmd);
   SAFE_FREE (cmd.meta);
