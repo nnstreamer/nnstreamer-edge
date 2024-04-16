@@ -1165,7 +1165,11 @@ _nns_edge_socket_listener_thread (void *thread_data)
 {
   nns_edge_handle_s *eh = (nns_edge_handle_s *) thread_data;
 
+  nns_edge_lock (eh);
   eh->listening = true;
+  nns_edge_cond_signal (eh);
+  nns_edge_unlock (eh);
+
   while (eh->listening) {
     struct pollfd poll_fd;
 
@@ -1234,6 +1238,9 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
     eh->listener_thread = 0;
     goto error;
   }
+
+  /* Wait for the listener thread to be started */
+  nns_edge_cond_wait (eh);
 
   done = true;
 
