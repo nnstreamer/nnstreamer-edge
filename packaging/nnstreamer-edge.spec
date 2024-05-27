@@ -8,6 +8,11 @@
 %define     mqtt_support 0
 %endif
 
+# Disable mosquitto for DA products
+%if 0%{?_with_da_profile}
+%define     mqtt_support 0
+%endif
+
 %bcond_with tizen
 
 Name:       nnstreamer-edge
