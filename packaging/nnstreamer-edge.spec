@@ -47,7 +47,7 @@ BuildRequires:  lcov
 
 %description
 nnstreamer-edge provides remote source nodes for NNStreamer pipelines without GStreamer dependencies.
-It also contains communicaton library for sharing server node information & status.
+It also contains communication library for sharing server node information & status.
 
 %package devel
 Summary: development package for nnstreamer-edge

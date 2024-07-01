@@ -2084,7 +2084,7 @@ TEST(edgeData, deserializeInvalidParam04_n)
 
 
 /**
- * @brief Serialzie and deserialize the edge-data.
+ * @brief Serialize and deserialize the edge-data.
  */
 TEST(edgeDataSerialize, normal)
 {
