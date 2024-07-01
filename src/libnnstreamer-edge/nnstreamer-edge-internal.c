@@ -827,7 +827,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
-   /** Create message receving thread */
+   /** Create message receiving thread */
   thread_data->eh = eh;
   thread_data->conn = conn;
   thread_data->client_id = client_id;
@@ -1397,7 +1397,7 @@ nns_edge_start (nns_edge_h edge_h)
         SAFE_FREE (msg);
 
         if (NNS_EDGE_ERROR_NONE != ret) {
-          nns_edge_loge ("Failed to publish the meesage to broker.");
+          nns_edge_loge ("Failed to publish the message to broker.");
           goto done;
         }
       } else {
@@ -1600,7 +1600,7 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
 }
 
 /**
- * @brief Start subsciption to MQTT message
+ * @brief Start subscription to MQTT message
  */
 static int
 _nns_edge_start_mqtt_sub (nns_edge_handle_s * eh)
@@ -1798,7 +1798,7 @@ nns_edge_is_connected (nns_edge_h edge_h)
 }
 
 /**
- * @brief Send data to desination (broker or connected node), asynchronously.
+ * @brief Send data to destination (broker or connected node), asynchronously.
  */
 int
 nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)

@@ -22,7 +22,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @brief Internal wrapper function of the nns_edge_data_destory() to avoid build warning of the incompatibe type casting. (See nns_edge_data_destroy_cb())
+ * @brief Internal wrapper function of the nns_edge_data_destroy() to avoid build warning of the incompatibe type casting. (See nns_edge_data_destroy_cb())
  */
 void nns_edge_data_release_handle (void *data);
 

@@ -381,7 +381,7 @@ nns_edge_aitt_set_option (nns_edge_aitt_h handle, const char *key,
         0 == strcasecmp (value, "TCP-SECURE")) {
       ah->protocol = AITT_TYPE_TCP_SECURE;
     } else {
-      nns_edge_logw ("Invalid AITT procotol. Please check the value: %s",
+      nns_edge_logw ("Invalid AITT protocol. Please check the value: %s",
           value);
     }
   } else {

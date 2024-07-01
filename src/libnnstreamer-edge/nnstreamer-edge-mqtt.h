@@ -53,7 +53,7 @@ int nns_edge_mqtt_subscribe (nns_edge_broker_h broker_h);
 bool nns_edge_mqtt_is_connected (nns_edge_broker_h broker_h);
 
 /**
- * @brief Get message from mqtt broker with within timeout. (0 for inifinite timeout)
+ * @brief Get message from mqtt broker with within timeout. (0 for infinite timeout)
  */
 int nns_edge_mqtt_get_message (nns_edge_broker_h broker_h, void **msg, nns_size_t *msg_len, unsigned int timeout);
 

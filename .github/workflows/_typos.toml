@@ -2,3 +2,4 @@
 extend-exclude = []
 
 [default.extend-words]
+mosquitto = "mosquitto"

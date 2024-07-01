@@ -17,7 +17,7 @@
 #define NNS_EDGE_DATA_KEY (0xeddaedda)
 
 /**
- * @brief Internal data structure for the header of the serialzied edge data.
+ * @brief Internal data structure for the header of the serialized edge data.
  */
 typedef struct
 {
@@ -104,7 +104,7 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
 }
 
 /**
- * @brief Internal wrapper function of the nns_edge_data_destory() to avoid build warning of the incompatibe type casting. (See nns_edge_data_destroy_cb())
+ * @brief Internal wrapper function of the nns_edge_data_destroy() to avoid build warning of the incompatibe type casting. (See nns_edge_data_destroy_cb())
  */
 void
 nns_edge_data_release_handle (void *data)
@@ -113,7 +113,7 @@ nns_edge_data_release_handle (void *data)
 
   if (data_h) {
     if (NNS_EDGE_ERROR_NONE != nns_edge_data_destroy (data_h))
-      nns_edge_logw ("Failed to destory the nns-edge data handle.");
+      nns_edge_logw ("Failed to destroy the nns-edge data handle.");
   }
 }
 
