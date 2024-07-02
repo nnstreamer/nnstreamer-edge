@@ -19,3 +19,11 @@ TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-mqtt PRIVATE ${EDGE_REQUIRE_
 TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-mqtt ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME})
 INSTALL (TARGETS unittest_nnstreamer-edge-mqtt DESTINATION ${BIN_INSTALL_DIR})
 ENDIF()
+
+# MCF test
+IF(MCF_SUPPORT)
+ADD_EXECUTABLE(unittest_nnstreamer-edge-mcf unittest_nnstreamer-edge-mcf.cc)
+TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-mcf PRIVATE ${EDGE_REQUIRE_PKGS_INCLUDE_DIRS} ${INCLUDE_DIR} ${NNS_EDGE_SRC_DIR})
+TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-mcf ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME})
+INSTALL (TARGETS unittest_nnstreamer-edge-mcf DESTINATION ${BIN_INSTALL_DIR})
+ENDIF()
