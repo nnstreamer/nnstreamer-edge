@@ -21,6 +21,7 @@
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-mqtt.h"
+#include "nnstreamer-edge-custom.h"
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
