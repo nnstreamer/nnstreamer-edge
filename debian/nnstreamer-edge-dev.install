@@ -1,3 +1,4 @@
 /usr/include/nnstreamer/nnstreamer-edge.h
+/usr/include/nnstreamer/nnstreamer-edge-custom.h
 /usr/lib/*/pkgconfig/nnstreamer-edge.pc
 /usr/lib/*/libnnstreamer-edge.so
