@@ -61,7 +61,6 @@ typedef enum {
   NNS_EDGE_CONNECT_TYPE_MQTT,
   NNS_EDGE_CONNECT_TYPE_HYBRID,
   NNS_EDGE_CONNECT_TYPE_AITT,
-
   NNS_EDGE_CONNECT_TYPE_CUSTOM,
 
   NNS_EDGE_CONNECT_TYPE_UNKNOWN
@@ -180,6 +179,11 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
 int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type, nns_edge_node_type_e node_type, nns_edge_h *edge_h);
 
 /**
+ * @brief Create edge custom handle.
+ */
+int nns_edge_custom_create_handle (const char *id, const char *lib_path, nns_edge_node_type_e node_type, nns_edge_h *edge_h);
+
+/**
  * @brief Start the nnstreamer edge. After the start, the edge can accept a new connection or request a connection.
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
@@ -190,6 +194,18 @@ int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type
  * @retval #NNS_EDGE_ERROR_CONNECTION_FAILURE Failed to get socket address.
  */
 int nns_edge_start (nns_edge_h edge_h);
+
+/**
+ * @brief Stop the nnstreamer edges.
+ * @param[in] edge_h The edge handle.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ * @retval #NNS_EDGE_ERROR_CONNECTION_FAILURE Failed to get socket address.
+ */
+int nns_edge_stop (nns_edge_h edge_h);
 
 /**
  * @brief Release the given edge handle. All the connections are disconnected.

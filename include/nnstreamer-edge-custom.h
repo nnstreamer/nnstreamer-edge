@@ -32,7 +32,7 @@ typedef struct _NnsEdgeCustomDef
   int (*nns_edge_custom_set_event_cb) (void *priv, nns_edge_event_cb cb, void *user_data);
   int (*nns_edge_custom_send_data) (void *priv, nns_edge_data_h data_h);
   int (*nns_edge_custom_set_option) (void *priv, const char *key, const char *value);
-  const char *(*nns_edge_custom_get_option) (void *priv, const char *key);
+  char *(*nns_edge_custom_get_option) (void *priv, const char *key);
 } NnsEdgeCustomDef;
 
 void* nns_edge_custom_get_handle ();
