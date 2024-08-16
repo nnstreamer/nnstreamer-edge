@@ -13,15 +13,18 @@
 #ifndef __NNSTREAMER_EDGE_CUSTOM_H__
 #define __NNSTREAMER_EDGE_CUSTOM_H__
 
-#include <stdint.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "nnstreamer-edge.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+/**
+ * @brief NNStreamer Edge custom connection definition. This is used to define a custom connsction. The user should implement the functions and provide them using nns_edge_custom_get_instance(). Refer to the example in nnstreamer-edge-custom.c for more details.
+ */
 typedef struct _NnsEdgeCustomDef
 {
-  char *(*nns_edge_get_connection_type) ();
+  const char *(*nns_edge_custom_get_description) ();
   int (*nns_edge_custom_create) (void **priv);
   int (*nns_edge_custom_close) (void *priv);
   int (*nns_edge_custom_start) (void *priv);
@@ -33,8 +36,15 @@ typedef struct _NnsEdgeCustomDef
   int (*nns_edge_custom_send_data) (void *priv, nns_edge_data_h data_h);
   int (*nns_edge_custom_set_option) (void *priv, const char *key, const char *value);
   char *(*nns_edge_custom_get_option) (void *priv, const char *key);
-} NnsEdgeCustomDef;
+} nns_edge_custom_s;
 
-void* nns_edge_custom_get_handle ();
+/**
+ * @brief Get nns edge custom connection instance.
+ */
+void* nns_edge_custom_get_instance ();
 
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 #endif /* __NNSTREAMER_EDGE_CUSTOM_H__ */
