@@ -2,7 +2,7 @@
 /**
  * Copyright (C) 2024 Gichan Jang <gichan2.jang@samsung.com>
  *
- * @file   nnstreamer-edge-custom.c
+ * @file   nnstreamer-edge-custom-test.c
  * @date   16 Aug 2024
  * @brief  NNStreamer-edge custom connection for test.
  * @see    https://github.com/nnstreamer/nnstreamer-edge

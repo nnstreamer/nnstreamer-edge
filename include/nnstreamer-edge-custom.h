@@ -20,7 +20,9 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @brief NNStreamer Edge custom connection definition. This is used to define a custom connsction. The user should implement the functions and provide them using nns_edge_custom_get_instance(). Refer to the example in nnstreamer-edge-custom.c for more details.
+ * @brief NNStreamer Edge custom connection definition. This is used to define a custom connection.
+ * The user should implement the functions and provide them using nns_edge_custom_get_instance().
+ * Refer to the example in nnstreamer-edge-custom-test.c for more details.
  */
 typedef struct _NnsEdgeCustomDef
 {
@@ -42,7 +44,6 @@ typedef struct _NnsEdgeCustomDef
  * @brief Get nns edge custom connection instance.
  */
 void* nns_edge_custom_get_instance ();
-
 
 #ifdef __cplusplus
 }
