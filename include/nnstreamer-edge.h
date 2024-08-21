@@ -90,8 +90,8 @@ typedef void (*nns_edge_data_destroy_cb) (void *data);
 /**
  * @brief Create a handle representing an instance of edge-AI connection between a server and client (query) or a data publisher and scriber.
  * @param[in] id Unique id in local network
- * @param[in] connect_type value of @a nns_edge_connect_type_e. Connection type between edge nodes.
- * @param[in] flags value of @a nns_edge_flag_e. The value can be set by using bitwise-or operation.
+ * @param[in] connect_type Value of @a nns_edge_connect_type_e. Connection type between edge nodes.
+ * @param[in] node_type Value of @a nns_edge_node_type_e. The node type of edge connection.
  * @param[out] edge_h The edge handle. If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -180,6 +180,15 @@ int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type
 
 /**
  * @brief Create edge custom handle.
+ * @param[in] id Unique id in local network
+ * @param[in] lib_path The library path implementing the custom connection.
+ * @param[in] node_type Value of @a nns_edge_node_type_e. The node type of edge connection.
+ * @param[out] edge_h The edge handle. If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_custom_create_handle (const char *id, const char *lib_path, nns_edge_node_type_e node_type, nns_edge_h *edge_h);
 
@@ -200,10 +209,7 @@ int nns_edge_start (nns_edge_h edge_h);
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- * @retval #NNS_EDGE_ERROR_CONNECTION_FAILURE Failed to get socket address.
  */
 int nns_edge_stop (nns_edge_h edge_h);
 
