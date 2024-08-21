@@ -2082,7 +2082,6 @@ TEST(edgeData, deserializeInvalidParam04_n)
   SAFE_FREE (data);
 }
 
-
 /**
  * @brief Serialize and deserialize the edge-data.
  */
@@ -2163,7 +2162,6 @@ TEST(edgeDataSerialize, normal)
 
   SAFE_FREE (serialized_data);
 }
-
 
 /**
  * @brief Serialize edge-data - invalid param.
