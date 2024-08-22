@@ -24,7 +24,7 @@ extern "C" {
  * The user should implement the functions and provide them using nns_edge_custom_get_instance().
  * Refer to the example in nnstreamer-edge-custom-test.c for more details.
  */
-typedef struct _NnsEdgeCustomDef
+typedef struct
 {
   const char *(*nns_edge_custom_get_description) ();
   int (*nns_edge_custom_create) (void **priv);
@@ -36,14 +36,14 @@ typedef struct _NnsEdgeCustomDef
   int (*nns_edge_custom_is_connected) (void *priv);
   int (*nns_edge_custom_set_event_cb) (void *priv, nns_edge_event_cb cb, void *user_data);
   int (*nns_edge_custom_send_data) (void *priv, nns_edge_data_h data_h);
-  int (*nns_edge_custom_set_option) (void *priv, const char *key, const char *value);
-  char *(*nns_edge_custom_get_option) (void *priv, const char *key);
+  int (*nns_edge_custom_set_info) (void *priv, const char *key, const char *value);
+  int (*nns_edge_custom_get_info) (void *priv, const char *key, char **value);
 } nns_edge_custom_s;
 
 /**
  * @brief Get nns edge custom connection instance.
  */
-void* nns_edge_custom_get_instance ();
+const nns_edge_custom_s * nns_edge_custom_get_instance (void);
 
 #ifdef __cplusplus
 }

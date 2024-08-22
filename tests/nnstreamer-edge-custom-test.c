@@ -27,7 +27,7 @@ static int
 nns_edge_custom_close (void *priv)
 {
   if (!priv) {
-    nns_edge_loge ("Invalid param, priv should not be null.");
+    nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
@@ -67,7 +67,7 @@ static int
 nns_edge_custom_start (void *priv)
 {
   if (!priv) {
-    nns_edge_loge ("Invalid param, priv should not be null.");
+    nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
@@ -80,7 +80,7 @@ static int
 nns_edge_custom_stop (void *priv)
 {
   if (!priv) {
-    nns_edge_loge ("Invalid param, priv should not be null.");
+    nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
@@ -93,7 +93,7 @@ static int
 nns_edge_custom_connect (void *priv)
 {
   if (!priv) {
-    nns_edge_loge ("Invalid param, priv is NULL");
+    nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
@@ -126,8 +126,8 @@ nns_edge_custom_is_connected (void *priv)
 static int
 nns_edge_custom_set_event_cb (void *priv, nns_edge_event_cb cb, void *user_data)
 {
-  if (!priv || !cb) {
-    nns_edge_loge ("Invalid param, cb(%p)", cb);
+  if (!priv) {
+    nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -138,7 +138,7 @@ static int
 nns_edge_custom_send_data (void *priv, nns_edge_data_h data_h)
 {
   if (!priv || !data_h) {
-    nns_edge_loge ("Invalid param, data_h(%p)", data_h);
+    nns_edge_loge ("Invalid param, handle or data should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -146,10 +146,10 @@ nns_edge_custom_send_data (void *priv, nns_edge_data_h data_h)
 }
 
 static int
-nns_edge_custom_set_option (void *priv, const char *key, const char *value)
+nns_edge_custom_set_info (void *priv, const char *key, const char *value)
 {
   if (!priv || !key || !value) {
-    nns_edge_loge ("Invalid param, key(%s), value(%s)", key, value);
+    nns_edge_loge ("Invalid param, handle, key or value should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
@@ -157,26 +157,29 @@ nns_edge_custom_set_option (void *priv, const char *key, const char *value)
   if (strcasecmp (key, "PEER_ADDRESS") == 0) {
     SAFE_FREE (custom_h->peer_address);
     custom_h->peer_address = nns_edge_strdup (value);
-  } else {
-    nns_edge_loge ("key(%s) does not supported.", key);
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+    return NNS_EDGE_ERROR_NONE;
   }
 
-  return NNS_EDGE_ERROR_NONE;
+  nns_edge_loge ("The key '%s' is not supported.", key);
+  return NNS_EDGE_ERROR_INVALID_PARAMETER;
 }
 
-static char *
-nns_edge_custom_get_option (void *priv, const char *key)
+static int
+nns_edge_custom_get_info (void *priv, const char *key, char **value)
 {
-  if (!priv || !key) {
-    nns_edge_loge ("Invalid param, key(%s)", key);
-    return NULL;
+  if (!priv || !key || !value) {
+    nns_edge_loge ("Invalid param, handle, key or value should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
-  if (strcasecmp (key, "PEER_ADDRESS") == 0)
-    return nns_edge_strdup (custom_h->peer_address);
 
-  return NULL;
+  if (strcasecmp (key, "PEER_ADDRESS") == 0) {
+    *value = nns_edge_strdup (custom_h->peer_address);
+    return NNS_EDGE_ERROR_NONE;
+  }
+
+  nns_edge_loge ("The key '%s' is not supported.", key);
+  return NNS_EDGE_ERROR_INVALID_PARAMETER;
 }
 
 nns_edge_custom_s edge_custom_h = {
@@ -190,11 +193,11 @@ nns_edge_custom_s edge_custom_h = {
   .nns_edge_custom_is_connected = nns_edge_custom_is_connected,
   .nns_edge_custom_set_event_cb = nns_edge_custom_set_event_cb,
   .nns_edge_custom_send_data = nns_edge_custom_send_data,
-  .nns_edge_custom_set_option = nns_edge_custom_set_option,
-  .nns_edge_custom_get_option = nns_edge_custom_get_option
+  .nns_edge_custom_set_info = nns_edge_custom_set_info,
+  .nns_edge_custom_get_info = nns_edge_custom_get_info
 };
 
-void *
+const nns_edge_custom_s *
 nns_edge_custom_get_instance ()
 {
   return &edge_custom_h;

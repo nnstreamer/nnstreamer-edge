@@ -10,6 +10,7 @@ NNSTREAMER_EDGE_INCLUDES := \
 
 # nnstreamer-edge sources
 NNSTREAMER_EDGE_SRCS := \
+    $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-custom-impl.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-data.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-event.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-internal.c \

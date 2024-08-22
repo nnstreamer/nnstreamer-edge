@@ -22,7 +22,7 @@
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-mqtt.h"
-#include "nnstreamer-edge-custom.h"
+#include "nnstreamer-edge-custom-impl.h"
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -32,16 +32,6 @@
  * @brief The maximum length of pending connections to accept socket.
  */
 #define N_BACKLOG 10
-
-/**
- * @brief Data structure for edge custom connection.
- */
-typedef struct
-{
-  void *dl_handle;
-  void *instance;
-  void *priv;
-} custom_connection_s;
 
 /**
  * @brief Data structure for edge handle.
@@ -935,16 +925,10 @@ _nns_edge_send_thread (void *thread_data)
           nns_edge_loge ("Failed to send data via MQTT connection.");
         break;
       case NNS_EDGE_CONNECT_TYPE_CUSTOM:
-      {
-        nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-        if (custom_h) {
-          ret = custom_h->nns_edge_custom_send_data (eh->custom.priv, data_h);
-          if (NNS_EDGE_ERROR_NONE != ret)
-            nns_edge_loge ("Failed to send data via custom connection.");
-        }
+        ret = nns_edge_custom_send_data (&eh->custom, data_h);
+        if (NNS_EDGE_ERROR_NONE != ret)
+          nns_edge_loge ("Failed to send data via custom connection.");
         break;
-      }
       default:
         break;
     }
@@ -1338,43 +1322,6 @@ error:
 }
 
 /**
- * @brief Load custom lib and get edge custom instance.
- */
-static int
-_nns_edge_load_custom_library (nns_edge_handle_s * eh, const char *lib_path)
-{
-  void *handle;
-  nns_edge_custom_s *custom_h;
-
-  handle = dlopen (lib_path, RTLD_LAZY);
-  if (NULL == handle) {
-    nns_edge_loge ("Failed to open custom lib: %s", dlerror ());
-    return NNS_EDGE_ERROR_UNKNOWN;
-  }
-
-  void *(*custom_get_instance) () =
-      (void *(*)()) dlsym (handle, "nns_edge_custom_get_instance");
-  if (!custom_get_instance) {
-    nns_edge_loge ("Failed to find nns_edge_custom_get_instance: %s",
-        dlerror ());
-    dlclose (handle);
-    return NNS_EDGE_ERROR_UNKNOWN;
-  }
-
-  custom_h = (nns_edge_custom_s *) custom_get_instance ();
-  if (!custom_h) {
-    nns_edge_loge ("Failed to get custom instance from library.");
-    dlclose (handle);
-    return NNS_EDGE_ERROR_UNKNOWN;
-  }
-
-  eh->custom.dl_handle = handle;
-  eh->custom.instance = custom_h;
-
-  return NNS_EDGE_ERROR_NONE;
-}
-
-/**
  * @brief Create edge custom handle.
  */
 int
@@ -1383,7 +1330,6 @@ nns_edge_custom_create_handle (const char *id, const char *lib_path,
 {
   int ret = NNS_EDGE_ERROR_NONE;
   nns_edge_handle_s *eh;
-  nns_edge_custom_s *custom_h;
 
   if (node_type < 0 || node_type >= NNS_EDGE_NODE_TYPE_UNKNOWN) {
     nns_edge_loge ("Invalid param, set exact node type.");
@@ -1409,20 +1355,7 @@ nns_edge_custom_create_handle (const char *id, const char *lib_path,
   eh = (nns_edge_handle_s *) (*edge_h);
   eh->connect_type = NNS_EDGE_CONNECT_TYPE_CUSTOM;
 
-  ret = _nns_edge_load_custom_library (eh, lib_path);
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge
-        ("Failed to load custom lib. Please check the custom lib path or permission.");
-    goto error;
-  }
-
-  custom_h = (nns_edge_custom_s *) eh->custom.instance;
-  ret = custom_h->nns_edge_custom_create (&eh->custom.priv);
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to create custom connection handle.");
-  }
-
-error:
+  ret = nns_edge_custom_load (&eh->custom, lib_path);
   if (ret != NNS_EDGE_ERROR_NONE)
     nns_edge_release_handle (eh);
 
@@ -1464,8 +1397,8 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
     nns_edge_loge ("Failed to create edge handle.");
     return ret;
   }
-  eh = (nns_edge_handle_s *) * edge_h;
 
+  eh = (nns_edge_handle_s *) (*edge_h);
   eh->connect_type = connect_type;
 
   if (NNS_EDGE_CONNECT_TYPE_AITT == connect_type) {
@@ -1480,35 +1413,6 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
 
 error:
   nns_edge_release_handle (eh);
-  return ret;
-}
-
-/**
- * @brief Start the nnstreamer edge custom.
- */
-static int
-_nns_edge_custom_start (nns_edge_handle_s * eh)
-{
-  int ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-  nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-  if (custom_h)
-    ret = custom_h->nns_edge_custom_start (eh->custom.priv);
-
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to start edge custom connection.");
-    return ret;
-  }
-
-  ret = custom_h->nns_edge_custom_set_event_cb (eh->custom.priv, eh->event_cb,
-      eh->user_data);
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to set event callback to custom connection.");
-    return ret;
-  }
-
-  ret = _nns_edge_create_send_thread (eh);
-
   return ret;
 }
 
@@ -1535,10 +1439,12 @@ nns_edge_start (nns_edge_h edge_h)
   nns_edge_lock (eh);
 
   if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    ret = _nns_edge_custom_start (edge_h);
-    if (NNS_EDGE_ERROR_NONE != ret) {
-      nns_edge_loge ("Failed to start edge custom connection");
-    }
+    ret = nns_edge_custom_start (&eh->custom);
+    if (NNS_EDGE_ERROR_NONE == ret)
+      ret = _nns_edge_create_send_thread (eh);
+
+    if (NNS_EDGE_ERROR_NONE != ret)
+      nns_edge_loge ("Failed to start edge custom connection.");
     goto done;
   }
 
@@ -1630,25 +1536,6 @@ done:
 }
 
 /**
- * @brief Stop the nnstreamer edge custom connection.
- */
-static int
-_nns_edge_custom_stop (nns_edge_handle_s * eh)
-{
-  int ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-  nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-  if (custom_h)
-    ret = custom_h->nns_edge_custom_stop (eh->custom.priv);
-
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to stop nns edge custom connection.");
-  }
-
-  return ret;
-}
-
-/**
  * @brief Stop the nnstreamer edge.
  */
 int
@@ -1675,35 +1562,15 @@ nns_edge_stop (nns_edge_h edge_h)
   }
 
   if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    ret = _nns_edge_custom_stop (eh);
+    ret = nns_edge_custom_stop (&eh->custom);
   }
 
-  eh->is_started = FALSE;
+  if (NNS_EDGE_ERROR_NONE == ret)
+    eh->is_started = FALSE;
 
 done:
   nns_edge_unlock (eh);
   return ret;
-}
-
-static void
-_nns_edge_custom_release (nns_edge_handle_s * eh)
-{
-  int ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-  nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-  if (custom_h)
-    ret = custom_h->nns_edge_custom_close (eh->custom.priv);
-
-  if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to stop nns edge custom connection.");
-  }
-
-  if (eh->custom.dl_handle)
-    dlclose (eh->custom.dl_handle);
-
-  eh->custom.dl_handle = NULL;
-  eh->custom.instance = NULL;
-  eh->custom.priv = NULL;
 }
 
 /**
@@ -1742,7 +1609,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
       }
       break;
     case NNS_EDGE_CONNECT_TYPE_CUSTOM:
-      _nns_edge_custom_release (eh);
+      nns_edge_custom_release (&eh->custom);
       break;
     default:
       break;
@@ -1819,15 +1686,22 @@ nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb,
       NNS_EDGE_EVENT_CALLBACK_RELEASED, NULL, 0, NULL);
   if (ret != NNS_EDGE_ERROR_NONE) {
     nns_edge_loge ("Failed to set new event callback.");
-    nns_edge_unlock (eh);
-    return ret;
+    goto error;
+  }
+
+  if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
+    ret = nns_edge_custom_set_event_callback (&eh->custom, cb, user_data);
+    if (NNS_EDGE_ERROR_NONE != ret) {
+      goto error;
+    }
   }
 
   eh->event_cb = cb;
   eh->user_data = user_data;
 
+error:
   nns_edge_unlock (eh);
-  return NNS_EDGE_ERROR_NONE;
+  return ret;
 }
 
 /**
@@ -1986,15 +1860,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
       goto done;
     }
   } else if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-    if (custom_h)
-      ret = custom_h->nns_edge_custom_connect (eh->custom.priv);
-    else
-      ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
-
+    ret = nns_edge_custom_connect (&eh->custom);
     if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to connect to custom connection.");
       goto done;
     }
   } else {
@@ -2064,12 +1931,7 @@ nns_edge_is_connected (nns_edge_h edge_h)
     return NNS_EDGE_ERROR_NONE;
 
   if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-    if (custom_h)
-      return custom_h->nns_edge_custom_is_connected (eh->custom.priv);
-    else
-      return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+    return nns_edge_custom_is_connected (&eh->custom);
   }
 
   conn_data = (nns_edge_conn_data_s *) eh->connections;
@@ -2244,13 +2106,8 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
 
   if (ret == NNS_EDGE_ERROR_NONE &&
       NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
-
-    if (!custom_h) {
-      ret = NNS_EDGE_ERROR_UNKNOWN;
-    } else if (custom_h->nns_edge_custom_set_option) {
-      ret = custom_h->nns_edge_custom_set_option (eh->custom.priv, key, value);
-    }
+    /* Pass value to custom library and ignore error. */
+    nns_edge_custom_set_info (&eh->custom, key, value);
   }
 
   nns_edge_unlock (eh);
@@ -2321,14 +2178,13 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
 
   if (ret == NNS_EDGE_ERROR_NONE &&
       NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    nns_edge_custom_s *custom_h = (nns_edge_custom_s *) eh->custom.instance;
+    char *val = NULL;
 
-    if (!custom_h) {
-      ret = NNS_EDGE_ERROR_UNKNOWN;
-    } else if (custom_h->nns_edge_custom_get_option) {
-      /* Release old value, then get from custom library. */
+    if (nns_edge_custom_get_info (&eh->custom, key, &val) ==
+        NNS_EDGE_ERROR_NONE) {
+      /* Replace value from custom library. */
       SAFE_FREE (*value);
-      *value = custom_h->nns_edge_custom_get_option (eh->custom.priv, key);
+      *value = val;
     }
   }
 
