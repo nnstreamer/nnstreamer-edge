@@ -13,25 +13,17 @@
 #ifndef __NNSTREAMER_EDGE_H__
 #define __NNSTREAMER_EDGE_H__
 
-#include <stdint.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "nnstreamer-edge-data.h"
+#include "nnstreamer-edge-event.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 typedef void *nns_edge_h;
-typedef void *nns_edge_event_h;
-typedef void *nns_edge_data_h;
-typedef uint64_t nns_size_t;
-typedef int64_t nns_ssize_t;
-
-/**
- * @brief The maximum number of data instances that nnstreamer-edge data may have.
- */
-#define NNS_EDGE_DATA_LIMIT (256)
 
 /**
  * @brief Enumeration for the error codes of nnstreamer-edge (linux standard error, sync with tizen error code).
@@ -45,16 +37,6 @@ typedef enum {
   NNS_EDGE_ERROR_UNKNOWN = (-1073741824LL),
   NNS_EDGE_ERROR_NOT_SUPPORTED = (NNS_EDGE_ERROR_UNKNOWN + 2),
 } nns_edge_error_e;
-
-typedef enum {
-  NNS_EDGE_EVENT_UNKNOWN = 0,
-  NNS_EDGE_EVENT_CAPABILITY,
-  NNS_EDGE_EVENT_NEW_DATA_RECEIVED,
-  NNS_EDGE_EVENT_CALLBACK_RELEASED,
-  NNS_EDGE_EVENT_CONNECTION_CLOSED,
-
-  NNS_EDGE_EVENT_CUSTOM = 0x01000000
-} nns_edge_event_e;
 
 typedef enum {
   NNS_EDGE_CONNECT_TYPE_TCP = 0,
@@ -74,18 +56,6 @@ typedef enum {
 
   NNS_EDGE_NODE_TYPE_UNKNOWN,
 } nns_edge_node_type_e;
-
-/**
- * @brief Callback for the nnstreamer edge event.
- * @note This callback will suspend data stream. Do not spend too much time in the callback.
- * @return User should return NNS_EDGE_ERROR_NONE if an event is successfully handled.
- */
-typedef int (*nns_edge_event_cb) (nns_edge_event_h event_h, void *user_data);
-
-/**
- * @brief Callback called when nnstreamer-edge data is released.
- */
-typedef void (*nns_edge_data_destroy_cb) (void *data);
 
 /**
  * @brief Create a handle representing an instance of edge-AI connection between a server and client (query) or a data publisher and scriber.
@@ -343,162 +313,6 @@ int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value);
-
-/**
- * @brief Get the nnstreamer edge event type.
- * @param[in] event_h The edge event handle.
- * @param[out] event The event type, value of @a nns_edge_event_e.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e *event);
-
-/**
- * @brief Parse edge event (NNS_EDGE_EVENT_NEW_DATA_RECEIVED) and get received data.
- * @note Caller should release returned edge data using nns_edge_data_destroy().
- * @param[in] event_h The edge event handle.
- * @param[out] data_h Handle of received data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid
- */
-int nns_edge_event_parse_new_data (nns_edge_event_h event_h, nns_edge_data_h *data_h);
-
-/**
- * @brief Parse edge event (NNS_EDGE_EVENT_CAPABILITY) and get capability string.
- * @note Caller should release returned string using free().
- * @param[in] event_h The edge event handle.
- * @param[out] capability Capability string.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid
- */
-int nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability);
-
-/**
- * @brief Create a handle used for data transmission.
- * @note Caller should release returned edge data using nns_edge_data_destroy().
- * @param[out] data_h Handle of edge data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_create (nns_edge_data_h *data_h);
-
-/**
- * @brief Destroy nnstreamer edge data handle.
- * @param[in] data_h Handle of edge data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_destroy (nns_edge_data_h data_h);
-
-/**
- * @brief Copy edge data and return new handle.
- * @note Caller should release returned new edge data using nns_edge_data_destroy().
- * @param[in] data_h The edge data to be copied.
- * @param[out] new_data_h A destination handle of edge data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_copy (nns_edge_data_h data_h, nns_edge_data_h *new_data_h);
-
-/**
- * @brief Add raw data into nnstreamer edge data.
- * @note See NNS_EDGE_DATA_LIMIT, the maximum number of raw data in handle.
- * @param[in] data_h The edge data handle.
- * @param[in] data The raw data.
- * @param[in] data_len The byte size of the data.
- * @param[in] destroy_cb The callback for destroying the added data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_add (nns_edge_data_h data_h, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
-
-/**
- * @brief Remove raw data in edge data.
- * @param[in] data_h The edge data handle.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_clear (nns_edge_data_h data_h);
-
-/**
- * @brief Get the n'th edge data.
- * @note DO NOT release returned data. You should copy the data to another buffer if the returned data is necessary.
- * @param[in] data_h The edge data handle.
- * @param[in] index The index of the data to get.
- * @param[out] data The data in the data handle.
- * @param[out] data_len The byte size of the data.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_get (nns_edge_data_h data_h, unsigned int index, void **data, nns_size_t *data_len);
-
-/**
- * @brief Get the number of edge data in handle.
- * @param[in] data_h The edge data handle.
- * @param[out] count The number of the data in the data handle.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_get_count (nns_edge_data_h data_h, unsigned int *count);
-
-/**
- * @brief Set the information of edge data.
- * @note The param key is case-insensitive. If same key string already exists, it will replace old value.
- * @param[in] data_h The edge data handle.
- * @param[in] key A key of the information.
- * @param[in] value The information to be set.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_set_info (nns_edge_data_h data_h, const char *key, const char *value);
-
-/**
- * @brief Get the information of edge data.
- * @note The param key is case-insensitive. Caller should release the returned value using free().
- * @param[in] data_h The edge data handle.
- * @param[in] key A key of the information.
- * @param[in] value The information to get.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **value);
-
-/**
- * @brief Clear information of edge data.
- * @param[in] data_h The edge data handle.
- * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-int nns_edge_data_clear_info (nns_edge_data_h data_h);
 
 /**
  * @brief Get the version of nnstreamer-edge.

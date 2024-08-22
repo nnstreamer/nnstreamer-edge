@@ -175,6 +175,8 @@ rm -rf %{buildroot}
 %files devel
 %{_includedir}/nnstreamer/nnstreamer-edge.h
 %{_includedir}/nnstreamer/nnstreamer-edge-custom.h
+%{_includedir}/nnstreamer/nnstreamer-edge-data.h
+%{_includedir}/nnstreamer/nnstreamer-edge-event.h
 %{_libdir}/pkgconfig/nnstreamer-edge.pc
 
 %if 0%{?unit_test}
