@@ -14,7 +14,7 @@
 #ifndef __NNSTREAMER_EDGE_METADATA_H__
 #define __NNSTREAMER_EDGE_METADATA_H__
 
-#include "nnstreamer-edge.h"
+#include "nnstreamer-edge-data.h"
 
 #ifdef __cplusplus
 extern "C" {

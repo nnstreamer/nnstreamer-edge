@@ -13,6 +13,7 @@
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
+#include "nnstreamer-edge-metadata.h"
 
 #define NNS_EDGE_DATA_KEY (0xeddaedda)
 

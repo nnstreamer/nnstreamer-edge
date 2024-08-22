@@ -21,6 +21,7 @@
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-aitt.h"
+#include "nnstreamer-edge-metadata.h"
 #include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-custom-impl.h"
 
