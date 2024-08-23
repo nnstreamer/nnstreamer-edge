@@ -21,6 +21,9 @@ extern "C" {
 
 typedef void *nns_edge_event_h;
 
+/**
+ * @brief Enumeration for the event type of nnstreamer-edge.
+ */
 typedef enum {
   NNS_EDGE_EVENT_UNKNOWN = 0,
   NNS_EDGE_EVENT_CAPABILITY,
@@ -33,13 +36,11 @@ typedef enum {
 
 /**
  * @brief Callback for the nnstreamer edge event.
+ * @note This callback will suspend data stream. Do not spend too much time in the callback.
  * @param[in] event_h The edge event handle.
  * @param[in] user_data The user's custom data given to callbacks.
- * @note This callback will suspend data stream. Do not spend too much time in the callback.
  * @return 0 on success. Otherwise a negative error value.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid. */
+ */
 typedef int (*nns_edge_event_cb) (nns_edge_event_h event_h, void *user_data);
 
 /**
@@ -55,7 +56,7 @@ int nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e *event);
 
 /**
  * @brief Parse edge event (NNS_EDGE_EVENT_NEW_DATA_RECEIVED) and get received data.
- * @note Caller should release returned edge data using nns_edge_data_destroy().
+ * @remarks If the function succeeds, @a data_h should be released using nns_edge_data_destroy().
  * @param[in] event_h The edge event handle.
  * @param[out] data_h Handle of received data.
  * @return 0 on success. Otherwise a negative error value.
@@ -67,7 +68,7 @@ int nns_edge_event_parse_new_data (nns_edge_event_h event_h, nns_edge_data_h *da
 
 /**
  * @brief Parse edge event (NNS_EDGE_EVENT_CAPABILITY) and get capability string.
- * @note Caller should release returned string using free().
+ * @remarks If the function succeeds, @a capability should be released using free().
  * @param[in] event_h The edge event handle.
  * @param[out] capability Capability string.
  * @return 0 on success. Otherwise a negative error value.
@@ -94,8 +95,9 @@ int nns_edge_event_invoke_callback (nns_edge_event_cb event_cb, void *user_data,
 
 /**
  * @brief Create nnstreamer edge event.
+ * @remarks If the function succeeds, @a event_h should be released using nns_edge_event_destroy().
  * @param[in] event Edge event type.
- * @param[out] event_h The handle of the created edge event. It should be released using nns_edge_event_destroy().
+ * @param[out] event_h The handle of the created edge event.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -110,7 +112,8 @@ int nns_edge_event_create (nns_edge_event_e event, nns_edge_event_h *event_h);
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid. */
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
 int nns_edge_event_destroy (nns_edge_event_h event_h);
 
 /**
@@ -122,7 +125,8 @@ int nns_edge_event_destroy (nns_edge_event_h event_h);
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid. */
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
 int nns_edge_event_set_data (nns_edge_event_h event_h, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
 
 #ifdef __cplusplus

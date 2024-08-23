@@ -14,8 +14,7 @@
 #ifndef __NNSTREAMER_EDGE_QUEUE_H__
 #define __NNSTREAMER_EDGE_QUEUE_H__
 
-#include <stdbool.h>
-#include "nnstreamer-edge.h"
+#include "nnstreamer-edge-data.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +31,8 @@ typedef enum {
 } nns_edge_queue_leak_e;
 
 /**
- * @brief Create queue.
+ * @brief Create queue. Default length limit is 0 (unlimited).
+ * @remarks If the function succeeds, @a handle should be released using nns_edge_queue_destroy().
  * @param[out] handle Newly created handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -92,7 +92,7 @@ int nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size, n
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- * @retval #NNS_EDGE_ERROR_IO
+ * @retval #NNS_EDGE_ERROR_IO Failed to get data.
  */
 int nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
 
@@ -105,17 +105,17 @@ int nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- * @retval #NNS_EDGE_ERROR_IO
+ * @retval #NNS_EDGE_ERROR_IO Failed to get data.
  */
 int nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
 
 /**
  * @brief Stop waiting for new data and clear all data in the queue.
+ * @details When this function is called, nns_edge_queue_wait_pop() will stop the waiting.
  * @param[in] handle The queue handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
  */
 int nns_edge_queue_clear (nns_edge_queue_h handle);
 

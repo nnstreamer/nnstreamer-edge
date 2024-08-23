@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 
@@ -38,6 +39,9 @@ typedef enum {
   NNS_EDGE_ERROR_NOT_SUPPORTED = (NNS_EDGE_ERROR_UNKNOWN + 2),
 } nns_edge_error_e;
 
+/**
+ * @brief Enumeration for the connection type of nnstreamer-edge.
+ */
 typedef enum {
   NNS_EDGE_CONNECT_TYPE_TCP = 0,
   NNS_EDGE_CONNECT_TYPE_MQTT,
@@ -48,6 +52,9 @@ typedef enum {
   NNS_EDGE_CONNECT_TYPE_UNKNOWN
 } nns_edge_connect_type_e;
 
+/**
+ * @brief Enumeration for the node type of nnstreamer-edge.
+ */
 typedef enum {
   NNS_EDGE_NODE_TYPE_QUERY_CLIENT = 0,
   NNS_EDGE_NODE_TYPE_QUERY_SERVER,
@@ -59,10 +66,11 @@ typedef enum {
 
 /**
  * @brief Create a handle representing an instance of edge-AI connection between a server and client (query) or a data publisher and scriber.
+ * @remarks If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
  * @param[in] id Unique id in local network
  * @param[in] connect_type Value of @a nns_edge_connect_type_e. Connection type between edge nodes.
  * @param[in] node_type Value of @a nns_edge_node_type_e. The node type of edge connection.
- * @param[out] edge_h The edge handle. If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
+ * @param[out] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -150,10 +158,11 @@ int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type
 
 /**
  * @brief Create edge custom handle.
+ * @remarks If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
  * @param[in] id Unique id in local network
  * @param[in] lib_path The library path implementing the custom connection.
  * @param[in] node_type Value of @a nns_edge_node_type_e. The node type of edge connection.
- * @param[out] edge_h The edge handle. If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
+ * @param[out] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -303,7 +312,8 @@ int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
 
 /**
  * @brief Get nnstreamer edge info.
- * @note The param key is case-insensitive. Caller should release returned string using free().
+ * @remarks If the function succeeds, @a value should be released using free().
+ * @note The param key is case-insensitive.
  * @param[in] edge_h The edge handle.
  * @param[in] key Identifiers to determine which value to get.
  * @param[out] value The values that match the key.
