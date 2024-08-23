@@ -27,15 +27,15 @@ typedef int64_t nns_ssize_t;
  * @brief The maximum number of data instances that nnstreamer-edge data may have.
  */
 #define NNS_EDGE_DATA_LIMIT (256)
+
 /**
  * @brief Callback called when nnstreamer-edge data is released.
  */
 typedef void (*nns_edge_data_destroy_cb) (void *data);
 
-
 /**
  * @brief Create a handle used for data transmission.
- * @note Caller should release returned edge data using nns_edge_data_destroy().
+ * @remarks If the function succeeds, @a data_h should be released using nns_edge_data_destroy().
  * @param[out] data_h Handle of edge data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -56,8 +56,18 @@ int nns_edge_data_create (nns_edge_data_h *data_h);
 int nns_edge_data_destroy (nns_edge_data_h data_h);
 
 /**
+ * @brief Destroy nnstreamer edge data handle.
+ * @details This is wrapper function of nns_edge_data_destroy() to avoid build warning of the incompatibe type casting.
+ * @param[in] data The pointer to the edge data handle to be released.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+void nns_edge_data_release_handle (void *data);
+
+/**
  * @brief Copy edge data and return new handle.
- * @note Caller should release returned new edge data using nns_edge_data_destroy().
+ * @remarks If the function succeeds, @a new_data_h should be released using nns_edge_data_destroy().
  * @param[in] data_h The edge data to be copied.
  * @param[out] new_data_h A destination handle of edge data.
  * @return 0 on success. Otherwise a negative error value.
@@ -132,7 +142,8 @@ int nns_edge_data_set_info (nns_edge_data_h data_h, const char *key, const char 
 
 /**
  * @brief Get the information of edge data.
- * @note The param key is case-insensitive. Caller should release the returned value using free().
+ * @remarks If the function succeeds, @a value should be released using free().
+ * @note The param key is case-insensitive.
  * @param[in] data_h The edge data handle.
  * @param[in] key A key of the information.
  * @param[in] value The information to get.
@@ -154,15 +165,6 @@ int nns_edge_data_get_info (nns_edge_data_h data_h, const char *key, char **valu
 int nns_edge_data_clear_info (nns_edge_data_h data_h);
 
 /**
- * @brief Release the edge data handle. This function releases the memory allocated for the edge data handle.
- * @param[in] data The pointer to the edge data handle to be released.
- * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
- */
-void nns_edge_data_release_handle (void *data);
-
-/**
  * @brief Validate edge data handle.
  * @param[in] data_h The edge data handle.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -173,6 +175,7 @@ int nns_edge_data_is_valid (nns_edge_data_h data_h);
 
 /**
  * @brief Serialize metadata in edge data.
+ * @remarks If the function succeeds, @a data should be released using free().
  * @param[in] data_h The handle to the edge data.
  * @param[out] data A pointer to store the serialized meta data.
  * @param[out] data_len A pointer to store the length of the serialized meta data.
@@ -198,6 +201,7 @@ int nns_edge_data_deserialize_meta (nns_edge_data_h data_h, const void *data, co
 
 /**
  * @brief Serialize entire edge data (meta data + raw data).
+ * @remarks If the function succeeds, @a data should be released using free().
  * @param[in] data_h The handle to the edge data.
  * @param[out] data A pointer to store the serialized edge data.
  * @param[out] data_len A pointer to store the length of the serialized edge data.
@@ -228,7 +232,8 @@ int nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data, const n
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
- * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid. */
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
 int nns_edge_data_is_serialized (const void *data, const nns_size_t data_len);
 
 #ifdef __cplusplus
