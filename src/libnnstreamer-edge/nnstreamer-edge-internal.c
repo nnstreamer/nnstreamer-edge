@@ -2067,7 +2067,7 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
   } else if (0 == strcasecmp (key, "QUEUE_SIZE")) {
     char *s;
     unsigned int limit;
-    nns_edge_queue_leak_e leaky = NNS_EDGE_QUEUE_LEAK_UNKNOWN;
+    nns_edge_queue_leak_e leaky = NNS_EDGE_QUEUE_LEAK_NEW;
 
     s = strstr (value, ":");
     if (s) {
@@ -2088,7 +2088,8 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
       limit = (unsigned int) strtoull (value, NULL, 10);
     }
 
-    nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
+    if (ret == NNS_EDGE_ERROR_NONE)
+      nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
   } else if (0 == strcasecmp (key, "my-ip") ||
       0 == strcasecmp (key, "clean-session") ||
       0 == strcasecmp (key, "custom-broker") ||

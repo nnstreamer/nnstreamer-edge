@@ -127,24 +127,28 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
 }
 
 /**
- * @brief Get the length of the queue.
+ * @brief Get the number of data in the queue.
  */
-unsigned int
-nns_edge_queue_get_length (nns_edge_queue_h handle)
+int
+nns_edge_queue_get_length (nns_edge_queue_h handle, unsigned int *length)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
-  unsigned int len;
 
   if (!q) {
     nns_edge_loge ("[Queue] Invalid param, queue is null.");
-    return 0;
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!length) {
+    nns_edge_loge ("[Queue] Invalid param, length is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   nns_edge_lock (q);
-  len = q->length;
+  *length = q->length;
   nns_edge_unlock (q);
 
-  return len;
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
@@ -163,8 +167,7 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
 
   nns_edge_lock (q);
   q->max_data = limit;
-  if (leaky != NNS_EDGE_QUEUE_LEAK_UNKNOWN)
-    q->leaky = leaky;
+  q->leaky = leaky;
   nns_edge_unlock (q);
 
   return NNS_EDGE_ERROR_NONE;
