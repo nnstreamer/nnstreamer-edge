@@ -33,6 +33,7 @@ struct _nns_edge_queue_data_s
  */
 typedef struct
 {
+  uint32_t magic;
   pthread_mutex_t lock;
   pthread_cond_t cond;
 
@@ -97,6 +98,7 @@ nns_edge_queue_create (nns_edge_queue_h * handle)
 
   nns_edge_lock_init (q);
   nns_edge_cond_init (q);
+  nns_edge_handle_set_magic (q, NNS_EDGE_MAGIC);
   q->leaky = NNS_EDGE_QUEUE_LEAK_NEW;
 
   *handle = q;
@@ -111,14 +113,15 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   /* Stop waiting and clear all data. */
   nns_edge_queue_clear (handle);
 
+  nns_edge_handle_set_magic (q, NNS_EDGE_MAGIC_DEAD);
   nns_edge_cond_destroy (q);
   nns_edge_lock_destroy (q);
   SAFE_FREE (q);
@@ -134,8 +137,8 @@ nns_edge_queue_get_length (nns_edge_queue_h handle, unsigned int *length)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -160,8 +163,8 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -184,8 +187,8 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   nns_edge_queue_data_s *qdata;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -246,8 +249,8 @@ nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t * size)
   bool popped = false;
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -282,8 +285,8 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
   bool popped = false;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -320,8 +323,8 @@ nns_edge_queue_clear (nns_edge_queue_h handle)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
 
-  if (!q) {
-    nns_edge_loge ("[Queue] Invalid param, queue is null.");
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 

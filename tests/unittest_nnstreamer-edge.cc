@@ -3554,6 +3554,16 @@ TEST_F(edgeQueue, destroyInvalidParam01_n)
 }
 
 /**
+ * @brief Destroy queue - invalid param.
+ */
+TEST_F(edgeQueue, destroyInvalidParam02_n)
+{
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
+}
+
+/**
  * @brief Get length of queue - invalid param.
  */
 TEST_F(edgeQueue, getLengthInvalidParam01_n)
@@ -3569,6 +3579,18 @@ TEST_F(edgeQueue, getLengthInvalidParam01_n)
 TEST_F(edgeQueue, getLengthInvalidParam02_n)
 {
   EXPECT_EQ (nns_edge_queue_get_length (queue_h, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
+}
+
+/**
+ * @brief Get length of queue - invalid param.
+ */
+TEST_F(edgeQueue, getLengthInvalidParam03_n)
+{
+  unsigned int len = 0U;
+
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_get_length (queue_h, &len), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
 }
 
 /**
@@ -3679,6 +3701,16 @@ TEST_F(edgeQueue, setLimitInvalidParam01_n)
 }
 
 /**
+ * @brief Set limit of queue - invalid param.
+ */
+TEST_F(edgeQueue, setLimitInvalidParam02_n)
+{
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 5U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
+}
+
+/**
  * @brief Push data into queue - invalid param.
  */
 TEST_F(edgeQueue, pushInvalidParam01_n)
@@ -3722,6 +3754,25 @@ TEST_F(edgeQueue, pushInvalidParam03_n)
 }
 
 /**
+ * @brief Push data into queue - invalid param.
+ */
+TEST_F(edgeQueue, pushInvalidParam04_n)
+{
+  void *data;
+  nns_size_t dsize;
+
+  dsize = 5 * sizeof (unsigned int);
+  data = malloc (dsize);
+  ASSERT_TRUE (data != NULL);
+
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data, dsize, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
+
+  SAFE_FREE (data);
+}
+
+/**
  * @brief Pop data from queue - invalid param.
  */
 TEST_F(edgeQueue, popInvalidParam01_n)
@@ -3750,6 +3801,19 @@ TEST_F(edgeQueue, popInvalidParam03_n)
   void *data;
 
   EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
+}
+
+/**
+ * @brief Pop data from queue - invalid param.
+ */
+TEST_F(edgeQueue, popInvalidParam04_n)
+{
+  void *data;
+  nns_size_t size;
+
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_pop (queue_h, &data, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
 }
 
 /**
@@ -3792,6 +3856,19 @@ TEST_F(edgeQueue, waitPopInvalidParam03_n)
   void *data;
 
   EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
+}
+
+/**
+ * @brief Wait and pop data from queue - invalid param.
+ */
+TEST_F(edgeQueue, waitPopInvalidParam04_n)
+{
+  void *data;
+  nns_size_t size;
+
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
 }
 
 /**
