@@ -2644,6 +2644,112 @@ TEST(edgeEvent, setDataInvalidParam04_n)
 }
 
 /**
+ * @brief Get edge event data.
+ */
+TEST(edgeEvent, getData)
+{
+  nns_edge_event_h event_h;
+  void *input = NULL, *output = NULL;
+  nns_size_t input_len = 0U, output_len = 0U;
+  int ret;
+
+  input_len = 10U * sizeof (int);
+  input = malloc (input_len);
+  ASSERT_TRUE (input != NULL);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, input, input_len, NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_get_data (event_h, &output, &output_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_TRUE (input == output);
+  EXPECT_TRUE (input_len == output_len);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (input);
+}
+
+/**
+ * @brief Get edge event data - invalid param.
+ */
+TEST(edgeEvent, getDataInvalidParam01_n)
+{
+  void *data;
+  nns_size_t data_len;
+  int ret;
+
+  ret = nns_edge_event_get_data (NULL, &data, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event data - invalid param.
+ */
+TEST(edgeEvent, getDataInvalidParam02_n)
+{
+  nns_edge_event_h event_h;
+  nns_size_t data_len;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_get_data (event_h, NULL, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event data - invalid param.
+ */
+TEST(edgeEvent, getDataInvalidParam03_n)
+{
+  nns_edge_event_h event_h;
+  void *data;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_get_data (event_h, &data, NULL);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get edge event data - invalid param.
+ */
+TEST(edgeEvent, getDataInvalidParam04_n)
+{
+  nns_edge_event_h event_h;
+  void *data;
+  nns_size_t data_len;
+  int ret;
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CUSTOM, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC_DEAD);
+
+  ret = nns_edge_event_get_data (event_h, &data, &data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  nns_edge_handle_set_magic (event_h, NNS_EDGE_MAGIC);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Get edge event type.
  */
 TEST(edgeEvent, getType)

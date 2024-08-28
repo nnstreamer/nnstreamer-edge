@@ -162,6 +162,36 @@ nns_edge_event_set_data (nns_edge_event_h event_h, void *data,
 }
 
 /**
+ * @brief Get event data.
+ */
+int
+nns_edge_event_get_data (nns_edge_event_h event_h, void **data,
+    nns_size_t * data_len)
+{
+  nns_edge_event_s *ee;
+
+  ee = (nns_edge_event_s *) event_h;
+
+  if (!nns_edge_handle_is_valid (ee)) {
+    nns_edge_loge ("Invalid param, given edge event is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!data || !data_len) {
+    nns_edge_loge ("Invalid param, data and len should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (ee);
+
+  *data = ee->data.data;
+  *data_len = ee->data.data_len;
+
+  nns_edge_unlock (ee);
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Get the nnstreamer edge event type.
  */
 int
