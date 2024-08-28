@@ -21,12 +21,13 @@
 typedef struct
 {
   uint32_t magic;
+  pthread_mutex_t lock;
   nns_edge_event_e event;
   nns_edge_raw_data_s data;
 } nns_edge_event_s;
 
 /**
- * @brief Internal util function to invoke event callback.
+ * @brief Util function to invoke event callback.
  */
 int
 nns_edge_event_invoke_callback (nns_edge_event_cb event_cb, void *user_data,
@@ -89,6 +90,7 @@ nns_edge_event_create (nns_edge_event_e event, nns_edge_event_h * event_h)
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;
   }
 
+  nns_edge_lock_init (ee);
   nns_edge_handle_set_magic (ee, NNS_EDGE_MAGIC);
   ee->event = event;
 
@@ -111,10 +113,14 @@ nns_edge_event_destroy (nns_edge_event_h event_h)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ee);
   nns_edge_handle_set_magic (ee, NNS_EDGE_MAGIC_DEAD);
 
   if (ee->data.destroy_cb)
     ee->data.destroy_cb (ee->data.data);
+
+  nns_edge_unlock (ee);
+  nns_edge_lock_destroy (ee);
 
   SAFE_FREE (ee);
   return NNS_EDGE_ERROR_NONE;
@@ -141,6 +147,8 @@ nns_edge_event_set_data (nns_edge_event_h event_h, void *data,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ee);
+
   /* Clear old data and set new one. */
   if (ee->data.destroy_cb)
     ee->data.destroy_cb (ee->data.data);
@@ -149,6 +157,7 @@ nns_edge_event_set_data (nns_edge_event_h event_h, void *data,
   ee->data.data_len = data_len;
   ee->data.destroy_cb = destroy_cb;
 
+  nns_edge_unlock (ee);
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -172,7 +181,11 @@ nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e * event)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
+  nns_edge_lock (ee);
+
   *event = ee->event;
+
+  nns_edge_unlock (ee);
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -184,6 +197,7 @@ nns_edge_event_parse_new_data (nns_edge_event_h event_h,
     nns_edge_data_h * data_h)
 {
   nns_edge_event_s *ee;
+  int ret = NNS_EDGE_ERROR_NONE;
 
   ee = (nns_edge_event_s *) event_h;
 
@@ -197,12 +211,17 @@ nns_edge_event_parse_new_data (nns_edge_event_h event_h,
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (ee->event != NNS_EDGE_EVENT_NEW_DATA_RECEIVED) {
+  nns_edge_lock (ee);
+
+  if (ee->event == NNS_EDGE_EVENT_NEW_DATA_RECEIVED) {
+    ret = nns_edge_data_copy ((nns_edge_data_h) ee->data.data, data_h);
+  } else {
     nns_edge_loge ("The edge event has invalid event type.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  return nns_edge_data_copy ((nns_edge_data_h) ee->data.data, data_h);
+  nns_edge_unlock (ee);
+  return ret;
 }
 
 /**
@@ -212,6 +231,7 @@ int
 nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability)
 {
   nns_edge_event_s *ee;
+  int ret = NNS_EDGE_ERROR_NONE;
 
   ee = (nns_edge_event_s *) event_h;
 
@@ -225,12 +245,15 @@ nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  if (ee->event != NNS_EDGE_EVENT_CAPABILITY) {
+  nns_edge_lock (ee);
+
+  if (ee->event == NNS_EDGE_EVENT_CAPABILITY) {
+    *capability = nns_edge_strdup (ee->data.data);
+  } else {
     nns_edge_loge ("The edge event has invalid event type.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+    ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  *capability = nns_edge_strdup (ee->data.data);
-
-  return NNS_EDGE_ERROR_NONE;
+  nns_edge_unlock (ee);
+  return ret;
 }
