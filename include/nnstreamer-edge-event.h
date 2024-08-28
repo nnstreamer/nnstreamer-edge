@@ -49,7 +49,6 @@ typedef int (*nns_edge_event_cb) (nns_edge_event_h event_h, void *user_data);
  * @param[out] event The event type, value of @a nns_edge_event_e.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e *event);
@@ -61,7 +60,6 @@ int nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e *event);
  * @param[out] data_h Handle of received data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid
  */
 int nns_edge_event_parse_new_data (nns_edge_event_h event_h, nns_edge_data_h *data_h);
@@ -73,7 +71,6 @@ int nns_edge_event_parse_new_data (nns_edge_event_h event_h, nns_edge_data_h *da
  * @param[out] capability Capability string.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid
  */
 int nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability);
@@ -87,7 +84,6 @@ int nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability
  * @param[in] destroy_cb A callback function to free the event data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
  */
@@ -120,14 +116,25 @@ int nns_edge_event_destroy (nns_edge_event_h event_h);
  * @brief Set event data.
  * @param[in] event_h The handle of edge event.
  * @param[in] data A pointer to event data.
- * @param[in] data_len Length of the event data.
+ * @param[in] data_len The byte size of the event data.
  * @param[in] destroy_cb A callback function to destroy the event data.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
- * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
  */
 int nns_edge_event_set_data (nns_edge_event_h event_h, void *data, nns_size_t data_len, nns_edge_data_destroy_cb destroy_cb);
+
+/**
+ * @brief Get event data.
+ * @note DO NOT release returned data. You should copy the data to another buffer if the returned data is necessary.
+ * @param[in] event_h The handle of edge event.
+ * @param[out] data The data in the event handle.
+ * @param[out] data_len The byte size of the event data.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_event_get_data (nns_edge_event_h event_h, void **data, nns_size_t *data_len);
 
 #ifdef __cplusplus
 }
