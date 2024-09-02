@@ -2242,8 +2242,8 @@ TEST(edgeData, clearInvalidParam02_n)
 TEST(edgeData, clear)
 {
   nns_edge_data_h data_h;
-  void *data, *result;
-  nns_size_t data_len, result_len;
+  void *data;
+  nns_size_t data_len;
   unsigned int count;
   int ret;
 
