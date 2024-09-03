@@ -54,7 +54,7 @@
 -include $(TOPDIR)/Make.defs
 
 # Set nnstreamer-edge version
-VERSION = 0.2.5
+VERSION = 0.2.6
 VERSION_MAJOR = $(word 1,$(subst ., ,$(VERSION)))
 VERSION_MINOR = $(word 2,$(subst ., ,$(VERSION)))
 VERSION_MICRO = $(word 3,$(subst ., ,$(VERSION)))
