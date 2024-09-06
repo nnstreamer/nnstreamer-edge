@@ -17,14 +17,6 @@ TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-custom PRIVATE ${EDGE_REQUIR
 TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-custom ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME} ${NNS_EDGE_CUSTOM_TEST_LIB_NAME})
 INSTALL (TARGETS unittest_nnstreamer-edge-custom DESTINATION ${BIN_INSTALL_DIR})
 
-# AITT test
-IF(AITT_SUPPORT)
-ADD_EXECUTABLE(unittest_nnstreamer-edge-aitt unittest_nnstreamer-edge-aitt.cc)
-TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-aitt PRIVATE ${EDGE_REQUIRE_PKGS_INCLUDE_DIRS} ${INCLUDE_DIR} ${NNS_EDGE_SRC_DIR})
-TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-aitt ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME})
-INSTALL (TARGETS unittest_nnstreamer-edge-aitt DESTINATION ${BIN_INSTALL_DIR})
-ENDIF()
-
 # MQTT test
 IF(MQTT_SUPPORT)
 ADD_EXECUTABLE(unittest_nnstreamer-edge-mqtt unittest_nnstreamer-edge-mqtt.cc)

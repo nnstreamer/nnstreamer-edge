@@ -20,7 +20,6 @@
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"
-#include "nnstreamer-edge-aitt.h"
 #include "nnstreamer-edge-metadata.h"
 #include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-custom-impl.h"
@@ -73,7 +72,7 @@ typedef struct
   nns_edge_queue_h send_queue;
   pthread_t send_thread;
 
-  /* MQTT or AITT handle */
+  /* MQTT handle */
   void *broker_h;
 
   /* Data for custom connection */
@@ -915,11 +914,6 @@ _nns_edge_send_thread (void *thread_data)
           }
         }
         break;
-      case NNS_EDGE_CONNECT_TYPE_AITT:
-        ret = nns_edge_aitt_send_data (eh->broker_h, data_h);
-        if (NNS_EDGE_ERROR_NONE != ret)
-          nns_edge_loge ("Failed to send data via AITT connection.");
-        break;
       case NNS_EDGE_CONNECT_TYPE_MQTT:
         ret = nns_edge_mqtt_publish_data (eh->broker_h, data_h);
         if (NNS_EDGE_ERROR_NONE != ret)
@@ -1402,19 +1396,7 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
   eh = (nns_edge_handle_s *) (*edge_h);
   eh->connect_type = connect_type;
 
-  if (NNS_EDGE_CONNECT_TYPE_AITT == connect_type) {
-    ret = nns_edge_aitt_create (&eh->broker_h);
-    if (NNS_EDGE_ERROR_NONE != ret) {
-      nns_edge_loge ("Failed to create AITT handle.");
-      goto error;
-    }
-  }
-
   return NNS_EDGE_ERROR_NONE;
-
-error:
-  nns_edge_release_handle (eh);
-  return ret;
 }
 
 /**
@@ -1499,20 +1481,6 @@ nns_edge_start (nns_edge_h edge_h)
           nns_edge_loge ("Failed to set event callback to MQTT broker.");
           goto done;
         }
-      }
-    } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
-      ret = nns_edge_aitt_connect (eh->broker_h, eh->id, eh->topic,
-          eh->dest_host, eh->dest_port);
-      if (NNS_EDGE_ERROR_NONE != ret) {
-        nns_edge_loge ("Failed to connect to AITT broker.");
-        goto done;
-      }
-
-      ret = nns_edge_aitt_set_event_callback (eh->broker_h, eh->event_cb,
-          eh->user_data);
-      if (NNS_EDGE_ERROR_NONE != ret) {
-        nns_edge_loge ("Failed to set event callback to AITT broker.");
-        goto done;
       }
     }
   }
@@ -1602,11 +1570,6 @@ nns_edge_release_handle (nns_edge_h edge_h)
     case NNS_EDGE_CONNECT_TYPE_MQTT:
       if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh->broker_h)) {
         nns_edge_logw ("Failed to close mqtt connection.");
-      }
-      break;
-    case NNS_EDGE_CONNECT_TYPE_AITT:
-      if (NNS_EDGE_ERROR_NONE != nns_edge_aitt_close (eh->broker_h)) {
-        nns_edge_logw ("Failed to close AITT connection.");
       }
       break;
     case NNS_EDGE_CONNECT_TYPE_CUSTOM:
@@ -1839,27 +1802,6 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
         goto done;
       }
     }
-  } else if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
-    ret = nns_edge_aitt_connect (eh->broker_h, eh->id, eh->topic, dest_host,
-        dest_port);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to connect to AITT broker. %s:%d", dest_host,
-          dest_port);
-      goto done;
-    }
-
-    ret = nns_edge_aitt_set_event_callback (eh->broker_h, eh->event_cb,
-        eh->user_data);
-    if (NNS_EDGE_ERROR_NONE != ret) {
-      nns_edge_loge ("Failed to set event callback to AITT broker.");
-      goto done;
-    }
-
-    ret = nns_edge_aitt_subscribe (eh->broker_h);
-    if (NNS_EDGE_ERROR_NONE != ret) {
-      nns_edge_loge ("Failed to subscribe the topic using AITT: %s", eh->topic);
-      goto done;
-    }
   } else if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
     ret = nns_edge_custom_connect (&eh->custom);
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -1922,10 +1864,6 @@ nns_edge_is_connected (nns_edge_h edge_h)
     nns_edge_loge ("Invalid param, given edge handle is invalid.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
-
-  if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type &&
-      NNS_EDGE_ERROR_NONE == nns_edge_aitt_is_connected (eh->broker_h))
-    return NNS_EDGE_ERROR_NONE;
 
   if (NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type &&
       nns_edge_mqtt_is_connected (eh->broker_h))
@@ -2090,18 +2028,6 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
 
     if (ret == NNS_EDGE_ERROR_NONE)
       nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
-  } else if (0 == strcasecmp (key, "my-ip") ||
-      0 == strcasecmp (key, "clean-session") ||
-      0 == strcasecmp (key, "custom-broker") ||
-      0 == strcasecmp (key, "service-id") ||
-      0 == strcasecmp (key, "location-id") ||
-      0 == strcasecmp (key, "root-ca") ||
-      0 == strcasecmp (key, "custom-rw-file")) {
-    if (NNS_EDGE_CONNECT_TYPE_AITT == eh->connect_type) {
-      ret = nns_edge_aitt_set_option (eh->broker_h, key, value);
-    } else {
-      nns_edge_metadata_set (eh->metadata, key, value);
-    }
   } else {
     ret = nns_edge_metadata_set (eh->metadata, key, value);
   }
