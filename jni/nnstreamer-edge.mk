@@ -18,5 +18,3 @@ NNSTREAMER_EDGE_SRCS := \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-queue.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-util.c
 
-# TODO: Add mqtt and aitt
-

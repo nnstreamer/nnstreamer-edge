@@ -9,7 +9,6 @@ OPTION(ENABLE_TIZEN     "Enable Tizen build" OFF)
 
 # Default features. You may change the features according to your needs.
 OPTION(MQTT_SUPPORT     "Enable MQTT" OFF)
-OPTION(AITT_SUPPORT     "Enable AITT" OFF)
 
 IF (NOT DEFINED VERSION)
     SET(VERSION    0.2.6)
@@ -56,12 +55,6 @@ SET(REQUIRE_PKGS "")
 IF(ENABLE_TIZEN)
     ADD_DEFINITIONS(-D__TIZEN__=1)
     SET(REQUIRE_PKGS "${REQUIRE_PKGS} dlog")
-ENDIF()
-
-# AITT Library
-IF(AITT_SUPPORT)
-    SET(REQUIRE_PKGS "${REQUIRE_PKGS} aitt")
-    SET(NNS_EDGE_FLAGS "${NNS_EDGE_FLAGS} -DENABLE_AITT=1")
 ENDIF()
 
 IF(NOT ${REQUIRE_PKGS} STREQUAL "")

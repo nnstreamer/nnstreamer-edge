@@ -46,7 +46,6 @@ typedef enum {
   NNS_EDGE_CONNECT_TYPE_TCP = 0,
   NNS_EDGE_CONNECT_TYPE_MQTT,
   NNS_EDGE_CONNECT_TYPE_HYBRID,
-  NNS_EDGE_CONNECT_TYPE_AITT,
   NNS_EDGE_CONNECT_TYPE_CUSTOM,
 
   NNS_EDGE_CONNECT_TYPE_UNKNOWN
@@ -124,18 +123,18 @@ typedef enum {
  * // Information that needs to be set according to the node and connection type.
  * // 1. Query-server-src:
  * //  - All connection type: HOST, PORT, CAPS
- * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
+ * //  - Hybrid and MQTT: DEST_HOST, DEST_PORT, TOPIC
  * // 2. Query-server-sink:
  * //  - All connection type: CAPS
  * // 3. Query-client
  * //  - All connection type: HOST, PORT, CAPS
- * //  - Hybrid and AITT: TOPIC
+ * //  - Hybrid and MQTT: TOPIC
  * // 4. Stream-sink
  * //  - All connection type: HOST, PORT
- * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
+ * //  - Hybrid and MQTT: DEST_HOST, DEST_PORT, TOPIC
  * // 5. Stream-src
  * //  - All connection type: HOST, PORT
- * //  - Hybrid and AITT: DEST_HOST, DEST_PORT, TOPIC
+ * //  - Hybrid and MQTT: DEST_HOST, DEST_PORT, TOPIC
  *
  * // Set information for query-client of TCP connection.
  * ret = nns_edge_set_info (edge_h, "HOST", "127.0.0.1");
@@ -215,10 +214,10 @@ int nns_edge_release_handle (nns_edge_h edge_h);
 int nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb, void *user_data);
 
 /**
- * @brief Connect to the destination node. In the case of Hybrid and AITT, the TOPIC, DEST_HOST and DEST_PORT must be set before connection using nns_edge_set_info().
+ * @brief Connect to the destination node. In the case of Hybrid and MQTT, the TOPIC, DEST_HOST and DEST_PORT must be set before connection using nns_edge_set_info().
  * @param[in] edge_h The edge handle.
- * @param[in] dest_host IP address to connect. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP of the broker.
- * @param[in] dest_port The network port to connect. In case of TCP connection, it is the port of the destination node, and in the case of Hybrid or AITT connection, it is the port of the broker.
+ * @param[in] dest_host IP address to connect. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or MQTT connection, it is the IP of the broker.
+ * @param[in] dest_port The network port to connect. In case of TCP connection, it is the port of the destination node, and in the case of Hybrid or MQTT connection, it is the port of the broker.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
@@ -302,8 +301,8 @@ int nns_edge_is_connected (nns_edge_h edge_h);
  * CAPS or CAPABILITY   | capability strings.
  * IP or HOST           | IP address of the node to accept connection from other node.
  * PORT                 | Port of the node to accept connection from other node. The value should be 0 or higher, if the port is set to 0 then the available port is allocated.
- * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or AITT connection, it is the IP address of the broker.
- * DEST_PORT            | Port of the destination node. In case of TCP connection, it is the port number of the destination node, and in the case of Hybrid or AITT connection, it is the port number of the broker. The value should be 0 or higher.
+ * DEST_IP or DEST_HOST | IP address of the destination node. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or MQTT connection, it is the IP address of the broker.
+ * DEST_PORT            | Port of the destination node. In case of TCP connection, it is the port number of the destination node, and in the case of Hybrid or MQTT connection, it is the port number of the broker. The value should be 0 or higher.
  * TOPIC                | Topic used to publish/subscribe to/from the broker.
  * QUEUE_SIZE           | Max number of data in the queue, when sending edge data to other node. Default 0 means unlimited. N:<leaky [NEW, OLD]> where leaky 'OLD' drops old buffer (default NEW). (e.g., QUEUE_SIZE=5:OLD drops old buffer and pushes new data when queue size reaches 5.)
  * ID or CLIENT_ID      | Unique identifier of the edge handle or client ID. (Read-only)
