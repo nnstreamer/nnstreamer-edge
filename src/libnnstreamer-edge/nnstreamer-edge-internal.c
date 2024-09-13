@@ -1153,6 +1153,12 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
     conn_data->sink_conn = conn;
   }
 
+  ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
+      NNS_EDGE_EVENT_CONNECTION_COMPLETED, NULL, 0, NULL);
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to send an event for new connection.");
+    goto error;
+  }
   done = true;
 
 error:
