@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include "nnstreamer-edge-custom-impl.h"
 #include "nnstreamer-edge-custom.h"
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
@@ -123,6 +124,245 @@ TEST (edgeCustom, expectedReturn)
   EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
 
   ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Load edge custom - invalid param.
+ */
+TEST (edgeCustom, loadInvalidParam01_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load (NULL, &handle);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Load edge custom - invalid param.
+ */
+TEST (edgeCustom, loadInvalidParam02_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("", &handle);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Load edge custom - invalid param.
+ */
+TEST (edgeCustom, loadInvalidParam03_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Release edge custom - invalid param.
+ */
+TEST (edgeCustom, releaseInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_release (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Start edge custom - invalid param.
+ */
+TEST (edgeCustom, startInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_start (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Stop edge custom - invalid param.
+ */
+TEST (edgeCustom, stopInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_stop (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set event callback of edge custom - invalid param.
+ */
+TEST (edgeCustom, setEventCbInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_set_event_callback (NULL, NULL, NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Connect edge custom - invalid param.
+ */
+TEST (edgeCustom, connectInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_connect (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Check connection of edge custom - invalid param.
+ */
+TEST (edgeCustom, isConnectedInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_is_connected (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Send data using edge custom - invalid param.
+ */
+TEST (edgeCustom, sendDataInvalidParam01_n)
+{
+  int ret;
+  nns_edge_data_h data_h;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_send_data (NULL, data_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Send data using edge custom - invalid param.
+ */
+TEST (edgeCustom, sendDataInvalidParam02_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_send_data (handle, NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_release (handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set info using edge custom - invalid param.
+ */
+TEST (edgeCustom, setInfoInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_set_info (NULL, "test-key", "test-value");
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set info using edge custom - invalid param.
+ */
+TEST (edgeCustom, setInfoInvalidParam02_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_set_info (handle, NULL, "test-value");
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_custom_set_info (handle, "", "test-value");
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_release (handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set info using edge custom - invalid param.
+ */
+TEST (edgeCustom, setInfoInvalidParam03_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_set_info (handle, "test-key", NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_custom_set_info (handle, "test-key", "");
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_release (handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Get info using edge custom - invalid param.
+ */
+TEST (edgeCustom, getInfoInvalidParam01_n)
+{
+  int ret;
+  char *value;
+
+  ret = nns_edge_custom_get_info (NULL, "test-key", &value);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Get info using edge custom - invalid param.
+ */
+TEST (edgeCustom, getInfoInvalidParam02_n)
+{
+  int ret;
+  char *value;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_get_info (handle, NULL, &value);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_custom_get_info (handle, "", &value);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_release (handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Get info using edge custom - invalid param.
+ */
+TEST (edgeCustom, getInfoInvalidParam03_n)
+{
+  int ret;
+  nns_edge_custom_connection_h handle;
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_get_info (handle, "test-key", NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_custom_release (handle);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 }
 
