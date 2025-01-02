@@ -29,6 +29,7 @@ typedef struct
   void *priv;
 } custom_connection_s;
 
+#if defined(ENABLE_CUSTOM_CONNECTION)
 /**
  * @brief Internal function to load custom connection from library.
  */
@@ -78,6 +79,18 @@ int nns_edge_custom_set_info (custom_connection_s *custom, const char *key, cons
  * @brief Internal function to get information from custom connection.
  */
 int nns_edge_custom_get_info (custom_connection_s *custom, const char *key, char **value);
+#else
+#define nns_edge_custom_load(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_release(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_start(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_stop(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_send_data(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_set_info(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_get_info(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#endif /* ENABLE_CUSTOM_CONNECTION */
 
 #ifdef __cplusplus
 }
