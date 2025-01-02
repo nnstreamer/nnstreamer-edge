@@ -12,6 +12,7 @@
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge.h"
 
 /**
@@ -96,6 +97,7 @@ TEST (edgeCustom, expectedReturn)
   ret = nns_edge_get_info (edge_h, "PEER_ADDRESS", &ret_str);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   EXPECT_STREQ ("TE:MP:AD:DR:ES:SS", ret_str);
+  SAFE_FREE (ret_str);
 
   ret = nns_edge_start (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
