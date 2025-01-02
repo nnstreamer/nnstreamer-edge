@@ -8,11 +8,11 @@
  */
 
 #include <gtest/gtest.h>
-#include "nnstreamer-edge.h"
+#include "nnstreamer-edge-custom.h"
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
-#include "nnstreamer-edge-custom.h"
+#include "nnstreamer-edge.h"
 
 /**
  * @brief Create edge custom handle.
@@ -31,38 +31,38 @@ TEST (edgeCustom, createHandle)
 /**
  * @brief Create edge custom handle - invalid param.
  */
-TEST(edgeCustom, createHandleInvalidParam01_n)
+TEST (edgeCustom, createHandleInvalidParam01_n)
 {
   nns_edge_h edge_h;
   int ret;
 
-  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
-      NNS_EDGE_NODE_TYPE_UNKNOWN, &edge_h);
+  ret = nns_edge_custom_create_handle ("temp-id",
+      "libnnstreamer-edge-custom-test.so", NNS_EDGE_NODE_TYPE_UNKNOWN, &edge_h);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 
 /**
  * @brief Create edge custom handle - invalid param.
  */
-TEST(edgeCustom, createHandleInvalidParam02_n)
+TEST (edgeCustom, createHandleInvalidParam02_n)
 {
   int ret;
 
-  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
-      NNS_EDGE_NODE_TYPE_QUERY_SERVER, NULL);
+  ret = nns_edge_custom_create_handle ("temp-id",
+      "libnnstreamer-edge-custom-test.so", NNS_EDGE_NODE_TYPE_QUERY_SERVER, NULL);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 
 /**
  * @brief Create edge custom handle - invalid param.
  */
-TEST(edgeCustom, createHandleInvalidParam03_n)
+TEST (edgeCustom, createHandleInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
 
-  ret = nns_edge_custom_create_handle ("temp-id", NULL,
-      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ret = nns_edge_custom_create_handle (
+      "temp-id", NULL, NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 
@@ -78,7 +78,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 /**
  * @brief Check the return value of custom connection.
  */
-TEST(edgeCustom, expectedReturn)
+TEST (edgeCustom, expectedReturn)
 {
   int ret;
   nns_edge_h edge_h = NULL;
