@@ -8,6 +8,7 @@ OPTION(ENABLE_DEBUG     "Enable Debug" OFF)
 OPTION(ENABLE_TIZEN     "Enable Tizen build" OFF)
 
 # Default features. You may change the features according to your needs.
+OPTION(ENABLE_CUSTOM_CONNECTION "Enable custom connection" ON)
 OPTION(MQTT_SUPPORT     "Enable MQTT" OFF)
 
 IF (NOT DEFINED VERSION)
@@ -60,6 +61,11 @@ ENDIF()
 IF(NOT ${REQUIRE_PKGS} STREQUAL "")
     PKG_CHECK_MODULES(EDGE_REQUIRE_PKGS REQUIRED ${REQUIRE_PKGS})
     ADD_DEFINITIONS(${EDGE_REQUIRE_PKGS_CFLAGS})
+ENDIF()
+
+# Support custom connection
+IF(ENABLE_CUSTOM_CONNECTION)
+    SET(NNS_EDGE_FLAGS "${NNS_EDGE_FLAGS} -DENABLE_CUSTOM_CONNECTION=1")
 ENDIF()
 
 # MQTT Library

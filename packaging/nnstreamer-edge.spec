@@ -2,6 +2,7 @@
 
 # Default features for Tizen releases
 %define     mqtt_support 1
+%define     custom_connection_support 1
 
 # Define features for TV releases
 %if "%{?profile}" == "tv"
@@ -87,6 +88,12 @@ HTML pages of lcov results of nnstreamer-edge generated during rpm build
 %define enable_mqtt -DMQTT_SUPPORT=OFF
 %endif
 
+%if 0%{?custom_connection_support}
+%define enable_custom_connection -DENABLE_CUSTOM_CONNECTION=ON
+%else
+%define enable_custom_connection -DENABLE_CUSTOM_CONNECTION=OFF
+%endif
+
 %prep
 %setup -q
 cp %{SOURCE1001} .
@@ -113,7 +120,7 @@ pushd build
 %cmake .. \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DVERSION=%{version} \
-    %{enable_tizen} %{enable_unittest} %{enable_mqtt}
+    %{enable_tizen} %{enable_unittest} %{enable_mqtt} %{enable_custom_connection}
 
 make %{?jobs:-j%jobs}
 popd
@@ -135,7 +142,10 @@ popd
 
 %if 0%{?unit_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
+
+%if 0%{?custom_connection_support}
 LD_LIBRARY_PATH=./src:./tests bash %{test_script} ./tests/unittest_nnstreamer-edge-custom
+%endif
 
 %if 0%{?mqtt_support}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-mqtt
@@ -181,19 +191,22 @@ rm -rf %{buildroot}
 
 %files devel
 %{_includedir}/nnstreamer/nnstreamer-edge.h
-%{_includedir}/nnstreamer/nnstreamer-edge-custom.h
 %{_includedir}/nnstreamer/nnstreamer-edge-data.h
 %{_includedir}/nnstreamer/nnstreamer-edge-event.h
 %{_libdir}/pkgconfig/nnstreamer-edge.pc
+%if 0%{?custom_connection_support}
+%{_includedir}/nnstreamer/nnstreamer-edge-custom.h
+%endif
 
 %if 0%{?unit_test}
 %files unittest
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/unittest_nnstreamer-edge
+%if 0%{?custom_connection_support}
 %{_bindir}/unittest_nnstreamer-edge-custom
 %{_libdir}/libnnstreamer-edge-custom-test.so*
-
+%endif
 %if 0%{?mqtt_support}
 %{_bindir}/unittest_nnstreamer-edge-mqtt
 %endif

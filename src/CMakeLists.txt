@@ -1,6 +1,5 @@
 # NNStreamer-Edge library
 SET(NNS_EDGE_SRCS
-    ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-custom-impl.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-metadata.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-data.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-event.c
@@ -8,6 +7,11 @@ SET(NNS_EDGE_SRCS
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-util.c
     ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-queue.c
 )
+
+IF(ENABLE_CUSTOM_CONNECTION)
+    SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-custom-impl.c)
+ENDIF()
+
 IF (NOT ENABLE_TIZEN)
     SET(NNS_EDGE_SRCS ${NNS_EDGE_SRCS} ${NNS_EDGE_SRC_DIR}/nnstreamer-edge-log.c)
 ENDIF()
@@ -35,6 +39,8 @@ ENDIF()
 
 INSTALL (TARGETS ${NNS_EDGE_LIB_NAME} DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL (FILES ${INCLUDE_DIR}/nnstreamer-edge.h DESTINATION ${INCLUDE_INSTALL_DIR})
-INSTALL (FILES ${INCLUDE_DIR}/nnstreamer-edge-custom.h DESTINATION ${INCLUDE_INSTALL_DIR})
 INSTALL (FILES ${INCLUDE_DIR}/nnstreamer-edge-data.h DESTINATION ${INCLUDE_INSTALL_DIR})
 INSTALL (FILES ${INCLUDE_DIR}/nnstreamer-edge-event.h DESTINATION ${INCLUDE_INSTALL_DIR})
+IF(ENABLE_CUSTOM_CONNECTION)
+    INSTALL (FILES ${INCLUDE_DIR}/nnstreamer-edge-custom.h DESTINATION ${INCLUDE_INSTALL_DIR})
+ENDIF()
