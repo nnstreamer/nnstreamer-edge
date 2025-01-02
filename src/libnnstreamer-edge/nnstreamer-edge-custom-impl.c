@@ -14,6 +14,7 @@
 
 #include "nnstreamer-edge-custom-impl.h"
 #include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-util.h"
 
 typedef const nns_edge_custom_s *custom_get_instance (void);
 
@@ -68,6 +69,12 @@ nns_edge_custom_load (custom_connection_s * custom, const char *lib_path)
 {
   nns_edge_custom_s *custom_h;
   int ret;
+
+  if (!STR_IS_VALID (lib_path))
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  if (!custom)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
   ret = _load_custom_library (custom, lib_path);
   if (NNS_EDGE_ERROR_NONE != ret) {
@@ -238,6 +245,10 @@ nns_edge_custom_send_data (custom_connection_s * custom, nns_edge_data_h data_h)
   if (!custom || !custom->instance)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
+  ret = nns_edge_data_is_valid (data_h);
+  if (NNS_EDGE_ERROR_NONE != ret)
+    return ret;
+
   custom_h = custom->instance;
 
   ret = custom_h->nns_edge_custom_send_data (custom->priv, data_h);
@@ -259,6 +270,9 @@ nns_edge_custom_set_info (custom_connection_s * custom, const char *key,
   int ret = NNS_EDGE_ERROR_NOT_SUPPORTED;
 
   if (!custom || !custom->instance)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  if (!STR_IS_VALID (key) || !STR_IS_VALID (value))
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
   custom_h = custom->instance;
@@ -284,6 +298,9 @@ nns_edge_custom_get_info (custom_connection_s * custom, const char *key,
   int ret = NNS_EDGE_ERROR_NOT_SUPPORTED;
 
   if (!custom || !custom->instance)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  if (!STR_IS_VALID (key) || !value)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
   custom_h = custom->instance;
