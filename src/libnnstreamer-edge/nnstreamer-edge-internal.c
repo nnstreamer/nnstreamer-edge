@@ -13,7 +13,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
-#include <dlfcn.h>
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
@@ -1579,7 +1578,10 @@ nns_edge_release_handle (nns_edge_h edge_h)
       }
       break;
     case NNS_EDGE_CONNECT_TYPE_CUSTOM:
-      nns_edge_custom_release (&eh->custom);
+      if (nns_edge_custom_release (&eh->custom) !=
+          NNS_EDGE_ERROR_NONE) {
+        nns_edge_logw ("Failed to close custom connection.");
+      }
       break;
     default:
       break;
@@ -2041,7 +2043,10 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
   if (ret == NNS_EDGE_ERROR_NONE &&
       NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
     /* Pass value to custom library and ignore error. */
-    nns_edge_custom_set_info (&eh->custom, key, value);
+    if (nns_edge_custom_set_info (&eh->custom, key, value) !=
+        NNS_EDGE_ERROR_NONE) {
+      nns_edge_logw ("Failed to set info '%s' in custom connection.", key);
+    }
   }
 
   nns_edge_unlock (eh);
