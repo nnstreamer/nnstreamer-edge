@@ -531,8 +531,8 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     return false;
 
   /* Stop and clear the message thread. */
+  conn->running = false;
   if (conn->msg_thread) {
-    conn->running = false;
     pthread_join (conn->msg_thread, NULL);
     conn->msg_thread = 0;
   }
@@ -1570,6 +1570,28 @@ nns_edge_release_handle (nns_edge_h edge_h)
 
   nns_edge_lock (eh);
 
+  /* Clear message queue and stop thread first */
+  nns_edge_queue_clear (eh->send_queue);
+
+  eh->sending = false;
+  if (eh->send_thread) {
+    pthread_join (eh->send_thread, NULL);
+    eh->send_thread = 0;
+  }
+
+  eh->listening = false;
+  if (eh->listener_thread) {
+    pthread_join (eh->listener_thread, NULL);
+    eh->listener_thread = 0;
+  }
+
+  if (eh->listener_fd >= 0) {
+    close (eh->listener_fd);
+    eh->listener_fd = -1;
+  }
+
+  _nns_edge_remove_all_connection (eh);
+
   switch (eh->connect_type) {
     case NNS_EDGE_CONNECT_TYPE_HYBRID:
     case NNS_EDGE_CONNECT_TYPE_MQTT:
@@ -1593,28 +1615,8 @@ nns_edge_release_handle (nns_edge_h edge_h)
   eh->user_data = NULL;
   eh->broker_h = NULL;
 
-  nns_edge_queue_clear (eh->send_queue);
-  if (eh->send_thread) {
-    eh->sending = false;
-    pthread_join (eh->send_thread, NULL);
-    eh->send_thread = 0;
-  }
   nns_edge_queue_destroy (eh->send_queue);
   eh->send_queue = NULL;
-
-  if (eh->listener_thread) {
-    eh->listening = false;
-    pthread_join (eh->listener_thread, NULL);
-    eh->listener_thread = 0;
-  }
-
-  if (eh->listener_fd >= 0) {
-    close (eh->listener_fd);
-    eh->listener_fd = -1;
-  }
-
-  _nns_edge_remove_all_connection (eh);
-
   nns_edge_metadata_destroy (eh->metadata);
   eh->metadata = NULL;
   SAFE_FREE (eh->id);
@@ -1934,12 +1936,19 @@ nns_edge_send (nns_edge_h edge_h, nns_edge_data_h data_h)
   }
 
   /* Create new data handle and push it into send-queue. */
-  nns_edge_data_copy (data_h, &new_data_h);
+  ret = nns_edge_data_copy (data_h, &new_data_h);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to send data, cannot copy data.");
+    nns_edge_unlock (eh);
+    return ret;
+  }
 
   ret = nns_edge_queue_push (eh->send_queue, new_data_h,
       sizeof (nns_edge_data_h), nns_edge_data_release_handle);
-  if (NNS_EDGE_ERROR_NONE != ret)
+  if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to send data, cannot push data into queue.");
+    nns_edge_data_destroy (new_data_h);
+  }
 
   nns_edge_unlock (eh);
   return ret;
