@@ -19,66 +19,58 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/**
- * @brief Data structure for edge custom connection.
- */
-typedef struct
-{
-  void *dl_handle;
-  nns_edge_custom_s *instance;
-  void *priv;
-} custom_connection_s;
+typedef void *nns_edge_custom_connection_h;
 
 #if defined(ENABLE_CUSTOM_CONNECTION)
 /**
  * @brief Internal function to load custom connection from library.
  */
-int nns_edge_custom_load (custom_connection_s *custom, const char *lib_path);
+int nns_edge_custom_load (const char *lib_path, nns_edge_custom_connection_h *handle);
 
 /**
  * @brief Internal function to release custom connection.
  */
-int nns_edge_custom_release (custom_connection_s *custom);
+int nns_edge_custom_release (nns_edge_custom_connection_h handle);
 
 /**
  * @brief Internal function to start custom connection.
  */
-int nns_edge_custom_start (custom_connection_s *custom);
+int nns_edge_custom_start (nns_edge_custom_connection_h handle);
 
 /**
  * @brief Internal function to stop custom connection.
  */
-int nns_edge_custom_stop (custom_connection_s *custom);
+int nns_edge_custom_stop (nns_edge_custom_connection_h handle);
 
 /**
  * @brief Internal function to set the event callback of custom connection.
  */
-int nns_edge_custom_set_event_callback (custom_connection_s *custom, nns_edge_event_cb cb, void *user_data);
+int nns_edge_custom_set_event_callback (nns_edge_custom_connection_h handle, nns_edge_event_cb cb, void *user_data);
 
 /**
  * @brief Internal function to connect custom connection.
  */
-int nns_edge_custom_connect (custom_connection_s *custom);
+int nns_edge_custom_connect (nns_edge_custom_connection_h handle);
 
 /**
  * @brief Internal function to check custom connection.
  */
-int nns_edge_custom_is_connected (custom_connection_s *custom);
+int nns_edge_custom_is_connected (nns_edge_custom_connection_h handle);
 
 /**
  * @brief Internal function to send data to custom connection.
  */
-int nns_edge_custom_send_data (custom_connection_s *custom, nns_edge_data_h data_h);
+int nns_edge_custom_send_data (nns_edge_custom_connection_h handle, nns_edge_data_h data_h);
 
 /**
  * @brief Internal function to set information to custom connection.
  */
-int nns_edge_custom_set_info (custom_connection_s *custom, const char *key, const char *value);
+int nns_edge_custom_set_info (nns_edge_custom_connection_h handle, const char *key, const char *value);
 
 /**
  * @brief Internal function to get information from custom connection.
  */
-int nns_edge_custom_get_info (custom_connection_s *custom, const char *key, char **value);
+int nns_edge_custom_get_info (nns_edge_custom_connection_h handle, const char *key, char **value);
 #else
 #define nns_edge_custom_load(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_release(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
