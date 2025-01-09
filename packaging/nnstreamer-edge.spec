@@ -162,7 +162,6 @@ VCS=`cat ${RPM_SOURCE_DIR}/nnstreamer-edge.spec | grep "^VCS:" | sed "s|VCS:\\W*
 # Create human readable coverage report web page.
 # Generate report and exclude test files.
 # Set different lcov options for Tizen/lcov versions.
-pushd build
 %if 0%{tizen_version_major} >= 9
 lcov -t 'NNStreamer-edge unittest coverage' -o unittest_test.info -c -d . -b %{builddir} --no-external --ignore-errors mismatch,empty
 lcov -a unittest_base.info -a unittest_test.info -o unittest_total.info --ignore-errors mismatch,empty
@@ -176,7 +175,6 @@ genhtml -o result unittest-filtered.info -t "NNStreamer-edge %{version}-%{releas
 
 mkdir -p %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
 cp -r result %{buildroot}%{_datadir}/nnstreamer-edge/unittest/
-popd
 %endif # testcoverage
 %endif # unittest
 
