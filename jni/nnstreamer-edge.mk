@@ -17,3 +17,5 @@ NNSTREAMER_EDGE_SRCS := \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-queue.c \
     $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-util.c
 
+NNSTREAMER_EDGE_MQTT_SRCS := \
+    $(NNSTREAMER_EDGE_ROOT)/src/libnnstreamer-edge/nnstreamer-edge-mqtt-paho.c
