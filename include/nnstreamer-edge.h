@@ -214,6 +214,17 @@ int nns_edge_release_handle (nns_edge_h edge_h);
 int nns_edge_set_event_callback (nns_edge_h edge_h, nns_edge_event_cb cb, void *user_data);
 
 /**
+ * @brief Discovery connectable devices within the network.
+ * @param[in] edge_h The edge handle.
+ * @param[in] user_data The user's custom data passed to discovery callback.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_discovery (nns_edge_h edge_h, void *user_data);
+
+/**
  * @brief Connect to the destination node. In the case of Hybrid and MQTT, the TOPIC, DEST_HOST and DEST_PORT must be set before connection using nns_edge_set_info().
  * @param[in] edge_h The edge handle.
  * @param[in] dest_host IP address to connect. In case of TCP connection, it is the IP address of the destination node, and in the case of Hybrid or MQTT connection, it is the IP of the broker.
