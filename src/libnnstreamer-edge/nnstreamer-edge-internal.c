@@ -2143,3 +2143,39 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
 
   return ret;
 }
+
+/**
+ * @brief Discover connectable devices within the network.
+ */
+int nns_edge_discover (nns_edge_h edge_h)
+{
+  nns_edge_handle_s *eh;
+  int ret = NNS_EDGE_ERROR_NONE;
+
+  eh = (nns_edge_handle_s *) edge_h;
+  if (!eh) {
+    nns_edge_loge ("Invalid param, given edge handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_handle_is_valid (eh)) {
+    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (eh);
+  if (!eh->event_cb) {
+    nns_edge_loge ("NNStreamer-edge event callback is not registered.");
+    nns_edge_unlock (eh);
+    return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+  }
+
+  if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
+    ret = nns_edge_custom_discover (eh->custom_connection_h);
+  }
+
+  nns_edge_unlock (eh);
+
+  return ret;
+}
+

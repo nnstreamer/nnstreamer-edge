@@ -108,6 +108,23 @@ nns_edge_custom_subscribe (void *priv)
   return NNS_EDGE_ERROR_NOT_SUPPORTED;
 }
 
+
+static int
+nns_edge_custom_discover (void *priv)
+{
+  int ret = NNS_EDGE_ERROR_NONE;
+
+  if (!priv) {
+    nns_edge_loge ("Invalid param, handle should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+  nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
+  ret = nns_edge_event_invoke_callback (custom_h->event_cb, custom_h->user_data,
+      NNS_EDGE_EVENT_DEVICE_FOUND, NULL, 0, NULL);
+
+  return ret;
+}
+
 static int
 nns_edge_custom_is_connected (void *priv)
 {
@@ -130,6 +147,10 @@ nns_edge_custom_set_event_cb (void *priv, nns_edge_event_cb cb, void *user_data)
     nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
+  nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
+
+  custom_h->event_cb = cb;
+  custom_h->user_data = user_data;
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -187,6 +208,7 @@ nns_edge_custom_s edge_custom_h = {
   .nns_edge_custom_create = nns_edge_custom_create,
   .nns_edge_custom_close = nns_edge_custom_close,
   .nns_edge_custom_start = nns_edge_custom_start,
+  .nns_edge_custom_discover = nns_edge_custom_discover,
   .nns_edge_custom_stop = nns_edge_custom_stop,
   .nns_edge_custom_connect = nns_edge_custom_connect,
   .nns_edge_custom_subscribe = nns_edge_custom_subscribe,
