@@ -37,6 +37,12 @@ jobs:
     - name: install GBS
       run: sudo apt-get update && sudo apt-get install -y gbs
 
+    - name: install mosquitto broker
+      run: |
+        sudo apt-get install -y mosquitto
+        sudo systemctl start mosquitto
+        sudo systemctl status mosquitto
+
     - name: configure GBS
       run: cp .github/workflows/tizen.gbs.conf ~/.gbs.conf
 
