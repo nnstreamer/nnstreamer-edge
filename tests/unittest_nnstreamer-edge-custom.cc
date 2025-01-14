@@ -74,6 +74,21 @@ TEST (edgeCustom, createHandleInvalidParam03_n)
 static int
 _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 {
+  nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
+  int ret;
+  int *device_found = (int *) user_data;
+
+  ret = nns_edge_event_get_type (event_h, &event);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  switch (event) {
+    case NNS_EDGE_EVENT_DEVICE_FOUND:
+      (*device_found)++;
+      break;
+    default:
+      break;
+  }
+
   return NNS_EDGE_ERROR_NONE;
 }
 
@@ -86,12 +101,13 @@ TEST (edgeCustom, expectedReturn)
   nns_edge_h edge_h = NULL;
   nns_edge_data_h data_h = NULL;
   char *ret_str = NULL;
+  int device_found = 0;
 
   ret = nns_edge_custom_create_handle ("temp_id", "libnnstreamer-edge-custom-test.so",
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
-  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, NULL);
+  ret = nns_edge_set_event_callback (edge_h, _test_edge_event_cb, &device_found);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   ret = nns_edge_set_info (edge_h, "PEER_ADDRESS", "TE:MP:AD:DR:ES:SS");
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
@@ -102,6 +118,10 @@ TEST (edgeCustom, expectedReturn)
 
   ret = nns_edge_start (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_discover (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (1, device_found);
 
   ret = nns_edge_is_connected (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
@@ -192,6 +212,17 @@ TEST (edgeCustom, stopInvalidParam01_n)
   int ret;
 
   ret = nns_edge_custom_stop (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set event callback of edge custom - invalid param.
+ */
+TEST (edgeCustom, discoverInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_discover (NULL);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 
