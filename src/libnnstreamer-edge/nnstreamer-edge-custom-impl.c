@@ -221,10 +221,10 @@ nns_edge_custom_set_event_callback (nns_edge_custom_connection_h handle,
 }
 
 /**
- * @brief Internal function to discover devices of custom connection.
+ * @brief Internal function to start discovery devices of custom connection.
  */
 int
-nns_edge_custom_discover (nns_edge_custom_connection_h handle)
+nns_edge_custom_start_discovery (nns_edge_custom_connection_h handle)
 {
   custom_connection_s *custom = (custom_connection_s *) handle;
   nns_edge_custom_s *custom_h;
@@ -235,9 +235,32 @@ nns_edge_custom_discover (nns_edge_custom_connection_h handle)
 
   custom_h = custom->instance;
 
-  ret = custom_h->nns_edge_custom_discover (custom->priv);
+  ret = custom_h->nns_edge_custom_start_discovery (custom->priv);
   if (NNS_EDGE_ERROR_NONE != ret) {
-    nns_edge_loge ("Failed to discover devices of custom connection.");
+    nns_edge_loge ("Failed to start discovery devices of custom connection.");
+  }
+
+  return ret;
+}
+
+/**
+ * @brief Internal function to stop discovery devices of custom connection.
+ */
+int
+nns_edge_custom_stop_discovery (nns_edge_custom_connection_h handle)
+{
+  custom_connection_s *custom = (custom_connection_s *) handle;
+  nns_edge_custom_s *custom_h;
+  int ret;
+
+  if (!custom || !custom->instance)
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+
+  custom_h = custom->instance;
+
+  ret = custom_h->nns_edge_custom_stop_discovery (custom->priv);
+  if (NNS_EDGE_ERROR_NONE != ret) {
+    nns_edge_loge ("Failed to stop discovery devices of custom connection.");
   }
 
   return ret;
