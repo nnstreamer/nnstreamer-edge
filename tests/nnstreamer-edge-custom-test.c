@@ -110,7 +110,7 @@ nns_edge_custom_subscribe (void *priv)
 
 
 static int
-nns_edge_custom_discover (void *priv)
+nns_edge_custom_start_discovery (void *priv)
 {
   int ret = NNS_EDGE_ERROR_NONE;
 
@@ -123,6 +123,17 @@ nns_edge_custom_discover (void *priv)
       NNS_EDGE_EVENT_DEVICE_FOUND, NULL, 0, NULL);
 
   return ret;
+}
+
+static int
+nns_edge_custom_stop_discovery (void *priv)
+{
+  if (!priv) {
+    nns_edge_loge ("Invalid param, handle should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  return NNS_EDGE_ERROR_NONE;
 }
 
 static int
@@ -208,7 +219,8 @@ nns_edge_custom_s edge_custom_h = {
   .nns_edge_custom_create = nns_edge_custom_create,
   .nns_edge_custom_close = nns_edge_custom_close,
   .nns_edge_custom_start = nns_edge_custom_start,
-  .nns_edge_custom_discover = nns_edge_custom_discover,
+  .nns_edge_custom_start_discovery = nns_edge_custom_start_discovery,
+  .nns_edge_custom_stop_discovery = nns_edge_custom_stop_discovery,
   .nns_edge_custom_stop = nns_edge_custom_stop,
   .nns_edge_custom_connect = nns_edge_custom_connect,
   .nns_edge_custom_subscribe = nns_edge_custom_subscribe,

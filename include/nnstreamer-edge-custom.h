@@ -34,7 +34,8 @@ typedef struct
   int (*nns_edge_custom_connect) (void *priv);
   int (*nns_edge_custom_subscribe) (void *priv);
   int (*nns_edge_custom_is_connected) (void *priv);
-  int (*nns_edge_custom_discover) (void *priv);
+  int (*nns_edge_custom_start_discovery) (void *priv);
+  int (*nns_edge_custom_stop_discovery) (void *priv);
   int (*nns_edge_custom_set_event_cb) (void *priv, nns_edge_event_cb cb, void *user_data);
   int (*nns_edge_custom_send_data) (void *priv, nns_edge_data_h data_h);
   int (*nns_edge_custom_set_info) (void *priv, const char *key, const char *value);

@@ -2145,9 +2145,9 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
 }
 
 /**
- * @brief Discover connectable devices within the network.
+ * @brief Start discovery connectable devices within the network.
  */
-int nns_edge_discover (nns_edge_h edge_h)
+int nns_edge_start_discovery (nns_edge_h edge_h)
 {
   nns_edge_handle_s *eh;
   int ret = NNS_EDGE_ERROR_NONE;
@@ -2171,7 +2171,37 @@ int nns_edge_discover (nns_edge_h edge_h)
   }
 
   if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
-    ret = nns_edge_custom_discover (eh->custom_connection_h);
+    ret = nns_edge_custom_start_discovery (eh->custom_connection_h);
+  }
+
+  nns_edge_unlock (eh);
+
+  return ret;
+}
+
+/**
+ * @brief Stop discovery connectable devices within the network.
+ */
+int nns_edge_stop_discovery (nns_edge_h edge_h)
+{
+  nns_edge_handle_s *eh;
+  int ret = NNS_EDGE_ERROR_NONE;
+
+  eh = (nns_edge_handle_s *) edge_h;
+  if (!eh) {
+    nns_edge_loge ("Invalid param, given edge handle is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!nns_edge_handle_is_valid (eh)) {
+    nns_edge_loge ("Invalid param, given edge handle is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (eh);
+
+  if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
+    ret = nns_edge_custom_stop_discovery (eh->custom_connection_h);
   }
 
   nns_edge_unlock (eh);

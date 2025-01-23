@@ -119,9 +119,12 @@ TEST (edgeCustom, expectedReturn)
   ret = nns_edge_start (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
-  ret = nns_edge_discover (edge_h);
+  ret = nns_edge_start_discovery (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   EXPECT_EQ (1, device_found);
+
+  ret = nns_edge_stop_discovery (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
   ret = nns_edge_is_connected (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
@@ -218,11 +221,22 @@ TEST (edgeCustom, stopInvalidParam01_n)
 /**
  * @brief Set event callback of edge custom - invalid param.
  */
-TEST (edgeCustom, discoverInvalidParam01_n)
+TEST (edgeCustom, startDiscoveryInvalidParam01_n)
 {
   int ret;
 
-  ret = nns_edge_custom_discover (NULL);
+  ret = nns_edge_custom_start_discovery (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Set event callback of edge custom - invalid param.
+ */
+TEST (edgeCustom, stopDiscoveryInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_stop_discovery (NULL);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 
