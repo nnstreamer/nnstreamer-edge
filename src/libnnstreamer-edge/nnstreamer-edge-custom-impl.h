@@ -63,6 +63,11 @@ int nns_edge_custom_set_event_callback (nns_edge_custom_connection_h handle, nns
 int nns_edge_custom_connect (nns_edge_custom_connection_h handle);
 
 /**
+ * @brief Internal function to disconnect custom connection.
+ */
+int nns_edge_custom_disconnect (nns_edge_custom_connection_h handle);
+
+/**
  * @brief Internal function to check custom connection.
  */
 int nns_edge_custom_is_connected (nns_edge_custom_connection_h handle);
@@ -90,6 +95,7 @@ int nns_edge_custom_get_info (nns_edge_custom_connection_h handle, const char *k
 #define nns_edge_custom_stop_discovery(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_set_event_callback(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_connect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
+#define nns_edge_custom_disconnect(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_is_connected(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_send_data(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)
 #define nns_edge_custom_set_info(...) (NNS_EDGE_ERROR_NOT_SUPPORTED)

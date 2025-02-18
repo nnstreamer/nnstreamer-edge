@@ -32,6 +32,7 @@ typedef struct
   int (*nns_edge_custom_start) (void *priv);
   int (*nns_edge_custom_stop) (void *priv);
   int (*nns_edge_custom_connect) (void *priv);
+  int (*nns_edge_custom_disconnect) (void *priv);
   int (*nns_edge_custom_subscribe) (void *priv);
   int (*nns_edge_custom_is_connected) (void *priv);
   int (*nns_edge_custom_start_discovery) (void *priv);
