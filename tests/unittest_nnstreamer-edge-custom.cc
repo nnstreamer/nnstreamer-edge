@@ -134,6 +134,14 @@ TEST (edgeCustom, expectedReturn)
   ret = nns_edge_is_connected (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
+  ret = nns_edge_disconnect (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_is_connected (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
+
+  ret = nns_edge_connect (edge_h, "temp", 3000);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   ret = nns_edge_send (edge_h, data_h);
@@ -259,6 +267,17 @@ TEST (edgeCustom, connectInvalidParam01_n)
   int ret;
 
   ret = nns_edge_custom_connect (NULL);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Disconnect edge custom - invalid param.
+ */
+TEST (edgeCustom, disconnectInvalidParam01_n)
+{
+  int ret;
+
+  ret = nns_edge_custom_disconnect (NULL);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 }
 

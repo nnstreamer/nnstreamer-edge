@@ -103,6 +103,20 @@ nns_edge_custom_connect (void *priv)
 }
 
 static int
+nns_edge_custom_disconnect (void *priv)
+{
+  if (!priv) {
+    nns_edge_loge ("Invalid param, handle should not be null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+  nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
+  custom_h->is_connected = 0;
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+
+static int
 nns_edge_custom_subscribe (void *priv)
 {
   return NNS_EDGE_ERROR_NOT_SUPPORTED;
@@ -223,6 +237,7 @@ nns_edge_custom_s edge_custom_h = {
   .nns_edge_custom_stop_discovery = nns_edge_custom_stop_discovery,
   .nns_edge_custom_stop = nns_edge_custom_stop,
   .nns_edge_custom_connect = nns_edge_custom_connect,
+  .nns_edge_custom_disconnect = nns_edge_custom_disconnect,
   .nns_edge_custom_subscribe = nns_edge_custom_subscribe,
   .nns_edge_custom_is_connected = nns_edge_custom_is_connected,
   .nns_edge_custom_set_event_cb = nns_edge_custom_set_event_cb,

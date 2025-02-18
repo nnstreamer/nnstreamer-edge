@@ -1836,6 +1836,7 @@ int
 nns_edge_disconnect (nns_edge_h edge_h)
 {
   nns_edge_handle_s *eh;
+  int ret = NNS_EDGE_ERROR_NONE;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -1849,10 +1850,14 @@ nns_edge_disconnect (nns_edge_h edge_h)
   }
 
   nns_edge_lock (eh);
-  _nns_edge_remove_all_connection (eh);
+  if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
+    ret = nns_edge_custom_disconnect (eh->custom_connection_h);
+  } else {
+    _nns_edge_remove_all_connection (eh);
+  }
   nns_edge_unlock (eh);
 
-  return NNS_EDGE_ERROR_NONE;
+  return ret;
 }
 
 /**
