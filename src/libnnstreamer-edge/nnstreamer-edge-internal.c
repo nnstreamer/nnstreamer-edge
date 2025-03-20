@@ -1750,7 +1750,7 @@ int
 nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 {
   nns_edge_handle_s *eh;
-  int ret;
+  int ret = NNS_EDGE_ERROR_NONE;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -1798,6 +1798,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
 
   if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type
       || NNS_EDGE_CONNECT_TYPE_MQTT == eh->connect_type) {
+    if (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)
+      goto done;
     ret = _nns_edge_start_mqtt_sub (eh);
     if (NNS_EDGE_ERROR_NONE != ret)
       goto done;
@@ -1818,6 +1820,8 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
       goto done;
     }
   } else {
+    if (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)
+      goto done;
     ret = _nns_edge_connect_to (eh, eh->client_id, dest_host, dest_port);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to connect to %s:%d", dest_host, dest_port);
