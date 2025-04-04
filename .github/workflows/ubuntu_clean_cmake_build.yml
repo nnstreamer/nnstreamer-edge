@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Install required packages
       run: sudo add-apt-repository ppa:nnstreamer/ppa && sudo apt update && sudo apt install libpaho-mqtt-dev libglib2.0-dev libgtest-dev
