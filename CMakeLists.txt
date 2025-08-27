@@ -12,7 +12,7 @@ OPTION(ENABLE_CUSTOM_CONNECTION "Enable custom connection" ON)
 OPTION(MQTT_SUPPORT     "Enable MQTT" OFF)
 
 IF (NOT DEFINED VERSION)
-    SET(VERSION    0.2.6)
+    SET(VERSION    0.2.8)
 ENDIF()
 
 # GoogleTest requires at least C++11 and match the nnstreamer cpp version.

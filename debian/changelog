@@ -1,3 +1,9 @@
+nnstreamer-edge (0.2.8.0) unstable bionic focal jammy noble; urgency=medium
+
+  * 0.2.8 Release (Tizen 10.0 M2)
+
+ -- Sangjung Woo <sangjung.woo@samsung.com>  Wed, 27 Aug 2025 10:30:00 +0900
+
 nnstreamer-edge (0.2.6.0) unstable bionic focal jammy; urgency=medium
 
   * 0.2.6 Release (Tizen 9.0 M2)
