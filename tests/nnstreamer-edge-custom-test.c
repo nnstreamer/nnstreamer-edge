@@ -115,13 +115,11 @@ nns_edge_custom_disconnect (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
-
 static int
 nns_edge_custom_subscribe (void *priv)
 {
   return NNS_EDGE_ERROR_NOT_SUPPORTED;
 }
-
 
 static int
 nns_edge_custom_start_discovery (void *priv)
