@@ -57,7 +57,7 @@ nns_edge_generate_version_key (void)
 
   nns_edge_get_version (&major, &minor, &micro);
 
-  return (0xefdd000000000000ULL | (micro << 24) | (major << 12) | minor);
+  return (0xefdd000000000000ULL | ((uint64_t) micro << 24) | ((uint64_t) major << 12) | (uint64_t) minor);
 }
 
 /**
