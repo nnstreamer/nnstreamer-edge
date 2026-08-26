@@ -157,7 +157,7 @@ int nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type
 
 /**
  * @brief Create edge custom handle.
- * @remarks If the function succeeds, @a edge_h should be released using nns_edge_release_handle().
+ * @remarks If the function succeeds, @a edge_h should be released using nns_edge_release_handle(). If the function fails, @a edge_h does not hold a valid handle and should not be released.
  * @param[in] id Unique id in local network
  * @param[in] lib_path The library path implementing the custom connection.
  * @param[in] node_type Value of @a nns_edge_node_type_e. The node type of edge connection.
