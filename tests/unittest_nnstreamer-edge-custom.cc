@@ -69,6 +69,20 @@ TEST (edgeCustom, createHandleInvalidParam03_n)
 }
 
 /**
+ * @brief Create edge custom handle - failed to load custom library, the handle should be cleared.
+ */
+TEST (edgeCustom, createHandleLoadFail_n)
+{
+  nns_edge_h edge_h = NULL;
+  int ret;
+
+  ret = nns_edge_custom_create_handle (
+      "temp-id", "libINVALID.so", NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_TRUE (edge_h == NULL);
+}
+
+/**
  * @brief Edge event callback for test.
  */
 static int

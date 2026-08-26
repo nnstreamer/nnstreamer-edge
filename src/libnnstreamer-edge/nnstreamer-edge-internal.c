@@ -1354,8 +1354,10 @@ nns_edge_custom_create_handle (const char *id, const char *lib_path,
   eh->connect_type = NNS_EDGE_CONNECT_TYPE_CUSTOM;
 
   ret = nns_edge_custom_load (lib_path, &eh->custom_connection_h);
-  if (ret != NNS_EDGE_ERROR_NONE)
+  if (ret != NNS_EDGE_ERROR_NONE) {
     nns_edge_release_handle (eh);
+    *edge_h = NULL;
+  }
 
   return ret;
 }
