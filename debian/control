@@ -2,7 +2,7 @@ Source: nnstreamer-edge
 Section: libs
 Priority: optional
 Maintainer: MyungJoo Ham <myungjoo.ham@samsung.com>
-Build-Depends: gcc-9 | gcc-8 | gcc-7 | gcc-6 | gcc-5 (>=5.4),
+Build-Depends: gcc-9 | gcc-8 | gcc-7 | gcc-6 | gcc-5 (>=5.4) | gcc,
  debhelper (>=9), cmake, libmosquitto-dev,
  libgtest-dev
 Standards-Version: 0.0.1
