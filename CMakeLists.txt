@@ -15,8 +15,9 @@ IF (NOT DEFINED VERSION)
     SET(VERSION    0.2.8)
 ENDIF()
 
-# GoogleTest requires at least C++11 and match the nnstreamer cpp version.
-SET(CMAKE_CXX_STANDARD 14)
+# Only the unit tests are C++. GoogleTest 1.17 (Ubuntu 26.04) needs C++17,
+# and nnstreamer itself builds as C++17.
+SET(CMAKE_CXX_STANDARD 17)
 
 # Set CFLAGS
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")

@@ -2032,7 +2032,7 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
     nns_edge_loge ("Cannot update %s.", key);
     ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
   } else if (0 == strcasecmp (key, "QUEUE_SIZE")) {
-    char *s;
+    const char *s;
     unsigned int limit;
     nns_edge_queue_leak_e leaky = NNS_EDGE_QUEUE_LEAK_NEW;
 

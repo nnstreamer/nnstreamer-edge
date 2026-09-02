@@ -58,3 +58,30 @@ jobs:
       env:
         ASAN_OPTIONS: detect_leaks=1
       run: ctest --output-on-failure --no-tests=error
+
+  build-ubuntu-26-04:
+    # Ubuntu 26.04 ships gcc 15, which compiles C as C23 by default. There
+    # string.h keeps the constness of the argument of strchr() and strstr(),
+    # so a "char *" holding their result fails under -Werror. Its gtest also
+    # needs C++17. Neither is caught by the runner image above.
+    name: Build and test on Ubuntu 26.04 (gcc 15)
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install required packages
+      run: |
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake pkg-config libglib2.0-dev libgtest-dev
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TEST=ON
+
+    - name: Build
+      run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: build
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure --no-tests=error

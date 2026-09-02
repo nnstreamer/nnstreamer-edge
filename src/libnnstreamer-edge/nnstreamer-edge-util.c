@@ -128,7 +128,7 @@ nns_edge_get_host_string (const char *host, const int port)
 void
 nns_edge_parse_host_string (const char *host_str, char **host, int *port)
 {
-  char *p = strchr (host_str, ':');
+  const char *p = strchr (host_str, ':');
 
   if (p) {
     *host = nns_edge_strndup (host_str, (p - host_str));
