@@ -1600,7 +1600,8 @@ nns_edge_release_handle (nns_edge_h edge_h)
       }
       break;
     case NNS_EDGE_CONNECT_TYPE_CUSTOM:
-      if (nns_edge_custom_release (eh->custom_connection_h) !=
+      if (eh->custom_connection_h
+          && nns_edge_custom_release (eh->custom_connection_h) !=
           NNS_EDGE_ERROR_NONE) {
         nns_edge_logw ("Failed to close custom connection.");
       }

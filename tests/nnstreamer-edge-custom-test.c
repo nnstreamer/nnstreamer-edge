@@ -26,11 +26,10 @@ typedef struct
 static int
 nns_edge_custom_close (void *priv)
 {
-  if (!priv) {
-    nns_edge_loge ("Invalid param, handle should not be null.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
-  }
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
+
+  if (!custom_h)
+    return NNS_EDGE_ERROR_NONE;
 
   SAFE_FREE (custom_h->peer_address);
   SAFE_FREE (custom_h);
@@ -47,12 +46,16 @@ nns_edge_custom_get_description ()
 static int
 nns_edge_custom_create (void **priv)
 {
+  if (getenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE"))
+    return NNS_EDGE_ERROR_UNKNOWN;
+
   if (!priv) {
     nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) calloc (1, sizeof (nns_edge_custom_test_s));
+  nns_edge_custom_test_s *custom_h =
+      (nns_edge_custom_test_s *) calloc (1, sizeof (nns_edge_custom_test_s));
   if (!custom_h) {
     nns_edge_loge ("Failed to allocate memory for edge custom handle.");
     return NNS_EDGE_ERROR_OUT_OF_MEMORY;

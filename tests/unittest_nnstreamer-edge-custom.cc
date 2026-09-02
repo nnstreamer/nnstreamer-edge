@@ -83,6 +83,90 @@ TEST (edgeCustom, createHandleLoadFail_n)
 }
 
 /**
+ * @brief Create edge custom handle - failed to create custom connection, the handle should be cleared.
+ */
+TEST (edgeCustom, createHandleCreateFail_n)
+{
+  nns_edge_h edge_h = NULL;
+  int ret;
+
+  setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
+
+  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_TRUE (edge_h == NULL);
+
+  unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
+}
+
+/**
+ * @brief Create edge custom handle after failed attempts on the same library.
+ */
+TEST (edgeCustom, createHandleAfterFailure)
+{
+  nns_edge_h edge_h = NULL;
+  int ret;
+
+  ret = nns_edge_custom_create_handle (
+      "temp-id", "libINVALID.so", NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
+  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
+
+  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_stop (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief A live custom handle should not be affected by failed loads of the same library.
+ */
+TEST (edgeCustom, liveHandleAfterFailedLoads)
+{
+  nns_edge_h edge_h = NULL;
+  nns_edge_h fail_h;
+  int ret;
+  int i;
+
+  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
+
+  for (i = 0; i < 50; i++) {
+    fail_h = NULL;
+    ret = nns_edge_custom_create_handle ("temp-id-fail",
+        "libnnstreamer-edge-custom-test.so", NNS_EDGE_NODE_TYPE_QUERY_SERVER, &fail_h);
+    EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+    EXPECT_TRUE (fail_h == NULL);
+  }
+
+  unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_stop (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
  * @brief Edge event callback for test.
  */
 static int
@@ -205,6 +289,47 @@ TEST (edgeCustom, loadInvalidParam03_n)
 
   ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", NULL);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Load edge custom - library load failure should not leak the connection.
+ */
+TEST (edgeCustom, loadFail_n)
+{
+  int ret;
+  int i;
+  nns_edge_custom_connection_h handle = NULL;
+
+  for (i = 0; i < 100; i++) {
+    ret = nns_edge_custom_load ("libINVALID.so", &handle);
+    EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+    EXPECT_TRUE (handle == NULL);
+  }
+}
+
+/**
+ * @brief Load edge custom - connection creation failure should not leak the connection.
+ */
+TEST (edgeCustom, loadCreateFail_n)
+{
+  int ret;
+  int i;
+  nns_edge_custom_connection_h handle = NULL;
+
+  setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
+
+  for (i = 0; i < 100; i++) {
+    ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+    EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+    EXPECT_TRUE (handle == NULL);
+  }
+
+  unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
+
+  ret = nns_edge_custom_load ("libnnstreamer-edge-custom-test.so", &handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_custom_release (handle);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 }
 
 /**

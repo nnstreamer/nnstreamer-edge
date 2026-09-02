@@ -23,6 +23,10 @@ extern "C" {
  * @brief NNStreamer Edge custom connection definition. This is used to define a custom connection.
  * The user should implement the functions and provide them using nns_edge_custom_get_instance().
  * Refer to the example in nnstreamer-edge-custom-test.c for more details.
+ * @note When nns_edge_custom_create() returns an error, nns_edge_custom_close() is
+ * still called with the priv it was given. An implementation should release what it
+ * allocated before returning an error from nns_edge_custom_create(), and
+ * nns_edge_custom_close() should tolerate a priv that was never created.
  */
 typedef struct
 {

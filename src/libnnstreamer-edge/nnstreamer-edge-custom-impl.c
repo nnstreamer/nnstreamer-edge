@@ -98,7 +98,8 @@ nns_edge_custom_load (const char *lib_path,
   if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge
         ("Failed to load custom library. Please check the library path or permission.");
-    goto error;
+    SAFE_FREE (custom);
+    return ret;
   }
 
   custom_h = custom->instance;
@@ -106,16 +107,13 @@ nns_edge_custom_load (const char *lib_path,
   ret = custom_h->nns_edge_custom_create (&custom->priv);
   if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to create custom connection handle.");
-  }
-
-error:
-  if (NNS_EDGE_ERROR_NONE == ret) {
-    *handle = custom;
-  } else {
     nns_edge_custom_release (custom);
+    return ret;
   }
 
-  return ret;
+  *handle = custom;
+
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
