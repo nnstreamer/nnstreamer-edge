@@ -18,6 +18,7 @@ ENDIF()
 # Only the unit tests are C++. GoogleTest 1.17 (Ubuntu 26.04) needs C++17,
 # and nnstreamer itself builds as C++17.
 SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set CFLAGS
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")

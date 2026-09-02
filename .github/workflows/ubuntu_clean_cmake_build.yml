@@ -74,10 +74,11 @@ jobs:
     - name: Install required packages
       run: |
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake pkg-config libglib2.0-dev libgtest-dev
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake pkg-config libglib2.0-dev libgtest-dev libmosquitto-dev
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TEST=ON
+      # MQTT on, as debian/rules builds it, so that source is compiled by gcc 15 too.
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TEST=ON -DMQTT_SUPPORT=ON
 
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}}
