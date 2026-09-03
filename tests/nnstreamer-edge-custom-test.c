@@ -23,6 +23,9 @@ typedef struct
   void *user_data;
 } nns_edge_custom_test_s;
 
+/**
+ * @brief Release the private handle of the test custom connection.
+ */
 static int
 nns_edge_custom_close (void *priv)
 {
@@ -37,12 +40,18 @@ nns_edge_custom_close (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Return the description string of this custom connection.
+ */
 static const char *
 nns_edge_custom_get_description ()
 {
   return "custom";
 }
 
+/**
+ * @brief Allocate the private handle of the test custom connection.
+ */
 static int
 nns_edge_custom_create (void **priv)
 {
@@ -66,6 +75,9 @@ nns_edge_custom_create (void **priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Start the custom connection, resetting it to the unconnected state.
+ */
 static int
 nns_edge_custom_start (void *priv)
 {
@@ -79,6 +91,9 @@ nns_edge_custom_start (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Stop the custom connection and clear its connected flag.
+ */
 static int
 nns_edge_custom_stop (void *priv)
 {
@@ -92,6 +107,9 @@ nns_edge_custom_stop (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Mark the test custom connection as connected.
+ */
 static int
 nns_edge_custom_connect (void *priv)
 {
@@ -105,6 +123,9 @@ nns_edge_custom_connect (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Clear the connected flag of the test custom connection.
+ */
 static int
 nns_edge_custom_disconnect (void *priv)
 {
@@ -118,12 +139,18 @@ nns_edge_custom_disconnect (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Subscription is not supported by this test custom connection.
+ */
 static int
 nns_edge_custom_subscribe (void *priv)
 {
   return NNS_EDGE_ERROR_NOT_SUPPORTED;
 }
 
+/**
+ * @brief Report a found device once through the registered event callback.
+ */
 static int
 nns_edge_custom_start_discovery (void *priv)
 {
@@ -140,6 +167,9 @@ nns_edge_custom_start_discovery (void *priv)
   return ret;
 }
 
+/**
+ * @brief Stop discovery; nothing to do beyond validating the handle.
+ */
 static int
 nns_edge_custom_stop_discovery (void *priv)
 {
@@ -151,6 +181,9 @@ nns_edge_custom_stop_discovery (void *priv)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Report whether the test custom connection is connected.
+ */
 static int
 nns_edge_custom_is_connected (void *priv)
 {
@@ -166,6 +199,9 @@ nns_edge_custom_is_connected (void *priv)
   return NNS_EDGE_ERROR_CONNECTION_FAILURE;
 }
 
+/**
+ * @brief Store the event callback and its user data in the handle.
+ */
 static int
 nns_edge_custom_set_event_cb (void *priv, nns_edge_event_cb cb, void *user_data)
 {
@@ -181,6 +217,9 @@ nns_edge_custom_set_event_cb (void *priv, nns_edge_event_cb cb, void *user_data)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Discard the given data after validating the parameters.
+ */
 static int
 nns_edge_custom_send_data (void *priv, nns_edge_data_h data_h)
 {
@@ -192,6 +231,9 @@ nns_edge_custom_send_data (void *priv, nns_edge_data_h data_h)
   return NNS_EDGE_ERROR_NONE;
 }
 
+/**
+ * @brief Store the PEER_ADDRESS value; every other key is rejected.
+ */
 static int
 nns_edge_custom_set_info (void *priv, const char *key, const char *value)
 {
@@ -211,6 +253,9 @@ nns_edge_custom_set_info (void *priv, const char *key, const char *value)
   return NNS_EDGE_ERROR_INVALID_PARAMETER;
 }
 
+/**
+ * @brief Return a newly allocated copy of the stored PEER_ADDRESS value.
+ */
 static int
 nns_edge_custom_get_info (void *priv, const char *key, char **value)
 {
@@ -247,6 +292,9 @@ nns_edge_custom_s edge_custom_h = {
   .nns_edge_custom_get_info = nns_edge_custom_get_info
 };
 
+/**
+ * @brief Return the callback table of this test custom connection.
+ */
 const nns_edge_custom_s *
 nns_edge_custom_get_instance ()
 {
