@@ -16,7 +16,7 @@ INSTALL (TARGETS ${NNS_EDGE_CUSTOM_TEST_LIB_NAME} DESTINATION ${CMAKE_INSTALL_LI
 
 ADD_EXECUTABLE(unittest_nnstreamer-edge-custom unittest_nnstreamer-edge-custom.cc)
 TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-custom PRIVATE ${TEST_REQUIRE_PKGS_INCLUDE_DIRS} ${EDGE_REQUIRE_PKGS_INCLUDE_DIRS} ${INCLUDE_DIR} ${NNS_EDGE_SRC_DIR})
-TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-custom ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME} ${NNS_EDGE_CUSTOM_TEST_LIB_NAME})
+TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-custom ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME} ${NNS_EDGE_CUSTOM_TEST_LIB_NAME} ${CMAKE_DL_LIBS})
 INSTALL (TARGETS unittest_nnstreamer-edge-custom DESTINATION ${BIN_INSTALL_DIR})
 ADD_TEST(NAME unittest_nnstreamer-edge-custom COMMAND unittest_nnstreamer-edge-custom)
 # The custom test loads the test connection library with dlopen at runtime.

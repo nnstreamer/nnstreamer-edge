@@ -24,12 +24,20 @@ typedef struct
 } nns_edge_custom_test_s;
 
 /**
+ * @brief Number of nns_edge_custom_close() calls, exported so that a test can observe
+ *        the close-after-failed-create() contract stated in nnstreamer-edge-custom.h.
+ */
+unsigned int nns_edge_custom_test_close_count;
+
+/**
  * @brief Release the private handle of the test custom connection.
  */
 static int
 nns_edge_custom_close (void *priv)
 {
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
+
+  nns_edge_custom_test_close_count++;
 
   if (!custom_h)
     return NNS_EDGE_ERROR_NONE;
@@ -56,7 +64,7 @@ static int
 nns_edge_custom_create (void **priv)
 {
   if (getenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE"))
-    return NNS_EDGE_ERROR_UNKNOWN;
+    return NNS_EDGE_ERROR_CONNECTION_FAILURE;
 
   if (!priv) {
     nns_edge_loge ("Invalid param, handle should not be null.");
