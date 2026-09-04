@@ -102,13 +102,14 @@ TEST (edgeCustom, createHandleCreateFail_n)
 }
 
 /**
- * @brief Create edge custom handle - the custom library is closed after its create() failed.
+ * @brief Close of the custom library on the two failure paths of the handle creation.
  */
-TEST (edgeCustom, closeAfterCreateFail_n)
+TEST (edgeCustom, closeOnFailurePaths_n)
 {
   nns_edge_h edge_h = NULL;
   unsigned int *close_count;
   unsigned int before;
+  int *close_had_priv;
   void *lib_h;
   int ret;
 
@@ -116,7 +117,14 @@ TEST (edgeCustom, closeAfterCreateFail_n)
   ASSERT_TRUE (lib_h != NULL);
   close_count = (unsigned int *) dlsym (lib_h, "nns_edge_custom_test_close_count");
   ASSERT_TRUE (close_count != NULL);
+  close_had_priv = (int *) dlsym (lib_h, "nns_edge_custom_test_close_had_priv");
+  ASSERT_TRUE (close_had_priv != NULL);
   before = *close_count;
+
+  ret = nns_edge_custom_create_handle (
+      "temp-id", "libINVALID.so", NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (before, *close_count);
 
   setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
   ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
@@ -126,6 +134,7 @@ TEST (edgeCustom, closeAfterCreateFail_n)
   EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
   EXPECT_TRUE (edge_h == NULL);
   EXPECT_EQ (before + 1, *close_count);
+  EXPECT_EQ (0, *close_had_priv);
 
   dlclose (lib_h);
 }

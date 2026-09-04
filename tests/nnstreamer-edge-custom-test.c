@@ -30,6 +30,11 @@ typedef struct
 unsigned int nns_edge_custom_test_close_count;
 
 /**
+ * @brief Whether the last nns_edge_custom_close() call got a priv, exported for the same reason.
+ */
+int nns_edge_custom_test_close_had_priv;
+
+/**
  * @brief Release the private handle of the test custom connection.
  */
 static int
@@ -38,6 +43,7 @@ nns_edge_custom_close (void *priv)
   nns_edge_custom_test_s *custom_h = (nns_edge_custom_test_s *) priv;
 
   nns_edge_custom_test_close_count++;
+  nns_edge_custom_test_close_had_priv = (NULL != custom_h);
 
   if (!custom_h)
     return NNS_EDGE_ERROR_NONE;
