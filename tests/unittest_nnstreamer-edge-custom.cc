@@ -102,6 +102,24 @@ TEST (edgeCustom, createHandleCreateFail_n)
 }
 
 /**
+ * @brief Open the custom library for test and resolve the close counters it exports.
+ * @details The caller keeps the returned handle for as long as it reads the counters,
+ *          so that they stay mapped while the tested API opens and closes the library.
+ */
+static void *
+_open_close_counters (unsigned int **count, int **had_priv)
+{
+  void *lib_h = dlopen ("libnnstreamer-edge-custom-test.so", RTLD_LAZY);
+
+  if (lib_h) {
+    *count = (unsigned int *) dlsym (lib_h, "nns_edge_custom_test_close_count");
+    *had_priv = (int *) dlsym (lib_h, "nns_edge_custom_test_close_had_priv");
+  }
+
+  return lib_h;
+}
+
+/**
  * @brief Close of the custom library on the two failure paths of the handle creation.
  */
 TEST (edgeCustom, closeOnFailurePaths_n)
@@ -113,11 +131,9 @@ TEST (edgeCustom, closeOnFailurePaths_n)
   void *lib_h;
   int ret;
 
-  lib_h = dlopen ("libnnstreamer-edge-custom-test.so", RTLD_LAZY);
+  lib_h = _open_close_counters (&close_count, &close_had_priv);
   ASSERT_TRUE (lib_h != NULL);
-  close_count = (unsigned int *) dlsym (lib_h, "nns_edge_custom_test_close_count");
   ASSERT_TRUE (close_count != NULL);
-  close_had_priv = (int *) dlsym (lib_h, "nns_edge_custom_test_close_had_priv");
   ASSERT_TRUE (close_had_priv != NULL);
   before = *close_count;
 
@@ -155,6 +171,7 @@ TEST (edgeCustom, createHandleAfterFailure)
   ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_TRUE (edge_h == NULL);
   unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
 
   ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
@@ -177,13 +194,22 @@ TEST (edgeCustom, liveHandleAfterFailedLoads)
 {
   nns_edge_h edge_h = NULL;
   nns_edge_h fail_h;
+  unsigned int *close_count;
+  unsigned int before;
+  int *close_had_priv;
+  void *lib_h;
   int ret;
   int i;
+
+  lib_h = _open_close_counters (&close_count, &close_had_priv);
+  ASSERT_TRUE (lib_h != NULL);
+  ASSERT_TRUE (close_count != NULL);
 
   ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
       NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
   ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
+  before = *close_count;
   setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
 
   for (i = 0; i < 50; i++) {
@@ -193,6 +219,7 @@ TEST (edgeCustom, liveHandleAfterFailedLoads)
     EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
     EXPECT_TRUE (fail_h == NULL);
   }
+  EXPECT_EQ (before + 50, *close_count);
 
   unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
 
@@ -203,6 +230,9 @@ TEST (edgeCustom, liveHandleAfterFailedLoads)
 
   ret = nns_edge_release_handle (edge_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (1, *close_had_priv);
+
+  dlclose (lib_h);
 }
 
 /**
@@ -351,9 +381,19 @@ TEST (edgeCustom, loadFail_n)
  */
 TEST (edgeCustom, loadCreateFail_n)
 {
+  unsigned int *close_count;
+  unsigned int before;
+  int *close_had_priv;
+  void *lib_h;
   int ret;
   int i;
   nns_edge_custom_connection_h handle = NULL;
+
+  lib_h = _open_close_counters (&close_count, &close_had_priv);
+  ASSERT_TRUE (lib_h != NULL);
+  ASSERT_TRUE (close_count != NULL);
+  ASSERT_TRUE (close_had_priv != NULL);
+  before = *close_count;
 
   setenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE", "1", 1);
 
@@ -362,6 +402,8 @@ TEST (edgeCustom, loadCreateFail_n)
     EXPECT_EQ (NNS_EDGE_ERROR_CONNECTION_FAILURE, ret);
     EXPECT_TRUE (handle == NULL);
   }
+  EXPECT_EQ (before + 100, *close_count);
+  EXPECT_EQ (0, *close_had_priv);
 
   unsetenv ("NNS_EDGE_CUSTOM_TEST_FAIL_CREATE");
 
@@ -369,6 +411,9 @@ TEST (edgeCustom, loadCreateFail_n)
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   ret = nns_edge_custom_release (handle);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (1, *close_had_priv);
+
+  dlclose (lib_h);
 }
 
 /**
