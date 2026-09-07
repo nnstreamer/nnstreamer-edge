@@ -338,7 +338,7 @@ nns_edge_queue_stop_wait (nns_edge_queue_h handle)
 
 /**
  * @brief Clear all data in the queue.
- * @note When this function is called, nns_edge_queue_wait_pop will stop the waiting.
+ * @note This only signals a waiter that already holds the queue lock. Use nns_edge_queue_stop_wait() to shut a queue down.
  */
 int
 nns_edge_queue_clear (nns_edge_queue_h handle)
