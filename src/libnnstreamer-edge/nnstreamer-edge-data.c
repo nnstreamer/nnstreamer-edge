@@ -662,9 +662,13 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
   if (header->meta_len > 0) {
     ret = nns_edge_metadata_deserialize (ed->metadata, ptr, header->meta_len);
   } else {
-    nns_edge_metadata_destroy (ed->metadata);
-    ed->metadata = NULL;
-    ret = nns_edge_metadata_create (&ed->metadata);
+    nns_edge_metadata_h new_meta = NULL;
+
+    ret = nns_edge_metadata_create (&new_meta);
+    if (NNS_EDGE_ERROR_NONE == ret) {
+      nns_edge_metadata_destroy (ed->metadata);
+      ed->metadata = new_meta;
+    }
   }
 
   nns_edge_unlock (ed);
