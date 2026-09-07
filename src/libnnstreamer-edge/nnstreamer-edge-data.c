@@ -671,6 +671,9 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
     }
   }
 
+  if (NNS_EDGE_ERROR_NONE != ret)
+    _nns_edge_data_clear_raw_data (ed);
+
   nns_edge_unlock (ed);
   return ret;
 }

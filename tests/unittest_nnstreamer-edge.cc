@@ -3257,6 +3257,58 @@ TEST (edgeDataIsSerialized, invalidParam11_n)
 }
 
 /**
+ * @brief Deserialize edge-data - the handle is empty when the metadata is broken.
+ */
+TEST (edgeDataDeserialize, invalidParam07_n)
+{
+  nns_edge_data_h data_h;
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  void *broken;
+  char *meta;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  nns_size_t broken_len;
+  nns_size_t meta_len = sizeof (uint32_t) + 3U;
+  unsigned int count = 1U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  broken_len = data_len + meta_len;
+  broken = nns_edge_malloc (broken_len);
+  ASSERT_TRUE (broken != NULL);
+  memcpy (broken, data, data_len);
+
+  /** One key-value pair with an empty key, which nns_edge_metadata_set() rejects. */
+  meta = (char *) broken + data_len;
+  ((uint32_t *) meta)[0] = 1U;
+  meta[sizeof (uint32_t)] = '\0';
+  meta[sizeof (uint32_t) + 1U] = 'v';
+  meta[sizeof (uint32_t) + 2U] = '\0';
+
+  header = (ne_test_data_header_s *) broken;
+  header->meta_len = meta_len;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, broken, broken_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  /** The raw memories should not be left behind when the metadata is rejected. */
+  ret = nns_edge_data_get_count (data_h, &count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (count, 0U);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (broken);
+  SAFE_FREE (data);
+}
+
+/**
  * @brief Create edge event - invalid param.
  */
 TEST (edgeEvent, createInvalidParam01_n)
