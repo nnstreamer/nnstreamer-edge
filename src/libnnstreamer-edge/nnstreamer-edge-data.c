@@ -449,11 +449,11 @@ nns_edge_data_clear_info (nns_edge_data_h data_h)
   }
 
   nns_edge_lock (ed);
-  ret = nns_edge_metadata_destroy (ed->metadata);
-  if (NNS_EDGE_ERROR_NONE != ret)
-    goto done;
+  if (ed->metadata) {
+    nns_edge_metadata_destroy (ed->metadata);
+    ed->metadata = NULL;
+  }
   ret = nns_edge_metadata_create (&ed->metadata);
-done:
   nns_edge_unlock (ed);
 
   return ret;
