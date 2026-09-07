@@ -94,7 +94,12 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
       SAFE_FREE (msg);
     } else {
       /* Push received message into msg queue. DO NOT free msg here. */
-      nns_edge_queue_push (bh->message_queue, msg, msg_len, nns_edge_free);
+      ret = nns_edge_queue_push (bh->message_queue, msg, msg_len,
+          nns_edge_free);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to push received message into the queue.");
+        SAFE_FREE (msg);
+      }
     }
   }
 
