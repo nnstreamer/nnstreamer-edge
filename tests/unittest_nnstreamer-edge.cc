@@ -2162,8 +2162,7 @@ TEST (edgeData, deserializeInvalidParam06_n)
 
   ASSERT_TRUE (serialized_len >= meta_len && meta_len >= sizeof (unsigned int));
 
-  /* Overwrite the metadata pair count only; overall size is unchanged so
-   * nns_edge_data_is_serialized() still accepts the buffer. */
+  /* Only the pair count changes, so the size checks still accept it. */
   meta_ptr = (char *) serialized_data + (serialized_len - meta_len);
   num = 0xFFFFFFFFU;
   memcpy (meta_ptr, &num, sizeof (unsigned int));
