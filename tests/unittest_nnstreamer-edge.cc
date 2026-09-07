@@ -28,8 +28,9 @@ static bool nns_edge_test_host_string_fails = false;
 
 /**
  * @brief nns_edge_get_host_string() replacement that the tests can make fail on demand.
- * @note This shadows the definition in the library for the whole process, the
- *       same way the calloc() replacement above does.
+ * @note This shadows the definition in the library for the whole process, so a
+ *       test should set the flag around the call it wants to fail and clear it
+ *       right after.
  */
 extern "C" char *
 nns_edge_get_host_string (const char *host, const int port)
