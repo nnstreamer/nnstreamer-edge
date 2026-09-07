@@ -70,6 +70,7 @@ int nns_edge_event_parse_new_data (nns_edge_event_h event_h, nns_edge_data_h *da
 /**
  * @brief Parse edge event (NNS_EDGE_EVENT_CAPABILITY) and get capability string.
  * @remarks If the function succeeds, @a capability should be released using free().
+ * @remarks The returned string is bounded by the length of the event data, so a producer that raises the event should pass the whole capability string.
  * @param[in] event_h The edge event handle.
  * @param[out] capability Capability string.
  * @return 0 on success. Otherwise a negative error value.

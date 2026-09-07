@@ -278,7 +278,7 @@ nns_edge_event_parse_capability (nns_edge_event_h event_h, char **capability)
   nns_edge_lock (ee);
 
   if (ee->event == NNS_EDGE_EVENT_CAPABILITY) {
-    *capability = nns_edge_strdup (ee->data.data);
+    *capability = nns_edge_strndup (ee->data.data, ee->data.data_len);
   } else {
     nns_edge_loge ("The edge event has invalid event type.");
     ret = NNS_EDGE_ERROR_INVALID_PARAMETER;

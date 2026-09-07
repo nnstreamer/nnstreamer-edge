@@ -118,6 +118,7 @@ char *nns_edge_get_host_string (const char *host, const int port);
 
 /**
  * @brief Parse string and get host string (host:port).
+ * @note Every output param given is always set. The host is null and the port is zero when there is no ':' to split on, and the host is an empty string when the input starts with one, so the caller should check the host before using it.
  */
 void nns_edge_parse_host_string (const char *host_str, char **host, int *port);
 

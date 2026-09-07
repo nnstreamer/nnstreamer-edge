@@ -80,6 +80,8 @@ typedef struct
 
 /**
  * @brief enum for nnstreamer edge query commands.
+ * @note A command carrying a string the peer sizes should be listed in _nns_edge_cmd_string_is_valid(), which is what bounds that string.
+ * @note These values go on the wire. tests/unittest_nnstreamer-edge.cc mirrors them to talk to a real peer and asserts them, so a member added in the middle fails those tests until they are updated too.
  */
 typedef enum
 {
@@ -406,6 +408,51 @@ _nns_edge_cmd_send (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
 }
 
 /**
+ * @brief Internal function to check the string carried by the received command.
+ * @note HOST_INFO and CAPABILITY carry exactly one null-terminated string, and the peer decides its length. Every other command is accepted here.
+ */
+static bool
+_nns_edge_cmd_string_is_valid (const nns_edge_cmd_s * cmd)
+{
+  const char *str;
+
+  if (cmd->info.cmd != _NNS_EDGE_CMD_HOST_INFO &&
+      cmd->info.cmd != _NNS_EDGE_CMD_CAPABILITY)
+    return true;
+
+  if (cmd->info.num != 1U || cmd->info.mem_size[0] == 0 || !cmd->mem[0])
+    return false;
+
+  str = (const char *) cmd->mem[0];
+
+  return (str[cmd->info.mem_size[0] - 1] == '\0');
+}
+
+/**
+ * @brief Internal function to parse the host string a peer sent, from TCP or from the broker.
+ * @note This does not assume the buffer is null-terminated. The host is null unless the whole string was usable, so the caller only needs to check the return.
+ */
+static bool
+_nns_edge_parse_peer_host (const char *str, nns_size_t len, char **host,
+    int *port)
+{
+  *host = NULL;
+  *port = 0;
+
+  if (!str || len == 0 || str[len - 1] != '\0')
+    return false;
+
+  nns_edge_parse_host_string (str, host, port);
+
+  if (!STR_IS_VALID (*host) || !PORT_IS_VALID (*port)) {
+    SAFE_FREE (*host);
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * @brief Receive edge command from connected device.
  * @note Before calling this function, you should initialize edge-cmd by using _nns_edge_cmd_init().
  */
@@ -468,6 +515,13 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
       ret = NNS_EDGE_ERROR_IO;
       goto error;
     }
+  }
+
+  if (!_nns_edge_cmd_string_is_valid (cmd)) {
+    nns_edge_loge ("Failed to receive command, the string in command %u is "
+        "invalid.", cmd->info.cmd);
+    ret = NNS_EDGE_ERROR_IO;
+    goto error;
   }
 
   return NNS_EDGE_ERROR_NONE;
@@ -1070,12 +1124,14 @@ static void
 _nns_edge_accept_socket (nns_edge_handle_s * eh)
 {
   bool done = false;
+  bool parsed;
   nns_edge_conn_s *conn;
   nns_edge_conn_data_s *conn_data;
   nns_edge_cmd_s cmd;
   int64_t client_id;
   char *dest_host = NULL;
-  int dest_port, ret;
+  int dest_port = 0;
+  int ret;
 
   conn = (nns_edge_conn_s *) calloc (1, sizeof (nns_edge_conn_s));
   if (!conn) {
@@ -1128,8 +1184,15 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
       goto error;
     }
 
-    nns_edge_parse_host_string (cmd.mem[0], &dest_host, &dest_port);
+    parsed = _nns_edge_parse_peer_host (cmd.mem[0], cmd.info.mem_size[0],
+        &dest_host, &dest_port);
     _nns_edge_cmd_clear (&cmd);
+
+    if (!parsed) {
+      nns_edge_loge ("Failed to get host info, the client sent an invalid "
+          "host string.");
+      goto error;
+    }
 
     /* Connect to client listener. */
     ret = _nns_edge_connect_to (eh, client_id, dest_host, dest_port);
@@ -1732,6 +1795,7 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     char *msg = NULL;
     char *server_ip = NULL;
     int server_port = 0;
+    bool parsed;
     nns_size_t msg_len = 0;
 
     ret =
@@ -1739,8 +1803,13 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
       break;
 
-    nns_edge_parse_host_string (msg, &server_ip, &server_port);
+    parsed = _nns_edge_parse_peer_host (msg, msg_len, &server_ip, &server_port);
     SAFE_FREE (msg);
+
+    if (!parsed) {
+      nns_edge_loge ("Failed to parse the server info from the broker.");
+      continue;
+    }
 
     nns_edge_logd ("Parsed server info: Server [%s:%d] ", server_ip,
         server_port);
