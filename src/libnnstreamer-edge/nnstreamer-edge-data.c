@@ -69,13 +69,33 @@ nns_edge_data_create (nns_edge_data_h * data_h)
 }
 
 /**
+ * @brief Internal function to release raw data in edge data handle.
+ * @note This function should be called with the handle lock.
+ */
+static void
+_nns_edge_data_clear_raw_data (nns_edge_data_s * ed)
+{
+  unsigned int i;
+
+  for (i = 0; i < ed->num; i++) {
+    if (ed->data[i].destroy_cb)
+      ed->data[i].destroy_cb (ed->data[i].data);
+
+    ed->data[i].data = NULL;
+    ed->data[i].data_len = 0U;
+    ed->data[i].destroy_cb = NULL;
+  }
+
+  ed->num = 0U;
+}
+
+/**
  * @brief Destroy nnstreamer edge data.
  */
 int
 nns_edge_data_destroy (nns_edge_data_h data_h)
 {
   nns_edge_data_s *ed;
-  unsigned int i;
 
   ed = (nns_edge_data_s *) data_h;
   if (!ed) {
@@ -91,10 +111,7 @@ nns_edge_data_destroy (nns_edge_data_h data_h)
   nns_edge_lock (ed);
   nns_edge_handle_set_magic (ed, NNS_EDGE_MAGIC_DEAD);
 
-  for (i = 0; i < ed->num; i++) {
-    if (ed->data[i].destroy_cb)
-      ed->data[i].destroy_cb (ed->data[i].data);
-  }
+  _nns_edge_data_clear_raw_data (ed);
 
   nns_edge_metadata_destroy (ed->metadata);
 
@@ -543,6 +560,9 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
   nns_edge_lock (ed);
   header_len = sizeof (nns_edge_data_header_s);
 
+  /** Clear the whole header, unused entries and padding are sent to the peer. */
+  memset (&edata_header, 0, header_len);
+
   data_len = 0;
   edata_header.key = NNS_EDGE_DATA_KEY;
   edata_header.version = nns_edge_generate_version_key ();
@@ -577,7 +597,8 @@ nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t * len)
   }
 
   /** Copy edge meta data */
-  memcpy (ptr, meta_serialized, edata_header.meta_len);
+  if (edata_header.meta_len > 0)
+    memcpy (ptr, meta_serialized, edata_header.meta_len);
 
   *data = serialized;
   *len = total;
@@ -617,19 +638,34 @@ nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data,
     return ret;
 
   nns_edge_lock (ed);
+  _nns_edge_data_clear_raw_data (ed);
+
   header = (nns_edge_data_header_s *) data;
   ptr = (char *) data + sizeof (nns_edge_data_header_s);
 
-  ed->num = header->num_mem;
-  for (n = 0; n < ed->num; n++) {
+  for (n = 0; n < header->num_mem; n++) {
     ed->data[n].data = nns_edge_memdup (ptr, header->data_len[n]);
+    if (!ed->data[n].data) {
+      nns_edge_loge ("Failed to allocate memory to deserialize edge data.");
+      _nns_edge_data_clear_raw_data (ed);
+      nns_edge_unlock (ed);
+      return NNS_EDGE_ERROR_OUT_OF_MEMORY;
+    }
+
     ed->data[n].data_len = header->data_len[n];
     ed->data[n].destroy_cb = nns_edge_free;
+    ed->num = n + 1;
 
     ptr += header->data_len[n];
   }
 
-  ret = nns_edge_metadata_deserialize (ed->metadata, ptr, header->meta_len);
+  if (header->meta_len > 0) {
+    ret = nns_edge_metadata_deserialize (ed->metadata, ptr, header->meta_len);
+  } else {
+    nns_edge_metadata_destroy (ed->metadata);
+    ed->metadata = NULL;
+    ret = nns_edge_metadata_create (&ed->metadata);
+  }
 
   nns_edge_unlock (ed);
   return ret;
@@ -647,6 +683,11 @@ nns_edge_data_is_serialized (const void *data, const nns_size_t data_len)
 
   if (!data) {
     nns_edge_loge ("Invalid param, given data is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (data_len < sizeof (nns_edge_data_header_s)) {
+    nns_edge_loge ("Invalid param, given data is smaller than the header.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
@@ -671,15 +712,27 @@ nns_edge_data_is_serialized (const void *data, const nns_size_t data_len)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  /* Check mem size */
-  total = sizeof (nns_edge_data_header_s) + header->meta_len;
-  for (n = 0; n < header->num_mem; n++)
-    total += header->data_len[n];
+  /** Check mem size, accumulate within data_len to avoid an integer overflow. */
+  total = sizeof (nns_edge_data_header_s);
 
-  if (total != data_len) {
-    nns_edge_loge ("Invalid param, given data has invalid data size.");
-    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  for (n = 0; n < header->num_mem; n++) {
+    if (header->data_len[n] == 0U || header->data_len[n] > data_len - total)
+      goto invalid_size;
+
+    total += header->data_len[n];
   }
 
+  if (header->meta_len > data_len - total)
+    goto invalid_size;
+
+  total += header->meta_len;
+
+  if (total != data_len)
+    goto invalid_size;
+
   return NNS_EDGE_ERROR_NONE;
+
+invalid_size:
+  nns_edge_loge ("Invalid param, given data has invalid data size.");
+  return NNS_EDGE_ERROR_INVALID_PARAMETER;
 }

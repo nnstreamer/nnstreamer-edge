@@ -222,6 +222,7 @@ int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t *da
  * @retval #NNS_EDGE_ERROR_NONE Successful.
  * @retval #NNS_EDGE_ERROR_NOT_SUPPORTED Not supported.
  * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ * @retval #NNS_EDGE_ERROR_OUT_OF_MEMORY Failed to allocate required memory.
  */
 int nns_edge_data_deserialize (nns_edge_data_h data_h, const void *data, const nns_size_t data_len);
 
