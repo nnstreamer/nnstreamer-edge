@@ -364,12 +364,12 @@ nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
   if (!meta)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
+  nns_edge_metadata_free (meta);
+
   if (!data || data_len < sizeof (uint32_t)) {
     nns_edge_loge ("Failed to deserialize metadata, invalid data size.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
-
-  nns_edge_metadata_free (meta);
 
   /* number of key-value pairs + list of key-value pair */
   base = (const char *) data;

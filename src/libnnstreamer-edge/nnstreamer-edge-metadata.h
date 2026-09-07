@@ -54,6 +54,8 @@ int nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h, void **data, nn
 
 /**
  * @brief Internal function to deserialize memory into metadata.
+ * @note The given metadata is always cleared first, so a call that fails
+ *       leaves it empty rather than partially filled or unchanged.
  */
 int nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h, const void *data, const nns_size_t data_len);
 

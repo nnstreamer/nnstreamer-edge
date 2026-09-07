@@ -3959,17 +3959,35 @@ TEST (edgeMeta, deserializeEmpty)
 }
 
 /**
- * @brief After a failed deserialize the handle stays empty and usable, and a well-formed buffer deserializes correctly.
+ * @brief A failed deserialize empties the handle and leaves it usable, and a well-formed buffer deserializes correctly.
  */
 TEST (edgeMeta, deserializeRecovery)
 {
   nns_edge_metadata_h meta;
-  void *malformed, *serialized;
-  nns_size_t malformed_len, serialized_len;
+  void *malformed, *serialized, *truncated;
+  nns_size_t malformed_len, serialized_len, truncated_len;
   char *value;
   int ret;
 
   ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (meta, "stale-key", "stale-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  truncated_len = 2U;
+  truncated = malloc (truncated_len);
+  ASSERT_TRUE (truncated != NULL);
+  memset (truncated, 0, truncated_len);
+
+  ret = nns_edge_metadata_deserialize (meta, truncated, truncated_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (truncated);
+
+  ret = nns_edge_metadata_get (meta, "stale-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_set (meta, "stale-key", "stale-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   malformed_len = sizeof (unsigned int) + 3U;
@@ -3981,6 +3999,9 @@ TEST (edgeMeta, deserializeRecovery)
   ret = nns_edge_metadata_deserialize (meta, malformed, malformed_len);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
   SAFE_FREE (malformed);
+
+  ret = nns_edge_metadata_get (meta, "stale-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_metadata_set (meta, "temp-key", "temp-value");
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
