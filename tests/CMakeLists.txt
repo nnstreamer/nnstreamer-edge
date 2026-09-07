@@ -4,6 +4,9 @@ TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge PRIVATE ${TEST_REQUIRE_PKGS_
 TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME})
 INSTALL (TARGETS unittest_nnstreamer-edge DESTINATION ${BIN_INSTALL_DIR})
 ADD_TEST(NAME unittest_nnstreamer-edge COMMAND unittest_nnstreamer-edge)
+# A handle that is left with an unjoinable thread hangs the run rather than
+# failing it, so bound the tests well above the few seconds they need.
+SET_TESTS_PROPERTIES(unittest_nnstreamer-edge PROPERTIES TIMEOUT 300)
 
 # Custom connection lib for unit test
 IF(ENABLE_CUSTOM_CONNECTION)
@@ -21,7 +24,8 @@ INSTALL (TARGETS unittest_nnstreamer-edge-custom DESTINATION ${BIN_INSTALL_DIR})
 ADD_TEST(NAME unittest_nnstreamer-edge-custom COMMAND unittest_nnstreamer-edge-custom)
 # The custom test loads the test connection library with dlopen at runtime.
 SET_TESTS_PROPERTIES(unittest_nnstreamer-edge-custom PROPERTIES
-    ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}")
+    ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}"
+    TIMEOUT 300)
 ENDIF()
 
 # MQTT test

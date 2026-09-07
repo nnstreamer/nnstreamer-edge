@@ -942,8 +942,13 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
 {
   int status;
 
-  if (eh->send_thread)
-    return NNS_EDGE_ERROR_NONE;
+  if (eh->send_thread) {
+    if (eh->sending)
+      return NNS_EDGE_ERROR_NONE;
+
+    nns_edge_loge ("The sender thread has stopped, release the edge handle.");
+    return NNS_EDGE_ERROR_IO;
+  }
 
   status = pthread_create (&eh->send_thread, NULL, _nns_edge_send_thread, eh);
 
@@ -1226,8 +1231,13 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
   socklen_t saddr_len = sizeof (struct sockaddr_in);
   int status;
 
-  if (eh->listener_thread)
-    return true;
+  if (eh->listener_thread) {
+    if (eh->listening)
+      return true;
+
+    nns_edge_loge ("The listener thread has stopped, release the edge handle.");
+    return false;
+  }
 
   if (!_fill_socket_addr (&saddr, eh->host, eh->port)) {
     nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
