@@ -2082,6 +2082,194 @@ TEST (edgeData, deserializeInvalidParam04_n)
 }
 
 /**
+ * @brief Deserialize meta to edge-data - invalid param. A malformed metadata
+ * blob (nnstreamer/nnstreamer-edge#259) must not crash the TCP receive path.
+ */
+TEST (edgeData, deserializeInvalidParam05_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + sizeof ("key") + sizeof ("value");
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 0xFFFFFFFFU;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "key", sizeof ("key"));
+  memcpy (ptr + sizeof ("key"), "value", sizeof ("value"));
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize_meta (data_h, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize a valid serialized edge-data whose metadata section was corrupted in place.
+ */
+TEST (edgeData, deserializeInvalidParam06_n)
+{
+  nns_edge_data_h src_h, dest_h;
+  void *data1, *data2, *serialized_data, *meta_data;
+  char *meta_ptr;
+  nns_size_t data_len, serialized_len, meta_len;
+  unsigned int i, num;
+  int ret;
+
+  data_len = 4U * sizeof (unsigned int);
+  data1 = malloc (data_len);
+  ASSERT_TRUE (data1 != NULL);
+  for (i = 0; i < 4U; i++)
+    ((unsigned int *) data1)[i] = i;
+
+  data2 = malloc (data_len);
+  ASSERT_TRUE (data2 != NULL);
+  for (i = 0; i < 4U; i++)
+    ((unsigned int *) data2)[i] = 4U - i;
+
+  ret = nns_edge_data_create (&src_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (src_h, "temp-key1", "temp-data-val1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_set_info (src_h, "temp-key2", "temp-data-val2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_add (src_h, data1, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_add (src_h, data2, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize_meta (src_h, &meta_data, &meta_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (meta_data);
+
+  ret = nns_edge_data_serialize (src_h, &serialized_data, &serialized_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (src_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ASSERT_TRUE (serialized_len >= meta_len && meta_len >= sizeof (unsigned int));
+
+  /* Overwrite the metadata pair count only; overall size is unchanged so
+   * nns_edge_data_is_serialized() still accepts the buffer. */
+  meta_ptr = (char *) serialized_data + (serialized_len - meta_len);
+  num = 0xFFFFFFFFU;
+  memcpy (meta_ptr, &num, sizeof (unsigned int));
+
+  ret = nns_edge_data_create (&dest_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (dest_h, serialized_data, serialized_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (dest_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (serialized_data);
+}
+
+/**
+ * @brief Deserialize a valid serialized edge-data with an uncorrupted metadata section.
+ */
+TEST (edgeData, deserializeMetaBoundary)
+{
+  nns_edge_data_h src_h, dest_h;
+  void *data1, *data2, *data3, *serialized_data, *result;
+  nns_size_t data_len, serialized_len, result_len;
+  char *result_value;
+  unsigned int i, result_count;
+  int ret;
+
+  data_len = 4U * sizeof (unsigned int);
+  data1 = malloc (data_len);
+  ASSERT_TRUE (data1 != NULL);
+  for (i = 0; i < 4U; i++)
+    ((unsigned int *) data1)[i] = i;
+
+  data2 = malloc (data_len);
+  ASSERT_TRUE (data2 != NULL);
+  for (i = 0; i < 4U; i++)
+    ((unsigned int *) data2)[i] = 4U - i;
+
+  ret = nns_edge_data_create (&src_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_set_info (src_h, "temp-key1", "temp-data-val1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_set_info (src_h, "temp-key2", "temp-data-val2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* The odd-sized memory leaves the metadata section unaligned. */
+  data3 = malloc (3U);
+  ASSERT_TRUE (data3 != NULL);
+  memset (data3, 0x5A, 3U);
+
+  ret = nns_edge_data_add (src_h, data1, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_add (src_h, data2, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_add (src_h, data3, 3U, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize (src_h, &serialized_data, &serialized_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (src_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_create (&dest_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (dest_h, serialized_data, serialized_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_get_count (dest_h, &result_count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (result_count, 3U);
+
+  ret = nns_edge_data_get (dest_h, 0, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  for (i = 0; i < 4U; i++)
+    EXPECT_EQ (((unsigned int *) result)[i], i);
+
+  ret = nns_edge_data_get (dest_h, 1, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  for (i = 0; i < 4U; i++)
+    EXPECT_EQ (((unsigned int *) result)[i], 4U - i);
+
+  ret = nns_edge_data_get (dest_h, 2, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (result_len, 3U);
+
+  ret = nns_edge_data_get_info (dest_h, "temp-key1", &result_value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (result_value, "temp-data-val1");
+  SAFE_FREE (result_value);
+
+  ret = nns_edge_data_get_info (dest_h, "temp-key2", &result_value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (result_value, "temp-data-val2");
+  SAFE_FREE (result_value);
+
+  ret = nns_edge_data_destroy (dest_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (serialized_data);
+}
+
+/**
  * @brief Serialize and deserialize the edge-data.
  */
 TEST (edgeDataSerialize, normal)
@@ -3480,6 +3668,358 @@ TEST (edgeMeta, deserializeInvalidParam03_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Header shorter than the pair count field.
+ */
+TEST (edgeMeta, deserializeInvalidParam04_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  unsigned int i;
+  int ret;
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  for (i = 1U; i <= 3U; i++) {
+    data_len = i;
+    data = malloc (data_len);
+    ASSERT_TRUE (data != NULL);
+    memset (data, 0, data_len);
+
+    ret = nns_edge_metadata_deserialize (meta, data, data_len);
+    EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+    SAFE_FREE (data);
+  }
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. A peer-supplied pair
+ * count of 0xFFFFFFFF combined with the old `||` loop condition let the
+ * parser walk past the end of the buffer (nnstreamer/nnstreamer-edge#259).
+ */
+TEST (edgeMeta, deserializeInvalidParam05_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + sizeof ("key") + sizeof ("value");
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 0xFFFFFFFFU;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "key", sizeof ("key"));
+  memcpy (ptr + sizeof ("key"), "value", sizeof ("value"));
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Key string has no terminating NUL.
+ */
+TEST (edgeMeta, deserializeInvalidParam06_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + 3U;
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 1U;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "key", 3U);
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Value string has no terminating NUL.
+ */
+TEST (edgeMeta, deserializeInvalidParam07_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + sizeof ("key") + 5U;
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 1U;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "key", sizeof ("key"));
+  memcpy (ptr + sizeof ("key"), "value", 5U);
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Declared pair count exceeds the pairs present in the buffer.
+ */
+TEST (edgeMeta, deserializeInvalidParam08_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + sizeof ("key") + sizeof ("value");
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 3U;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "key", sizeof ("key"));
+  memcpy (ptr + sizeof ("key"), "value", sizeof ("value"));
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Pair count of 0 with trailing bytes left unconsumed.
+ */
+TEST (edgeMeta, deserializeInvalidParam09_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  int ret;
+
+  data_len = sizeof (unsigned int) + 4U;
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 0U;
+  memset ((char *) data + sizeof (unsigned int), 'A', 4U);
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Empty key is rejected by nns_edge_metadata_set().
+ */
+TEST (edgeMeta, deserializeInvalidParam10_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + 1U + sizeof ("value");
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 1U;
+  ptr = (char *) data + sizeof (unsigned int);
+  ptr[0] = '\0';
+  memcpy (ptr + 1U, "value", sizeof ("value"));
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata - invalid param. Duplicate keys cannot reach the declared pair count.
+ */
+TEST (edgeMeta, deserializeInvalidParam11_n)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *ptr;
+  int ret;
+
+  data_len = sizeof (unsigned int) + 2U * (sizeof ("dup") + sizeof ("val1"));
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ((unsigned int *) data)[0] = 2U;
+  ptr = (char *) data + sizeof (unsigned int);
+  memcpy (ptr, "dup", sizeof ("dup"));
+  ptr += sizeof ("dup");
+  memcpy (ptr, "val1", sizeof ("val1"));
+  ptr += sizeof ("val1");
+  memcpy (ptr, "dup", sizeof ("dup"));
+  ptr += sizeof ("dup");
+  memcpy (ptr, "val2", sizeof ("val2"));
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge metadata with a zero pair count.
+ */
+TEST (edgeMeta, deserializeEmpty)
+{
+  nns_edge_metadata_h meta;
+  void *data;
+  nns_size_t data_len;
+  char *value;
+  int ret;
+
+  data_len = sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+  ((unsigned int *) data)[0] = 0U;
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, data, data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (meta, "any-key", &value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief After a failed deserialize the handle stays empty and usable, and a well-formed buffer deserializes correctly.
+ */
+TEST (edgeMeta, deserializeRecovery)
+{
+  nns_edge_metadata_h meta;
+  void *malformed, *serialized;
+  nns_size_t malformed_len, serialized_len;
+  char *value;
+  int ret;
+
+  ret = nns_edge_metadata_create (&meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  malformed_len = sizeof (unsigned int) + 3U;
+  malformed = malloc (malformed_len);
+  ASSERT_TRUE (malformed != NULL);
+  ((unsigned int *) malformed)[0] = 1U;
+  memcpy ((char *) malformed + sizeof (unsigned int), "key", 3U);
+
+  ret = nns_edge_metadata_deserialize (meta, malformed, malformed_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (malformed);
+
+  ret = nns_edge_metadata_set (meta, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (meta, "temp-key", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value");
+  SAFE_FREE (value);
+
+  ret = nns_edge_metadata_set (meta, "key1", "value1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_metadata_set (meta, "key2", "value2");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_serialize (meta, &serialized, &serialized_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_deserialize (meta, serialized, serialized_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_metadata_get (meta, "temp-key", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "temp-value");
+  SAFE_FREE (value);
+
+  ret = nns_edge_metadata_get (meta, "key1", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "value1");
+  SAFE_FREE (value);
+
+  ret = nns_edge_metadata_get (meta, "key2", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (value, "value2");
+  SAFE_FREE (value);
+
+  ret = nns_edge_metadata_destroy (meta);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (serialized);
 }
 
 /**
