@@ -74,7 +74,7 @@ jobs:
     - name: Install required packages
       run: |
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake pkg-config libglib2.0-dev libgtest-dev libmosquitto-dev
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake pkg-config libglib2.0-dev libgtest-dev libmosquitto-dev mosquitto procps
 
     - name: Configure CMake
       # MQTT on, as debian/rules builds it, so that source is compiled by gcc 15 too.
@@ -86,3 +86,17 @@ jobs:
     - name: Test
       working-directory: build
       run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure --no-tests=error
+
+    # unittest_nnstreamer-edge-mqtt is not registered with ADD_TEST() because it
+    # needs a running broker, so the ctest above never runs it. Without a broker
+    # every test in that file returns early from _check_mqtt_broker() and passes
+    # without asserting anything, so start one and run the binary directly here.
+    - name: Start the MQTT broker
+      run: |
+        mosquitto -d -p 1883
+        sleep 1
+        ps aux | grep [m]osquitto
+
+    - name: MQTT unit test
+      working-directory: build
+      run: LD_LIBRARY_PATH=./src ./tests/unittest_nnstreamer-edge-mqtt
