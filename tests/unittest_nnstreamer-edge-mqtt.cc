@@ -515,6 +515,64 @@ TEST (edgeMqttHybrid, getMessageWithinTimeout_n)
 }
 
 /**
+ * @brief The message queue of a broker handle stays bounded while nothing drains it.
+ */
+TEST (edgeMqttHybrid, messageQueueLimit)
+{
+  nns_edge_broker_h broker_h;
+  void *msg = NULL;
+  nns_size_t msg_len;
+  char published[32], *first = NULL, *last = NULL;
+  unsigned int i, popped = 0U;
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-queue-topic", "127.0.0.1", 1883, &broker_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_subscribe (broker_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Nothing reads the queue here, which is the case that used to grow without limit. */
+  for (i = 0; i < NNS_EDGE_MQTT_MAX_MESSAGES * 2U; i++) {
+    snprintf (published, sizeof (published), "msg-%u", i);
+    ret = nns_edge_mqtt_publish (broker_h, published, (int) strlen (published) + 1);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  }
+
+  /* Let the broker deliver what it can before the queue is drained. */
+  usleep (2000000);
+
+  while (nns_edge_mqtt_get_message (broker_h, &msg, &msg_len, 100U) == NNS_EDGE_ERROR_NONE) {
+    if (!first)
+      first = nns_edge_strdup ((char *) msg);
+    SAFE_FREE (last);
+    last = (char *) msg;
+    popped++;
+  }
+
+  EXPECT_GT (popped, 0U);
+  EXPECT_LE (popped, NNS_EDGE_MQTT_MAX_MESSAGES);
+
+  /**
+   * Only a full queue proves which end leaks. A broker slow enough to leave the
+   * queue short says nothing about the leaky option, while the bound above
+   * holds whatever the broker did.
+   */
+  if (popped == NNS_EDGE_MQTT_MAX_MESSAGES) {
+    EXPECT_STRNE (first, "msg-0");
+  }
+
+  SAFE_FREE (first);
+  SAFE_FREE (last);
+
+  ret = nns_edge_mqtt_close (broker_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Edge event callback for test MQTT data transmission.
  */
 static int
