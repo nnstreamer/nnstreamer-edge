@@ -182,6 +182,9 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
     goto error;
   }
 
+  nns_edge_queue_set_limit (bh->message_queue, NNS_EDGE_MQTT_MAX_MESSAGES,
+      NNS_EDGE_QUEUE_LEAK_OLD);
+
   MQTTAsync_setCallbacks (handle, bh, NULL, mqtt_cb_message_arrived, NULL);
 
   options.cleansession = 1;

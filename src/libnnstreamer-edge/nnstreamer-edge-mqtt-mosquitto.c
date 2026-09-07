@@ -165,6 +165,10 @@ _nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
     nns_edge_loge ("Failed to create message queue.");
     goto error;
   }
+
+  nns_edge_queue_set_limit (bh->message_queue, NNS_EDGE_MQTT_MAX_MESSAGES,
+      NNS_EDGE_QUEUE_LEAK_OLD);
+
   bh->mqtt_h = handle;
   bh->id = nns_edge_strdup (id);
   bh->topic = nns_edge_strdup (topic);

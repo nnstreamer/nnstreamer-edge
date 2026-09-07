@@ -11,6 +11,8 @@
  */
 
 #include <arpa/inet.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <poll.h>
 #include <time.h>
@@ -41,6 +43,14 @@
 #define RECONNECT_TIMEOUT_MS 100
 
 /**
+ * @brief The default limit for the total bytes a peer may announce in a single command.
+ * @details A peer chooses the sizes in nns_edge_cmd_info_s and the receiver allocates them
+ *          before any payload arrives, so an unbounded value is a remote denial of service.
+ *          Override it with nns_edge_set_info (h, "MAX_TRANSFER_SIZE", ...), zero for no limit.
+ */
+#define NNS_EDGE_MAX_TRANSFER_SIZE (256U * 1024U * 1024U)
+
+/**
  * @brief Data structure for edge handle.
  */
 typedef struct
@@ -65,6 +75,7 @@ typedef struct
 
   int64_t client_id;
   char *caps_str;
+  nns_size_t max_transfer_size; /**< Max bytes accepted from a peer in one command (0: unlimited). */
 
   /* list of connection data */
   void *connections;
@@ -145,6 +156,7 @@ typedef struct
   bool running;
   pthread_t msg_thread;
   int sockfd;
+  nns_size_t max_transfer_size;
 } nns_edge_conn_s;
 
 /**
@@ -376,6 +388,29 @@ _nns_edge_cmd_is_valid (nns_edge_cmd_s * cmd)
 }
 
 /**
+ * @brief Check whether the sizes announced by the peer fit in the transfer limit.
+ * @details The limit is never exceeded by the running total, so the remaining budget
+ *          used as the bound cannot underflow and the sum cannot overflow.
+ */
+static bool
+_nns_edge_cmd_size_is_valid (nns_edge_cmd_s * cmd, nns_size_t limit)
+{
+  nns_size_t total = 0;
+  unsigned int n;
+
+  if (limit == 0U)
+    return true;
+
+  for (n = 0; n < cmd->info.num; n++) {
+    if (cmd->info.mem_size[n] > limit - total)
+      return false;
+    total += cmd->info.mem_size[n];
+  }
+
+  return cmd->info.meta_size <= limit - total;
+}
+
+/**
  * @brief Send edge command to connected device.
  */
 static int
@@ -497,6 +532,13 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   if (cmd->info.num >= NNS_EDGE_DATA_LIMIT) {
     nns_edge_loge ("Invalid request, the max memories for data transfer is %d.",
         NNS_EDGE_DATA_LIMIT);
+    return NNS_EDGE_ERROR_IO;
+  }
+
+  if (!_nns_edge_cmd_size_is_valid (cmd, conn->max_transfer_size)) {
+    nns_edge_loge
+        ("Invalid request, the max bytes for data transfer is %" PRIu64 ".",
+        conn->max_transfer_size);
     return NNS_EDGE_ERROR_IO;
   }
 
@@ -1237,6 +1279,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
   conn->host = nns_edge_strdup (host);
   conn->port = port;
   conn->sockfd = -1;
+  conn->max_transfer_size = eh->max_transfer_size;
 
   if (!_nns_edge_connect_socket (conn)) {
     goto error;
@@ -1349,6 +1392,7 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   }
 
   _set_socket_option (conn->sockfd);
+  conn->max_transfer_size = eh->max_transfer_size;
 
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
@@ -1589,6 +1633,7 @@ _nns_edge_create_handle (const char *id, nns_edge_node_type_e node_type,
   eh->listener_fd = -1;
   eh->caps_str = nns_edge_strdup ("");
   eh->custom_connection_h = NULL;
+  eh->max_transfer_size = NNS_EDGE_MAX_TRANSFER_SIZE;
 
   ret = nns_edge_metadata_create (&eh->metadata);
   if (ret != NNS_EDGE_ERROR_NONE) {
@@ -2399,6 +2444,18 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
 
     if (ret == NNS_EDGE_ERROR_NONE)
       nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
+  } else if (0 == strcasecmp (key, "MAX_TRANSFER_SIZE")) {
+    unsigned long long size;
+
+    errno = 0;
+    size = strtoull (value, NULL, 10);
+
+    if (errno != 0 || value[strspn (value, "0123456789")] != '\0') {
+      nns_edge_loge ("Cannot set the max transfer size (%s).", value);
+      ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    } else {
+      eh->max_transfer_size = (nns_size_t) size;
+    }
   } else {
     ret = nns_edge_metadata_set (eh->metadata, key, value);
   }

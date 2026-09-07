@@ -22,6 +22,14 @@ extern "C" {
 
 typedef void *nns_edge_broker_h;
 
+/**
+ * @brief The max number of messages kept in the queue of a broker handle.
+ * @details A subscriber that is not draining the queue would otherwise grow without
+ *          limit while the broker keeps publishing. The oldest message is dropped,
+ *          which keeps the newest one for a live stream.
+ */
+#define NNS_EDGE_MQTT_MAX_MESSAGES (100U)
+
 #if defined(ENABLE_MQTT)
 /**
  * @brief Connect to MQTT.
