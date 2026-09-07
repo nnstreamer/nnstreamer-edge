@@ -94,8 +94,18 @@ jobs:
     - name: Start the MQTT broker
       run: |
         mosquitto -d -p 1883
-        sleep 1
-        ps aux | grep [m]osquitto
+        # _check_mqtt_broker() in the test looks the daemon up with ps, so wait
+        # until it is visible there instead of assuming it came up within a fixed
+        # delay; a run step exits on the first failing command, so a bare grep
+        # that loses the race would fail the job rather than retry.
+        for _ in $(seq 1 30); do
+          if ps aux | grep "[m]osquitto"; then
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "::error::the MQTT broker did not start"
+        exit 1
 
     - name: MQTT unit test
       working-directory: build
