@@ -10,6 +10,7 @@
  * @bug    No known bugs except for NYI items
  */
 
+#include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-metadata.h"
 #include "nnstreamer-edge-util.h"
 
@@ -325,6 +326,27 @@ nns_edge_metadata_serialize (nns_edge_metadata_h metadata_h,
 }
 
 /**
+ * @brief Internal function to read a null-terminated string in the serialized metadata.
+ */
+static const char *
+nns_edge_metadata_read_string (const char *base, const nns_size_t len,
+    nns_size_t * cur)
+{
+  const char *str, *end;
+
+  if (*cur >= len)
+    return NULL;
+
+  str = base + *cur;
+  end = (const char *) memchr (str, '\0', (size_t) (len - *cur));
+  if (!end)
+    return NULL;
+
+  *cur = (nns_size_t) (end - base) + 1;
+  return str;
+}
+
+/**
  * @brief Internal function to deserialize memory into metadata.
  */
 int
@@ -332,8 +354,9 @@ nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
     const void *data, const nns_size_t data_len)
 {
   nns_edge_metadata_s *meta;
-  char *key, *value;
-  nns_size_t cur, total;
+  const char *base, *key, *value;
+  nns_size_t cur;
+  uint32_t num;
   int ret;
 
   meta = (nns_edge_metadata_s *) metadata_h;
@@ -341,27 +364,38 @@ nns_edge_metadata_deserialize (nns_edge_metadata_h metadata_h,
   if (!meta)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
 
-  if (!data || data_len <= 0)
+  if (!data || data_len < sizeof (uint32_t)) {
+    nns_edge_loge ("Failed to deserialize metadata, invalid data size.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
 
   nns_edge_metadata_free (meta);
 
-  /* length + list of key-value pair */
-  total = ((uint32_t *) data)[0];
-
+  /* number of key-value pairs + list of key-value pair */
+  base = (const char *) data;
+  memcpy (&num, base, sizeof (uint32_t));
   cur = sizeof (uint32_t);
-  while (cur < data_len || meta->list_len < total) {
-    key = (char *) data + cur;
-    cur += (strlen (key) + 1);
 
-    value = (char *) data + cur;
-    cur += (strlen (value) + 1);
+  while (meta->list_len < num) {
+    key = nns_edge_metadata_read_string (base, data_len, &cur);
+    if (!key)
+      break;
+
+    value = nns_edge_metadata_read_string (base, data_len, &cur);
+    if (!value)
+      break;
 
     ret = nns_edge_metadata_set (meta, key, value);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_metadata_free (meta);
       return ret;
     }
+  }
+
+  if (meta->list_len != num || cur != data_len) {
+    nns_edge_loge ("Failed to deserialize metadata, invalid data format.");
+    nns_edge_metadata_free (meta);
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
   return NNS_EDGE_ERROR_NONE;
