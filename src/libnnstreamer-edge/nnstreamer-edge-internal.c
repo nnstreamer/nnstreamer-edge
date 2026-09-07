@@ -1019,6 +1019,11 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
       _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_HOST_INFO, client_id);
 
       host_str = nns_edge_get_host_string (eh->host, eh->port);
+      if (!host_str) {
+        nns_edge_loge ("Failed to allocate the host string.");
+        goto error;
+      }
+
       cmd.info.num = 1;
       cmd.info.mem_size[0] = strlen (host_str) + 1;
       cmd.mem[0] = host_str;
