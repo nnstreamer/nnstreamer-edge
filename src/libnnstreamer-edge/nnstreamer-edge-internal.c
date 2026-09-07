@@ -717,7 +717,6 @@ _nns_edge_message_handler (void *thread_data)
   client_id = _tdata->client_id;
   SAFE_FREE (_tdata);
 
-  conn->running = true;
   while (conn->running) {
     struct pollfd poll_fd;
 
@@ -836,6 +835,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
   thread_data->conn = conn;
   thread_data->client_id = client_id;
 
+  conn->running = true;
   status = pthread_create (&conn->msg_thread, NULL, _nns_edge_message_handler,
       thread_data);
 
