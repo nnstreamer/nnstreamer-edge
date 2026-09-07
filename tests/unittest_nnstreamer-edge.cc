@@ -105,6 +105,64 @@ _free_test_data (ne_test_data_s *_td)
 }
 
 /**
+ * @brief Mirror of the internal header of the serialized edge data.
+ * @note Keep this in sync with nns_edge_data_header_s in nnstreamer-edge-data.c. The tests below assert that the size matches the serialized buffer.
+ */
+typedef struct {
+  uint32_t key;
+  uint64_t version;
+  uint32_t num_mem;
+  nns_size_t data_len[NNS_EDGE_DATA_LIMIT];
+  nns_size_t meta_len;
+} ne_test_data_header_s;
+
+static volatile unsigned char ne_test_stack_sink;
+
+/**
+ * @brief Leave a non-zero pattern on the stack area that the next call will use.
+ */
+static void
+_dirty_stack (void)
+{
+  unsigned char pattern[4096];
+
+  memset (pattern, 0xAA, sizeof (pattern));
+  ne_test_stack_sink = pattern[sizeof (pattern) - 1];
+}
+
+/**
+ * @brief Serialize an edge data handle holding a single raw memory and no metadata.
+ */
+static void
+_get_serialized_data (void **data, nns_size_t *data_len, nns_size_t *mem_len)
+{
+  nns_edge_data_h data_h;
+  void *mem;
+  int ret;
+
+  *data = NULL;
+  *data_len = 0U;
+  *mem_len = 64U;
+
+  mem = nns_edge_malloc (*mem_len);
+  ASSERT_TRUE (mem != NULL);
+  memset (mem, 0x5A, *mem_len);
+
+  ret = nns_edge_data_create (&data_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_add (data_h, mem, *mem_len, nns_edge_free);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_serialize (data_h, data, data_len);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ASSERT_EQ (*data_len, sizeof (ne_test_data_header_s) + *mem_len);
+
+  ret = nns_edge_data_destroy (data_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Edge event callback for test.
  */
 static int
@@ -2754,12 +2812,12 @@ TEST (edgeDataIsSerialized, invalidParam02_n)
   void *data;
   int ret;
 
-  data = nns_edge_malloc (100U);
+  data = nns_edge_malloc (sizeof (ne_test_data_header_s));
   ASSERT_TRUE (data != NULL);
-  memset (data, 0, 100U);
+  memset (data, 0, sizeof (ne_test_data_header_s));
 
   /* invalid data key */
-  ret = nns_edge_data_is_serialized (data, 100U);
+  ret = nns_edge_data_is_serialized (data, sizeof (ne_test_data_header_s));
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (data);
@@ -2790,6 +2848,410 @@ TEST (edgeDataIsSerialized, invalidParam03_n)
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Serialize edge-data - the unused part of the header should not leak stack memory.
+ */
+TEST (edgeDataSerialize, headerIsCleared)
+{
+  nns_edge_data_h data_h;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t i;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _dirty_stack ();
+
+  ret = nns_edge_data_serialize (data_h, &data, &data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /** No raw memory and no metadata, the buffer is the header only. */
+  ASSERT_EQ (data_len, sizeof (ne_test_data_header_s));
+
+  /** Only key, version and num_mem are set, the rest including padding is zero. */
+  for (i = offsetof (ne_test_data_header_s, num_mem) + sizeof (uint32_t); i < data_len; i++)
+    EXPECT_EQ (((unsigned char *) data)[i], 0U);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Serialize and deserialize edge-data without metadata.
+ */
+TEST (edgeDataSerialize, noMetadata)
+{
+  nns_edge_data_h data_h;
+  void *data = NULL;
+  void *result = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  nns_size_t result_len = 0U;
+  unsigned int count = 0U;
+  nns_size_t i;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, data, data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_get_count (data_h, &count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (count, 1U);
+
+  ret = nns_edge_data_get (data_h, 0, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (result_len, mem_len);
+  for (i = 0; i < mem_len; i++)
+    EXPECT_EQ (((unsigned char *) result)[i], 0x5AU);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge-data into a handle that is not empty.
+ */
+TEST (edgeDataDeserialize, replaceHandleContent)
+{
+  nns_edge_data_h data_h;
+  void *data = NULL;
+  void *mem = NULL;
+  void *result = NULL;
+  char *result_value = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  nns_size_t result_len = 0U;
+  unsigned int count = 0U;
+  unsigned int i;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /** Fill the handle, deserialize should release these before overwriting them. */
+  for (i = 0; i < 3U; i++) {
+    mem = nns_edge_malloc (128U);
+    ASSERT_TRUE (mem != NULL);
+    memset (mem, 0x11, 128U);
+
+    ret = nns_edge_data_add (data_h, mem, 128U, nns_edge_free);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  }
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, data, data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_get_count (data_h, &count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (count, 1U);
+
+  ret = nns_edge_data_get (data_h, 0, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (result_len, mem_len);
+
+  /** The metadata of the previous content should be gone as well. */
+  ret = nns_edge_data_get_info (data_h, "temp-key", &result_value);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (result_value);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Copy edge-data which was filled by deserialize.
+ */
+TEST (edgeDataDeserialize, copyDeserialized)
+{
+  nns_edge_data_h data_h, copied_h;
+  void *data = NULL;
+  void *result = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  nns_size_t result_len = 0U;
+  unsigned int count = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, data, data_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_copy (data_h, &copied_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_get_count (copied_h, &count);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (count, 1U);
+
+  ret = nns_edge_data_get (copied_h, 0, &result, &result_len);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (result_len, mem_len);
+
+  ret = nns_edge_data_destroy (copied_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Deserialize edge-data - buffer shorter than the header.
+ */
+TEST (edgeDataDeserialize, invalidParam05_n)
+{
+  nns_edge_data_h data_h;
+  void *data;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  data = nns_edge_malloc (1U);
+  ASSERT_TRUE (data != NULL);
+  memset (data, 0, 1U);
+
+  ret = nns_edge_data_deserialize (data_h, data, 1U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Deserialize edge-data - the memory sizes in the header overflow.
+ */
+TEST (edgeDataDeserialize, invalidParam06_n)
+{
+  nns_edge_data_h data_h;
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->num_mem = 2U;
+  header->data_len[0] = 0xFFFFFFFFFFFFFF00ULL;
+  header->data_len[1] = mem_len - header->data_len[0];
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_deserialize (data_h, data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - buffer shorter than the header.
+ */
+TEST (edgeDataIsSerialized, invalidParam04_n)
+{
+  void *data;
+  int ret;
+
+  data = nns_edge_malloc (1U);
+  ASSERT_TRUE (data != NULL);
+  memset (data, 0, 1U);
+
+  ret = nns_edge_data_is_serialized (data, 1U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - valid header truncated by one byte.
+ */
+TEST (edgeDataIsSerialized, invalidParam05_n)
+{
+  void *data = NULL;
+  void *truncated;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  nns_size_t truncated_len;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  truncated_len = sizeof (ne_test_data_header_s) - 1U;
+  truncated = nns_edge_memdup (data, truncated_len);
+  ASSERT_TRUE (truncated != NULL);
+
+  ret = nns_edge_data_is_serialized (truncated, truncated_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (truncated);
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - the memory sizes in the header overflow.
+ */
+TEST (edgeDataIsSerialized, invalidParam06_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->num_mem = 2U;
+  header->data_len[0] = 0xFFFFFFFFFFFFFF00ULL;
+  header->data_len[1] = mem_len - header->data_len[0];
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - the header declares an empty memory.
+ */
+TEST (edgeDataIsSerialized, invalidParam07_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->num_mem = 2U;
+  header->data_len[0] = 0U;
+  header->data_len[1] = mem_len;
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - the metadata does not fit in the buffer.
+ */
+TEST (edgeDataIsSerialized, invalidParam08_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->meta_len = 0x100U;
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - the header declares less than the buffer holds.
+ */
+TEST (edgeDataIsSerialized, invalidParam09_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->data_len[0] = mem_len - 1U;
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - invalid version in the header.
+ */
+TEST (edgeDataIsSerialized, invalidParam10_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->version = 0ULL;
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief Util to check serialized data - too many memories in the header.
+ */
+TEST (edgeDataIsSerialized, invalidParam11_n)
+{
+  ne_test_data_header_s *header;
+  void *data = NULL;
+  nns_size_t data_len = 0U;
+  nns_size_t mem_len = 0U;
+  int ret;
+
+  _get_serialized_data (&data, &data_len, &mem_len);
+
+  header = (ne_test_data_header_s *) data;
+  header->num_mem = NNS_EDGE_DATA_LIMIT + 1;
+
+  ret = nns_edge_data_is_serialized (data, data_len);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (data);
 }
