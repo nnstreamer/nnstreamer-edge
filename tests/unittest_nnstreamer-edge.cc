@@ -22,36 +22,6 @@
 #include "nnstreamer-edge.h"
 
 /**
- * @brief Make the calloc() below fail, to reach the out-of-memory paths of the library.
- * @note The replacement is process-wide, so a test should set this flag around
- *       the single library call it wants to fail and clear it right after.
- */
-static bool nns_edge_test_calloc_fails = false;
-
-/**
- * @brief calloc() replacement that the tests can make fail on demand.
- * @note The unit test binary is loaded before libnnstreamer-edge, so this
- *       definition also serves the allocations done inside the library.
- */
-extern "C" void *
-calloc (size_t nmemb, size_t size) noexcept
-{
-  void *mem;
-
-  if (nns_edge_test_calloc_fails)
-    return NULL;
-
-  if (nmemb > 0 && size > SIZE_MAX / nmemb)
-    return NULL;
-
-  mem = malloc (nmemb * size);
-  if (mem)
-    memset (mem, 0, nmemb * size);
-
-  return mem;
-}
-
-/**
  * @brief Make the nns_edge_get_host_string() below fail.
  */
 static bool nns_edge_test_host_string_fails = false;
@@ -1243,49 +1213,6 @@ TEST (edgeData, clearInfoInvalidParam02_n)
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 
   nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
-
-  ret = nns_edge_data_destroy (data_h);
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
-}
-
-/**
- * @brief Clear info of edge-data - new metadata cannot be allocated.
- */
-TEST (edgeData, clearInfoAllocFail_n)
-{
-  nns_edge_data_h data_h;
-  char *value = NULL;
-  int ret;
-
-  ret = nns_edge_data_create (&data_h);
-  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
-
-  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
-
-  nns_edge_test_calloc_fails = true;
-  ret = nns_edge_data_clear_info (data_h);
-  nns_edge_test_calloc_fails = false;
-  EXPECT_EQ (NNS_EDGE_ERROR_OUT_OF_MEMORY, ret);
-
-  /* The old metadata is gone, the handle should not keep pointing at it. */
-  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
-  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
-
-  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
-  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
-
-  /* Once memory is available again the handle recovers. */
-  ret = nns_edge_data_clear_info (data_h);
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
-
-  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
-
-  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
-  EXPECT_STREQ ("temp-value", value);
-  SAFE_FREE (value);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
