@@ -8,16 +8,15 @@
  */
 
 #include <gtest/gtest.h>
-#include "nnstreamer-edge.h"
-#include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-log.h"
+#include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-util.h"
+#include "nnstreamer-edge.h"
 
 /**
  * @brief Data struct for unittest.
  */
-typedef struct
-{
+typedef struct {
   nns_edge_h handle;
   bool running;
   bool is_server;
@@ -139,7 +138,7 @@ _check_mqtt_broker ()
 /**
  * @brief Connect to the local host using the information received from mqtt.
  */
-TEST(edgeMqttHybrid, connectLocal)
+TEST (edgeMqttHybrid, connectLocal)
 {
   nns_edge_h server_h, client_h;
   ne_test_data_s *_td_server, *_td_client;
@@ -170,7 +169,7 @@ TEST(edgeMqttHybrid, connectLocal)
 
   /* Prepare client */
   nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_HYBRID,
-     NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
   nns_edge_set_event_callback (client_h, _test_edge_hybrid_event_cb, _td_client);
   nns_edge_set_info (client_h, "CAPS", "test client");
   nns_edge_set_info (client_h, "TOPIC", "temp-mqtt-topic");
@@ -242,7 +241,7 @@ TEST(edgeMqttHybrid, connectLocal)
 /**
  * @brief Connect to the mqtt broker with invalid param.
  */
-TEST(edgeMqttHybrid, connectInvalidParam1_n)
+TEST (edgeMqttHybrid, connectInvalidParam1_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -260,7 +259,7 @@ TEST(edgeMqttHybrid, connectInvalidParam1_n)
 /**
  * @brief Connect to the mqtt broker with invalid param.
  */
-TEST(edgeMqttHybrid, connectInvalidParam2_n)
+TEST (edgeMqttHybrid, connectInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -278,7 +277,7 @@ TEST(edgeMqttHybrid, connectInvalidParam2_n)
 /**
  * @brief Connect to the mqtt broker with invalid param.
  */
-TEST(edgeMqttHybrid, connectInvalidParam3_n)
+TEST (edgeMqttHybrid, connectInvalidParam3_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -296,7 +295,7 @@ TEST(edgeMqttHybrid, connectInvalidParam3_n)
 /**
  * @brief Connect to the mqtt broker with invalid param.
  */
-TEST(edgeMqttHybrid, connectInvalidParam4_n)
+TEST (edgeMqttHybrid, connectInvalidParam4_n)
 {
   int ret = -1;
 
@@ -310,7 +309,7 @@ TEST(edgeMqttHybrid, connectInvalidParam4_n)
 /**
  * @brief Connect to the mqtt broker with invalid host address.
  */
-TEST(edgeMqttHybrid, connectInvalidParam5_n)
+TEST (edgeMqttHybrid, connectInvalidParam5_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -318,14 +317,15 @@ TEST(edgeMqttHybrid, connectInvalidParam5_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "tcp://none", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "tcp://none", 1883, &broker_h);
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
  * @brief Connect to the mqtt broker with invalid port number.
  */
-TEST(edgeMqttHybrid, connectInvalidParam6_n)
+TEST (edgeMqttHybrid, connectInvalidParam6_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -340,7 +340,7 @@ TEST(edgeMqttHybrid, connectInvalidParam6_n)
 /**
  * @brief Close the mqtt handle with invalid param.
  */
-TEST(edgeMqttHybrid, closeInvalidParam_n)
+TEST (edgeMqttHybrid, closeInvalidParam_n)
 {
   int ret = -1;
 
@@ -354,7 +354,7 @@ TEST(edgeMqttHybrid, closeInvalidParam_n)
 /**
  * @brief Publish with invalid param.
  */
-TEST(edgeMqttHybrid, publishInvalidParam_n)
+TEST (edgeMqttHybrid, publishInvalidParam_n)
 {
   int ret = -1;
   const char *msg = "TEMP_MESSAGE";
@@ -369,7 +369,7 @@ TEST(edgeMqttHybrid, publishInvalidParam_n)
 /**
  * @brief Publish with invalid param.
  */
-TEST(edgeMqttHybrid, publishInvalidParam2_n)
+TEST (edgeMqttHybrid, publishInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -378,7 +378,8 @@ TEST(edgeMqttHybrid, publishInvalidParam2_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* data is null */
@@ -392,7 +393,7 @@ TEST(edgeMqttHybrid, publishInvalidParam2_n)
 /**
  * @brief Publish with invalid param.
  */
-TEST(edgeMqttHybrid, publishInvalidParam3_n)
+TEST (edgeMqttHybrid, publishInvalidParam3_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -401,7 +402,8 @@ TEST(edgeMqttHybrid, publishInvalidParam3_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   /* data length is 0 */
@@ -415,7 +417,7 @@ TEST(edgeMqttHybrid, publishInvalidParam3_n)
 /**
  * @brief Subscribe the topic with invalid param.
  */
-TEST(edgeMqttHybrid, subscribeInvalidParam_n)
+TEST (edgeMqttHybrid, subscribeInvalidParam_n)
 {
   int ret = -1;
 
@@ -429,7 +431,7 @@ TEST(edgeMqttHybrid, subscribeInvalidParam_n)
 /**
  * @brief Get message with invalid param.
  */
-TEST(edgeMqttHybrid, getMessageInvalidParam1_n)
+TEST (edgeMqttHybrid, getMessageInvalidParam1_n)
 {
   int ret = -1;
   void *msg = NULL;
@@ -445,7 +447,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam1_n)
 /**
  * @brief Get message with invalid param.
  */
-TEST(edgeMqttHybrid, getMessageInvalidParam2_n)
+TEST (edgeMqttHybrid, getMessageInvalidParam2_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -454,7 +456,8 @@ TEST(edgeMqttHybrid, getMessageInvalidParam2_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (broker_h, NULL, &msg_len, 0U);
@@ -467,7 +470,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam2_n)
 /**
  * @brief Get message with invalid param.
  */
-TEST(edgeMqttHybrid, getMessageInvalidParam3_n)
+TEST (edgeMqttHybrid, getMessageInvalidParam3_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -476,7 +479,8 @@ TEST(edgeMqttHybrid, getMessageInvalidParam3_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (broker_h, &msg, NULL, 0U);
@@ -489,7 +493,7 @@ TEST(edgeMqttHybrid, getMessageInvalidParam3_n)
 /**
  * @brief Get message from empty message queue.
  */
-TEST(edgeMqttHybrid, getMessageWithinTimeout_n)
+TEST (edgeMqttHybrid, getMessageWithinTimeout_n)
 {
   int ret = -1;
   nns_edge_broker_h broker_h;
@@ -499,7 +503,8 @@ TEST(edgeMqttHybrid, getMessageWithinTimeout_n)
   if (!_check_mqtt_broker ())
     return;
 
-  ret = nns_edge_mqtt_connect ("temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-id", "temp-mqtt-topic", "127.0.0.1", 1883, &broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   ret = nns_edge_mqtt_get_message (broker_h, &msg, &msg_len, 1000U);
@@ -568,7 +573,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 /**
  * @brief Connect to local host, multiple clients.
  */
-TEST(edgeMqtt, connectLocal)
+TEST (edgeMqtt, connectLocal)
 {
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
@@ -691,7 +696,7 @@ TEST(edgeMqtt, connectLocal)
 /**
  * @brief Check connection with invalid param.
  */
-TEST(edgeMqtt, checkConnectionInvalidParam_n)
+TEST (edgeMqtt, checkConnectionInvalidParam_n)
 {
   int ret = -1;
 
@@ -705,7 +710,7 @@ TEST(edgeMqtt, checkConnectionInvalidParam_n)
 /**
  * @brief Set event callback with invalid param.
  */
-TEST(edgeMqtt, setEventCallbackInvalidParam_n)
+TEST (edgeMqtt, setEventCallbackInvalidParam_n)
 {
   int ret = -1;
 
