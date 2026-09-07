@@ -942,6 +942,9 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
 {
   int status;
 
+  if (eh->send_thread)
+    return NNS_EDGE_ERROR_NONE;
+
   status = pthread_create (&eh->send_thread, NULL, _nns_edge_send_thread, eh);
 
   if (status != 0) {
@@ -1218,6 +1221,9 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
   socklen_t saddr_len = sizeof (struct sockaddr_in);
   int status;
 
+  if (eh->listener_thread)
+    return true;
+
   if (!_fill_socket_addr (&saddr, eh->host, eh->port)) {
     nns_edge_loge ("Failed to create listener, invalid host: %s.", eh->host);
     return false;
@@ -1405,6 +1411,23 @@ nns_edge_create_handle (const char *id, nns_edge_connect_type_e connect_type,
 }
 
 /**
+ * @brief Internal function to connect to MQTT broker, releasing the previous broker handle if it exists.
+ * @note This function should be called with handle lock.
+ */
+static int
+_nns_edge_connect_to_broker (nns_edge_handle_s * eh, const char *topic)
+{
+  if (eh->broker_h) {
+    if (NNS_EDGE_ERROR_NONE != nns_edge_mqtt_close (eh->broker_h))
+      nns_edge_logw ("Failed to close the previous mqtt connection.");
+    eh->broker_h = NULL;
+  }
+
+  return nns_edge_mqtt_connect (eh->id, topic, eh->dest_host, eh->dest_port,
+      &eh->broker_h);
+}
+
+/**
  * @brief Start the nnstreamer edge.
  */
 int
@@ -1425,6 +1448,12 @@ nns_edge_start (nns_edge_h edge_h)
   }
 
   nns_edge_lock (eh);
+
+  if (eh->is_started) {
+    nns_edge_logi ("Edge is already started. Nothing to do.");
+    nns_edge_unlock (eh);
+    return NNS_EDGE_ERROR_NONE;
+  }
 
   if (NNS_EDGE_CONNECT_TYPE_CUSTOM == eh->connect_type) {
     ret = nns_edge_custom_start (eh->custom_connection_h);
@@ -1458,8 +1487,7 @@ nns_edge_start (nns_edge_h edge_h)
       topic = nns_edge_strdup_printf ("edge/inference/device-%s/%s/",
           eh->id, eh->topic);
 
-      ret = nns_edge_mqtt_connect (eh->id, topic, eh->dest_host, eh->dest_port,
-          &eh->broker_h);
+      ret = _nns_edge_connect_to_broker (eh, topic);
       SAFE_FREE (topic);
 
       if (NNS_EDGE_ERROR_NONE != ret) {
@@ -1728,8 +1756,7 @@ _nns_edge_start_mqtt_sub (nns_edge_handle_s * eh)
   if (!nns_edge_mqtt_is_connected (eh->broker_h)) {
     topic = nns_edge_strdup_printf ("edge/inference/+/%s/#", eh->topic);
 
-    ret = nns_edge_mqtt_connect (eh->id, topic, eh->dest_host, eh->dest_port,
-        &eh->broker_h);
+    ret = _nns_edge_connect_to_broker (eh, topic);
     SAFE_FREE (topic);
 
     if (NNS_EDGE_ERROR_NONE != ret) {
