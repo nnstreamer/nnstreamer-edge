@@ -8,20 +8,19 @@
  */
 
 #include <gtest/gtest.h>
-#include "nnstreamer-edge.h"
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
+#include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-metadata.h"
 #include "nnstreamer-edge-mqtt.h"
-#include "nnstreamer-edge-log.h"
-#include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge-queue.h"
+#include "nnstreamer-edge-util.h"
+#include "nnstreamer-edge.h"
 
 /**
  * @brief Data struct for unittest.
  */
-typedef struct
-{
+typedef struct {
   nns_edge_h handle;
   bool running;
   bool is_server;
@@ -133,7 +132,7 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 /**
  * @brief Connect to local host, multiple clients.
  */
-TEST(edge, connectLocal)
+TEST (edge, connectLocal)
 {
   nns_edge_h server_h, client1_h, client2_h;
   ne_test_data_s *_td_server, *_td_client1, *_td_client2;
@@ -267,7 +266,7 @@ TEST(edge, connectLocal)
 /**
  * @brief Create edge handle - invalid param.
  */
-TEST(edge, createHandleInvalidParam01_n)
+TEST (edge, createHandleInvalidParam01_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -280,7 +279,7 @@ TEST(edge, createHandleInvalidParam01_n)
 /**
  * @brief Create edge handle - invalid param.
  */
-TEST(edge, createHandleInvalidParam02_n)
+TEST (edge, createHandleInvalidParam02_n)
 {
   int ret;
 
@@ -292,7 +291,7 @@ TEST(edge, createHandleInvalidParam02_n)
 /**
  * @brief Create edge handle - invalid param.
  */
-TEST(edge, createHandleInvalidParam03_n)
+TEST (edge, createHandleInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -305,7 +304,7 @@ TEST(edge, createHandleInvalidParam03_n)
 /**
  * @brief Start - invalid param.
  */
-TEST(edge, startInvalidParam01_n)
+TEST (edge, startInvalidParam01_n)
 {
   int ret;
 
@@ -316,7 +315,7 @@ TEST(edge, startInvalidParam01_n)
 /**
  * @brief Start - invalid param.
  */
-TEST(edge, startInvalidParam02_n)
+TEST (edge, startInvalidParam02_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -339,7 +338,7 @@ TEST(edge, startInvalidParam02_n)
 /**
  * @brief Release edge handle - invalid param.
  */
-TEST(edge, releaseHandleInvalidParam01_n)
+TEST (edge, releaseHandleInvalidParam01_n)
 {
   int ret;
 
@@ -350,7 +349,7 @@ TEST(edge, releaseHandleInvalidParam01_n)
 /**
  * @brief Release edge handle - invalid param.
  */
-TEST(edge, releaseHandleInvalidParam02_n)
+TEST (edge, releaseHandleInvalidParam02_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -373,7 +372,7 @@ TEST(edge, releaseHandleInvalidParam02_n)
 /**
  * @brief Set event callback - null param to clear event callback.
  */
-TEST(edge, setEventCbSetNullCallback)
+TEST (edge, setEventCbSetNullCallback)
 {
   nns_edge_h edge_h;
   ne_test_data_s *_td;
@@ -404,7 +403,7 @@ TEST(edge, setEventCbSetNullCallback)
 /**
  * @brief Set event callback - invalid param.
  */
-TEST(edge, setEventCbInvalidParam01_n)
+TEST (edge, setEventCbInvalidParam01_n)
 {
   int ret;
 
@@ -415,7 +414,7 @@ TEST(edge, setEventCbInvalidParam01_n)
 /**
  * @brief Set event callback - invalid param.
  */
-TEST(edge, setEventCbInvalidParam02_n)
+TEST (edge, setEventCbInvalidParam02_n)
 {
   nns_edge_h edge_h;
   ne_test_data_s *_td;
@@ -444,7 +443,7 @@ TEST(edge, setEventCbInvalidParam02_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam01_n)
+TEST (edge, connectInvalidParam01_n)
 {
   int ret;
 
@@ -455,7 +454,7 @@ TEST(edge, connectInvalidParam01_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam02_n)
+TEST (edge, connectInvalidParam02_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -481,7 +480,7 @@ TEST(edge, connectInvalidParam02_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam03_n)
+TEST (edge, connectInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -503,7 +502,7 @@ TEST(edge, connectInvalidParam03_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam04_n)
+TEST (edge, connectInvalidParam04_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -525,7 +524,7 @@ TEST(edge, connectInvalidParam04_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam05_n)
+TEST (edge, connectInvalidParam05_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -552,7 +551,7 @@ TEST(edge, connectInvalidParam05_n)
 /**
  * @brief Connect - invalid param.
  */
-TEST(edge, connectInvalidParam06_n)
+TEST (edge, connectInvalidParam06_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -575,7 +574,7 @@ TEST(edge, connectInvalidParam06_n)
 /**
  * @brief Disconnect - invalid param.
  */
-TEST(edge, disconnectInvalidParam01_n)
+TEST (edge, disconnectInvalidParam01_n)
 {
   int ret;
 
@@ -586,7 +585,7 @@ TEST(edge, disconnectInvalidParam01_n)
 /**
  * @brief Disconnect - invalid param.
  */
-TEST(edge, disconnectInvalidParam02_n)
+TEST (edge, disconnectInvalidParam02_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -609,7 +608,7 @@ TEST(edge, disconnectInvalidParam02_n)
 /**
  * @brief Send - invalid param.
  */
-TEST(edge, sendInvalidParam01_n)
+TEST (edge, sendInvalidParam01_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -630,7 +629,7 @@ TEST(edge, sendInvalidParam01_n)
 /**
  * @brief Send - invalid param.
  */
-TEST(edge, sendInvalidParam02_n)
+TEST (edge, sendInvalidParam02_n)
 {
   nns_edge_h edge_h;
   nns_edge_data_h data_h;
@@ -663,7 +662,7 @@ TEST(edge, sendInvalidParam02_n)
 /**
  * @brief Send - invalid param.
  */
-TEST(edge, sendInvalidParam03_n)
+TEST (edge, sendInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -682,7 +681,7 @@ TEST(edge, sendInvalidParam03_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam01_n)
+TEST (edge, setInfoInvalidParam01_n)
 {
   int ret;
 
@@ -693,7 +692,7 @@ TEST(edge, setInfoInvalidParam01_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam02_n)
+TEST (edge, setInfoInvalidParam02_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -716,7 +715,7 @@ TEST(edge, setInfoInvalidParam02_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam03_n)
+TEST (edge, setInfoInvalidParam03_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -735,7 +734,7 @@ TEST(edge, setInfoInvalidParam03_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam04_n)
+TEST (edge, setInfoInvalidParam04_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -754,7 +753,7 @@ TEST(edge, setInfoInvalidParam04_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam05_n)
+TEST (edge, setInfoInvalidParam05_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -773,7 +772,7 @@ TEST(edge, setInfoInvalidParam05_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam06_n)
+TEST (edge, setInfoInvalidParam06_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -792,7 +791,7 @@ TEST(edge, setInfoInvalidParam06_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam07_n)
+TEST (edge, setInfoInvalidParam07_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -814,7 +813,7 @@ TEST(edge, setInfoInvalidParam07_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam08_n)
+TEST (edge, setInfoInvalidParam08_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -836,7 +835,7 @@ TEST(edge, setInfoInvalidParam08_n)
 /**
  * @brief Set info - invalid param.
  */
-TEST(edge, setInfoInvalidParam09_n)
+TEST (edge, setInfoInvalidParam09_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -856,7 +855,7 @@ TEST(edge, setInfoInvalidParam09_n)
 /**
  * @brief Get info.
  */
-TEST(edge, getInfo)
+TEST (edge, getInfo)
 {
   nns_edge_h edge_h;
   char *value = NULL;
@@ -944,7 +943,7 @@ TEST(edge, getInfo)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam01_n)
+TEST (edge, getInfoInvalidParam01_n)
 {
   char *value = NULL;
   int ret;
@@ -956,7 +955,7 @@ TEST(edge, getInfoInvalidParam01_n)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam02_n)
+TEST (edge, getInfoInvalidParam02_n)
 {
   nns_edge_h edge_h;
   char *value;
@@ -980,7 +979,7 @@ TEST(edge, getInfoInvalidParam02_n)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam03_n)
+TEST (edge, getInfoInvalidParam03_n)
 {
   nns_edge_h edge_h;
   char *value = NULL;
@@ -1000,7 +999,7 @@ TEST(edge, getInfoInvalidParam03_n)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam04_n)
+TEST (edge, getInfoInvalidParam04_n)
 {
   nns_edge_h edge_h;
   char *value = NULL;
@@ -1020,7 +1019,7 @@ TEST(edge, getInfoInvalidParam04_n)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam05_n)
+TEST (edge, getInfoInvalidParam05_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -1039,7 +1038,7 @@ TEST(edge, getInfoInvalidParam05_n)
 /**
  * @brief Get info - invalid param.
  */
-TEST(edge, getInfoInvalidParam06_n)
+TEST (edge, getInfoInvalidParam06_n)
 {
   nns_edge_h edge_h;
   int ret;
@@ -1059,7 +1058,7 @@ TEST(edge, getInfoInvalidParam06_n)
 /**
  * @brief Clear info of edge-data - invalid param.
  */
-TEST(edgeData, clearInfoInvalidParam01_n)
+TEST (edgeData, clearInfoInvalidParam01_n)
 {
   int ret;
 
@@ -1070,7 +1069,7 @@ TEST(edgeData, clearInfoInvalidParam01_n)
 /**
  * @brief Clear info of edge-data - invalid param.
  */
-TEST(edgeData, clearInfoInvalidParam02_n)
+TEST (edgeData, clearInfoInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1092,7 +1091,7 @@ TEST(edgeData, clearInfoInvalidParam02_n)
 /**
  * @brief Clear info of edge data.
  */
-TEST(edgeData, clearInfo)
+TEST (edgeData, clearInfo)
 {
   nns_edge_data_h data_h;
   char *value = NULL;
@@ -1130,7 +1129,7 @@ TEST(edgeData, clearInfo)
 /**
  * @brief Create edge-data - invalid param.
  */
-TEST(edgeData, createInvalidParam01_n)
+TEST (edgeData, createInvalidParam01_n)
 {
   int ret;
 
@@ -1141,7 +1140,7 @@ TEST(edgeData, createInvalidParam01_n)
 /**
  * @brief Destroy edge-data - invalid param.
  */
-TEST(edgeData, destroyInvalidParam01_n)
+TEST (edgeData, destroyInvalidParam01_n)
 {
   int ret;
 
@@ -1152,7 +1151,7 @@ TEST(edgeData, destroyInvalidParam01_n)
 /**
  * @brief Destroy edge-data - invalid param.
  */
-TEST(edgeData, destroyInvalidParam02_n)
+TEST (edgeData, destroyInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1174,7 +1173,7 @@ TEST(edgeData, destroyInvalidParam02_n)
 /**
  * @brief Validate edge-data.
  */
-TEST(edgeData, validate)
+TEST (edgeData, validate)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1192,7 +1191,7 @@ TEST(edgeData, validate)
 /**
  * @brief Validate edge-data - invalid param.
  */
-TEST(edgeData, validateInvalidParam01_n)
+TEST (edgeData, validateInvalidParam01_n)
 {
   int ret;
 
@@ -1203,7 +1202,7 @@ TEST(edgeData, validateInvalidParam01_n)
 /**
  * @brief Validate edge-data - invalid param.
  */
-TEST(edgeData, validateInvalidParam02_n)
+TEST (edgeData, validateInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1225,7 +1224,7 @@ TEST(edgeData, validateInvalidParam02_n)
 /**
  * @brief Copy edge-data.
  */
-TEST(edgeData, copy)
+TEST (edgeData, copy)
 {
   nns_edge_data_h src_h, desc_h;
   void *data, *result;
@@ -1285,7 +1284,7 @@ TEST(edgeData, copy)
 /**
  * @brief Copy edge-data - invalid param.
  */
-TEST(edgeData, copyInvalidParam01_n)
+TEST (edgeData, copyInvalidParam01_n)
 {
   nns_edge_data_h desc_h;
   int ret;
@@ -1297,7 +1296,7 @@ TEST(edgeData, copyInvalidParam01_n)
 /**
  * @brief Copy edge-data - invalid param.
  */
-TEST(edgeData, copyInvalidParam02_n)
+TEST (edgeData, copyInvalidParam02_n)
 {
   nns_edge_data_h src_h, desc_h;
   int ret;
@@ -1319,7 +1318,7 @@ TEST(edgeData, copyInvalidParam02_n)
 /**
  * @brief Copy edge-data - invalid param.
  */
-TEST(edgeData, copyInvalidParam03_n)
+TEST (edgeData, copyInvalidParam03_n)
 {
   nns_edge_data_h src_h;
   int ret;
@@ -1337,7 +1336,7 @@ TEST(edgeData, copyInvalidParam03_n)
 /**
  * @brief Add edge-data - max data limit.
  */
-TEST(edgeData, addMaxData_n)
+TEST (edgeData, addMaxData_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1368,7 +1367,7 @@ TEST(edgeData, addMaxData_n)
 /**
  * @brief Add edge-data - invalid param.
  */
-TEST(edgeData, addInvalidParam01_n)
+TEST (edgeData, addInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -1387,7 +1386,7 @@ TEST(edgeData, addInvalidParam01_n)
 /**
  * @brief Add edge-data - invalid param.
  */
-TEST(edgeData, addInvalidParam02_n)
+TEST (edgeData, addInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1417,7 +1416,7 @@ TEST(edgeData, addInvalidParam02_n)
 /**
  * @brief Add edge-data - invalid param.
  */
-TEST(edgeData, addInvalidParam03_n)
+TEST (edgeData, addInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1443,7 +1442,7 @@ TEST(edgeData, addInvalidParam03_n)
 /**
  * @brief Add edge-data - invalid param.
  */
-TEST(edgeData, addInvalidParam04_n)
+TEST (edgeData, addInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1469,7 +1468,7 @@ TEST(edgeData, addInvalidParam04_n)
 /**
  * @brief Get edge-data.
  */
-TEST(edgeData, get)
+TEST (edgeData, get)
 {
   nns_edge_data_h data_h;
   void *data, *result;
@@ -1505,7 +1504,7 @@ TEST(edgeData, get)
 /**
  * @brief Get edge-data - invalid param.
  */
-TEST(edgeData, getInvalidParam01_n)
+TEST (edgeData, getInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -1518,7 +1517,7 @@ TEST(edgeData, getInvalidParam01_n)
 /**
  * @brief Get edge-data - invalid param.
  */
-TEST(edgeData, getInvalidParam02_n)
+TEST (edgeData, getInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data, *result;
@@ -1551,7 +1550,7 @@ TEST(edgeData, getInvalidParam02_n)
 /**
  * @brief Get edge-data - invalid param.
  */
-TEST(edgeData, getInvalidParam03_n)
+TEST (edgeData, getInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data, *result;
@@ -1581,7 +1580,7 @@ TEST(edgeData, getInvalidParam03_n)
 /**
  * @brief Get edge-data - invalid param.
  */
-TEST(edgeData, getInvalidParam04_n)
+TEST (edgeData, getInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1610,7 +1609,7 @@ TEST(edgeData, getInvalidParam04_n)
 /**
  * @brief Get edge-data - invalid param.
  */
-TEST(edgeData, getInvalidParam05_n)
+TEST (edgeData, getInvalidParam05_n)
 {
   nns_edge_data_h data_h;
   void *data, *result;
@@ -1639,7 +1638,7 @@ TEST(edgeData, getInvalidParam05_n)
 /**
  * @brief Get count of edge-data - invalid param.
  */
-TEST(edgeData, getCountInvalidParam01_n)
+TEST (edgeData, getCountInvalidParam01_n)
 {
   unsigned int count;
   int ret;
@@ -1651,7 +1650,7 @@ TEST(edgeData, getCountInvalidParam01_n)
 /**
  * @brief Get count of edge-data - invalid param.
  */
-TEST(edgeData, getCountInvalidParam02_n)
+TEST (edgeData, getCountInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1685,7 +1684,7 @@ TEST(edgeData, getCountInvalidParam02_n)
 /**
  * @brief Get count of edge-data - invalid param.
  */
-TEST(edgeData, getCountInvalidParam03_n)
+TEST (edgeData, getCountInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1714,7 +1713,7 @@ TEST(edgeData, getCountInvalidParam03_n)
 /**
  * @brief Set info of edge-data - invalid param.
  */
-TEST(edgeData, setInfoInvalidParam01_n)
+TEST (edgeData, setInfoInvalidParam01_n)
 {
   int ret;
 
@@ -1725,7 +1724,7 @@ TEST(edgeData, setInfoInvalidParam01_n)
 /**
  * @brief Set info of edge-data - invalid param.
  */
-TEST(edgeData, setInfoInvalidParam02_n)
+TEST (edgeData, setInfoInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1747,7 +1746,7 @@ TEST(edgeData, setInfoInvalidParam02_n)
 /**
  * @brief Set info of edge-data - invalid param.
  */
-TEST(edgeData, setInfoInvalidParam03_n)
+TEST (edgeData, setInfoInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1765,7 +1764,7 @@ TEST(edgeData, setInfoInvalidParam03_n)
 /**
  * @brief Set info of edge-data - invalid param.
  */
-TEST(edgeData, setInfoInvalidParam04_n)
+TEST (edgeData, setInfoInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1783,7 +1782,7 @@ TEST(edgeData, setInfoInvalidParam04_n)
 /**
  * @brief Get info of edge-data - invalid param.
  */
-TEST(edgeData, getInfoInvalidParam01_n)
+TEST (edgeData, getInfoInvalidParam01_n)
 {
   char *value = NULL;
   int ret;
@@ -1795,7 +1794,7 @@ TEST(edgeData, getInfoInvalidParam01_n)
 /**
  * @brief Get info of edge-data - invalid param.
  */
-TEST(edgeData, getInfoInvalidParam02_n)
+TEST (edgeData, getInfoInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   char *value = NULL;
@@ -1821,7 +1820,7 @@ TEST(edgeData, getInfoInvalidParam02_n)
 /**
  * @brief Get info of edge-data - invalid param.
  */
-TEST(edgeData, getInfoInvalidParam03_n)
+TEST (edgeData, getInfoInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   char *value = NULL;
@@ -1843,7 +1842,7 @@ TEST(edgeData, getInfoInvalidParam03_n)
 /**
  * @brief Get info of edge-data - invalid param.
  */
-TEST(edgeData, getInfoInvalidParam04_n)
+TEST (edgeData, getInfoInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1864,7 +1863,7 @@ TEST(edgeData, getInfoInvalidParam04_n)
 /**
  * @brief Get info of edge-data - invalid param.
  */
-TEST(edgeData, getInfoInvalidParam05_n)
+TEST (edgeData, getInfoInvalidParam05_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -1885,7 +1884,7 @@ TEST(edgeData, getInfoInvalidParam05_n)
 /**
  * @brief Serialize meta in edge-data - invalid param.
  */
-TEST(edgeData, serializeInvalidParam01_n)
+TEST (edgeData, serializeInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -1898,7 +1897,7 @@ TEST(edgeData, serializeInvalidParam01_n)
 /**
  * @brief Serialize meta in edge-data - invalid param.
  */
-TEST(edgeData, serializeInvalidParam02_n)
+TEST (edgeData, serializeInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1925,7 +1924,7 @@ TEST(edgeData, serializeInvalidParam02_n)
 /**
  * @brief Serialize meta in edge-data - invalid param.
  */
-TEST(edgeData, serializeInvalidParam03_n)
+TEST (edgeData, serializeInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   nns_size_t data_len;
@@ -1947,7 +1946,7 @@ TEST(edgeData, serializeInvalidParam03_n)
 /**
  * @brief Serialize meta in edge-data - invalid param.
  */
-TEST(edgeData, serializeInvalidParam04_n)
+TEST (edgeData, serializeInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1969,7 +1968,7 @@ TEST(edgeData, serializeInvalidParam04_n)
 /**
  * @brief Deserialize meta to edge-data - invalid param.
  */
-TEST(edgeData, deserializeInvalidParam01_n)
+TEST (edgeData, deserializeInvalidParam01_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -1997,7 +1996,7 @@ TEST(edgeData, deserializeInvalidParam01_n)
 /**
  * @brief Deserialize meta to edge-data - invalid param.
  */
-TEST(edgeData, deserializeInvalidParam02_n)
+TEST (edgeData, deserializeInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2029,7 +2028,7 @@ TEST(edgeData, deserializeInvalidParam02_n)
 /**
  * @brief Deserialize meta to edge-data - invalid param.
  */
-TEST(edgeData, deserializeInvalidParam03_n)
+TEST (edgeData, deserializeInvalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2057,7 +2056,7 @@ TEST(edgeData, deserializeInvalidParam03_n)
 /**
  * @brief Deserialize meta to edge-data - invalid param.
  */
-TEST(edgeData, deserializeInvalidParam04_n)
+TEST (edgeData, deserializeInvalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2085,7 +2084,7 @@ TEST(edgeData, deserializeInvalidParam04_n)
 /**
  * @brief Serialize and deserialize the edge-data.
  */
-TEST(edgeDataSerialize, normal)
+TEST (edgeDataSerialize, normal)
 {
   nns_edge_data_h src_h, dest_h;
   void *data1, *data2, *result, *serialized_data;
@@ -2166,7 +2165,7 @@ TEST(edgeDataSerialize, normal)
 /**
  * @brief Serialize edge-data - invalid param.
  */
-TEST(edgeDataSerialize, invalidParam01_n)
+TEST (edgeDataSerialize, invalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -2179,7 +2178,7 @@ TEST(edgeDataSerialize, invalidParam01_n)
 /**
  * @brief Serialize edge-data - invalid param.
  */
-TEST(edgeData, invalidParam02_n)
+TEST (edgeData, invalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2206,7 +2205,7 @@ TEST(edgeData, invalidParam02_n)
 /**
  * @brief Clear raw data in edge-data - invalid param.
  */
-TEST(edgeData, clearInvalidParam01_n)
+TEST (edgeData, clearInvalidParam01_n)
 {
   int ret;
 
@@ -2217,7 +2216,7 @@ TEST(edgeData, clearInvalidParam01_n)
 /**
  * @brief Clear raw data in edge-data - invalid param.
  */
-TEST(edgeData, clearInvalidParam02_n)
+TEST (edgeData, clearInvalidParam02_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -2239,7 +2238,7 @@ TEST(edgeData, clearInvalidParam02_n)
 /**
  * @brief Clear raw data in edge-data.
  */
-TEST(edgeData, clear)
+TEST (edgeData, clear)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2258,7 +2257,7 @@ TEST(edgeData, clear)
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
 
   ret = nns_edge_data_get_count (data_h, &count);
-  EXPECT_EQ (NNS_EDGE_ERROR_NONE , ret);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
   EXPECT_EQ (1U, count);
 
   ret = nns_edge_data_clear (data_h);
@@ -2275,7 +2274,7 @@ TEST(edgeData, clear)
 /**
  * @brief Serialize edge-data - invalid param.
  */
-TEST(edgeDataSerialize, invalidParam03_n)
+TEST (edgeDataSerialize, invalidParam03_n)
 {
   nns_edge_data_h data_h;
   nns_size_t data_len;
@@ -2297,7 +2296,7 @@ TEST(edgeDataSerialize, invalidParam03_n)
 /**
  * @brief Serialize edge-data - invalid param.
  */
-TEST(edgeDataSerialize, invalidParam04_n)
+TEST (edgeDataSerialize, invalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2319,7 +2318,7 @@ TEST(edgeDataSerialize, invalidParam04_n)
 /**
  * @brief Deserialize edge-data - invalid param.
  */
-TEST(edgeDataDeserialize, invalidParam01_n)
+TEST (edgeDataDeserialize, invalidParam01_n)
 {
   void *data = NULL;
   int ret;
@@ -2333,7 +2332,7 @@ TEST(edgeDataDeserialize, invalidParam01_n)
 /**
  * @brief Deserialize edge-data - invalid param.
  */
-TEST(edgeDataDeserialize, invalidParam02_n)
+TEST (edgeDataDeserialize, invalidParam02_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2365,7 +2364,7 @@ TEST(edgeDataDeserialize, invalidParam02_n)
 /**
  * @brief Deserialize edge-data - invalid param.
  */
-TEST(edgeDataDeserialize, invalidParam03_n)
+TEST (edgeDataDeserialize, invalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2393,7 +2392,7 @@ TEST(edgeDataDeserialize, invalidParam03_n)
 /**
  * @brief Deserialize edge-data - invalid param.
  */
-TEST(edgeDataDeserialize, invalidParam04_n)
+TEST (edgeDataDeserialize, invalidParam04_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2421,7 +2420,7 @@ TEST(edgeDataDeserialize, invalidParam04_n)
 /**
  * @brief Util to check serialized data - invalid param.
  */
-TEST(edgeDataIsSerialized, invalidParam01_n)
+TEST (edgeDataIsSerialized, invalidParam01_n)
 {
   int ret;
 
@@ -2432,7 +2431,7 @@ TEST(edgeDataIsSerialized, invalidParam01_n)
 /**
  * @brief Util to check serialized data - invalid param.
  */
-TEST(edgeDataIsSerialized, invalidParam02_n)
+TEST (edgeDataIsSerialized, invalidParam02_n)
 {
   void *data;
   int ret;
@@ -2451,7 +2450,7 @@ TEST(edgeDataIsSerialized, invalidParam02_n)
 /**
  * @brief Util to check serialized data - invalid param.
  */
-TEST(edgeDataIsSerialized, invalidParam03_n)
+TEST (edgeDataIsSerialized, invalidParam03_n)
 {
   nns_edge_data_h data_h;
   void *data;
@@ -2480,7 +2479,7 @@ TEST(edgeDataIsSerialized, invalidParam03_n)
 /**
  * @brief Create edge event - invalid param.
  */
-TEST(edgeEvent, createInvalidParam01_n)
+TEST (edgeEvent, createInvalidParam01_n)
 {
   nns_edge_event_h event_h;
   int ret;
@@ -2492,7 +2491,7 @@ TEST(edgeEvent, createInvalidParam01_n)
 /**
  * @brief Create edge event - invalid param.
  */
-TEST(edgeEvent, createInvalidParam02_n)
+TEST (edgeEvent, createInvalidParam02_n)
 {
   int ret;
 
@@ -2503,7 +2502,7 @@ TEST(edgeEvent, createInvalidParam02_n)
 /**
  * @brief Destroy edge event - invalid param.
  */
-TEST(edgeEvent, destroyInvalidParam01_n)
+TEST (edgeEvent, destroyInvalidParam01_n)
 {
   int ret;
 
@@ -2514,7 +2513,7 @@ TEST(edgeEvent, destroyInvalidParam01_n)
 /**
  * @brief Destroy edge event - invalid param.
  */
-TEST(edgeEvent, destroyInvalidParam02_n)
+TEST (edgeEvent, destroyInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2545,7 +2544,7 @@ TEST(edgeEvent, destroyInvalidParam02_n)
 /**
  * @brief Set edge event data - invalid param.
  */
-TEST(edgeEvent, setDataInvalidParam01_n)
+TEST (edgeEvent, setDataInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -2564,7 +2563,7 @@ TEST(edgeEvent, setDataInvalidParam01_n)
 /**
  * @brief Set edge event data - invalid param.
  */
-TEST(edgeEvent, setDataInvalidParam02_n)
+TEST (edgeEvent, setDataInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2590,7 +2589,7 @@ TEST(edgeEvent, setDataInvalidParam02_n)
 /**
  * @brief Set edge event data - invalid param.
  */
-TEST(edgeEvent, setDataInvalidParam03_n)
+TEST (edgeEvent, setDataInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2616,7 +2615,7 @@ TEST(edgeEvent, setDataInvalidParam03_n)
 /**
  * @brief Set edge event data - invalid param.
  */
-TEST(edgeEvent, setDataInvalidParam04_n)
+TEST (edgeEvent, setDataInvalidParam04_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2646,7 +2645,7 @@ TEST(edgeEvent, setDataInvalidParam04_n)
 /**
  * @brief Get edge event data.
  */
-TEST(edgeEvent, getData)
+TEST (edgeEvent, getData)
 {
   nns_edge_event_h event_h;
   void *input = NULL, *output = NULL;
@@ -2677,7 +2676,7 @@ TEST(edgeEvent, getData)
 /**
  * @brief Get edge event data - invalid param.
  */
-TEST(edgeEvent, getDataInvalidParam01_n)
+TEST (edgeEvent, getDataInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -2690,7 +2689,7 @@ TEST(edgeEvent, getDataInvalidParam01_n)
 /**
  * @brief Get edge event data - invalid param.
  */
-TEST(edgeEvent, getDataInvalidParam02_n)
+TEST (edgeEvent, getDataInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   nns_size_t data_len;
@@ -2709,7 +2708,7 @@ TEST(edgeEvent, getDataInvalidParam02_n)
 /**
  * @brief Get edge event data - invalid param.
  */
-TEST(edgeEvent, getDataInvalidParam03_n)
+TEST (edgeEvent, getDataInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2728,7 +2727,7 @@ TEST(edgeEvent, getDataInvalidParam03_n)
 /**
  * @brief Get edge event data - invalid param.
  */
-TEST(edgeEvent, getDataInvalidParam04_n)
+TEST (edgeEvent, getDataInvalidParam04_n)
 {
   nns_edge_event_h event_h;
   void *data;
@@ -2752,7 +2751,7 @@ TEST(edgeEvent, getDataInvalidParam04_n)
 /**
  * @brief Get edge event type.
  */
-TEST(edgeEvent, getType)
+TEST (edgeEvent, getType)
 {
   nns_edge_event_h event_h;
   nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
@@ -2772,7 +2771,7 @@ TEST(edgeEvent, getType)
 /**
  * @brief Get edge event type - invalid param.
  */
-TEST(edgeEvent, getTypeInvalidParam01_n)
+TEST (edgeEvent, getTypeInvalidParam01_n)
 {
   nns_edge_event_e event;
   int ret;
@@ -2784,7 +2783,7 @@ TEST(edgeEvent, getTypeInvalidParam01_n)
 /**
  * @brief Get edge event type - invalid param.
  */
-TEST(edgeEvent, getTypeInvalidParam02_n)
+TEST (edgeEvent, getTypeInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   int ret;
@@ -2802,7 +2801,7 @@ TEST(edgeEvent, getTypeInvalidParam02_n)
 /**
  * @brief Get edge event type - invalid param.
  */
-TEST(edgeEvent, getTypeInvalidParam03_n)
+TEST (edgeEvent, getTypeInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   nns_edge_event_e event;
@@ -2825,7 +2824,7 @@ TEST(edgeEvent, getTypeInvalidParam03_n)
 /**
  * @brief Parse new data of edge event.
  */
-TEST(edgeEvent, parseNewData)
+TEST (edgeEvent, parseNewData)
 {
   nns_edge_event_h event_h;
   nns_edge_data_h data_h, result_h;
@@ -2895,7 +2894,7 @@ TEST(edgeEvent, parseNewData)
 /**
  * @brief Parse new data of edge event - invalid param.
  */
-TEST(edgeEvent, parseNewDataInvalidParam01_n)
+TEST (edgeEvent, parseNewDataInvalidParam01_n)
 {
   nns_edge_data_h data_h;
   int ret;
@@ -2907,7 +2906,7 @@ TEST(edgeEvent, parseNewDataInvalidParam01_n)
 /**
  * @brief Parse new data of edge event - invalid param.
  */
-TEST(edgeEvent, parseNewDataInvalidParam02_n)
+TEST (edgeEvent, parseNewDataInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   int ret;
@@ -2925,7 +2924,7 @@ TEST(edgeEvent, parseNewDataInvalidParam02_n)
 /**
  * @brief Parse new data of edge event - invalid param.
  */
-TEST(edgeEvent, parseNewDataInvalidParam03_n)
+TEST (edgeEvent, parseNewDataInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   nns_edge_data_h data_h;
@@ -2948,7 +2947,7 @@ TEST(edgeEvent, parseNewDataInvalidParam03_n)
 /**
  * @brief Parse new data of edge event - invalid param.
  */
-TEST(edgeEvent, parseNewDataInvalidParam04_n)
+TEST (edgeEvent, parseNewDataInvalidParam04_n)
 {
   nns_edge_event_h event_h;
   nns_edge_data_h data_h;
@@ -2967,7 +2966,7 @@ TEST(edgeEvent, parseNewDataInvalidParam04_n)
 /**
  * @brief Parse capability of edge event.
  */
-TEST(edgeEvent, parseCapability)
+TEST (edgeEvent, parseCapability)
 {
   const char capability[] = "temp-capability";
   nns_edge_event_h event_h;
@@ -2992,7 +2991,7 @@ TEST(edgeEvent, parseCapability)
 /**
  * @brief Parse capability of edge event - invalid param.
  */
-TEST(edgeEvent, parseCapabilityInvalidParam01_n)
+TEST (edgeEvent, parseCapabilityInvalidParam01_n)
 {
   char *caps = NULL;
   int ret;
@@ -3004,7 +3003,7 @@ TEST(edgeEvent, parseCapabilityInvalidParam01_n)
 /**
  * @brief Parse capability of edge event - invalid param.
  */
-TEST(edgeEvent, parseCapabilityInvalidParam02_n)
+TEST (edgeEvent, parseCapabilityInvalidParam02_n)
 {
   nns_edge_event_h event_h;
   int ret;
@@ -3022,7 +3021,7 @@ TEST(edgeEvent, parseCapabilityInvalidParam02_n)
 /**
  * @brief Parse capability of edge event - invalid param.
  */
-TEST(edgeEvent, parseCapabilityInvalidParam03_n)
+TEST (edgeEvent, parseCapabilityInvalidParam03_n)
 {
   nns_edge_event_h event_h;
   char *caps = NULL;
@@ -3045,7 +3044,7 @@ TEST(edgeEvent, parseCapabilityInvalidParam03_n)
 /**
  * @brief Parse capability of edge event - invalid param.
  */
-TEST(edgeEvent, parseCapabilityInvalidParam04_n)
+TEST (edgeEvent, parseCapabilityInvalidParam04_n)
 {
   nns_edge_event_h event_h;
   char *caps = NULL;
@@ -3064,7 +3063,7 @@ TEST(edgeEvent, parseCapabilityInvalidParam04_n)
 /**
  * @brief Create edge metadata - invalid param.
  */
-TEST(edgeMeta, createInvalidParam01_n)
+TEST (edgeMeta, createInvalidParam01_n)
 {
   int ret;
 
@@ -3075,7 +3074,7 @@ TEST(edgeMeta, createInvalidParam01_n)
 /**
  * @brief Destroy edge metadata - invalid param.
  */
-TEST(edgeMeta, destroyInvalidParam01_n)
+TEST (edgeMeta, destroyInvalidParam01_n)
 {
   int ret;
 
@@ -3086,7 +3085,7 @@ TEST(edgeMeta, destroyInvalidParam01_n)
 /**
  * @brief Set edge metadata - invalid param.
  */
-TEST(edgeMeta, setInvalidParam01_n)
+TEST (edgeMeta, setInvalidParam01_n)
 {
   int ret;
 
@@ -3097,7 +3096,7 @@ TEST(edgeMeta, setInvalidParam01_n)
 /**
  * @brief Set edge metadata - invalid param.
  */
-TEST(edgeMeta, setInvalidParam02_n)
+TEST (edgeMeta, setInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
   int ret;
@@ -3115,7 +3114,7 @@ TEST(edgeMeta, setInvalidParam02_n)
 /**
  * @brief Set edge metadata - invalid param.
  */
-TEST(edgeMeta, setInvalidParam03_n)
+TEST (edgeMeta, setInvalidParam03_n)
 {
   nns_edge_metadata_h meta;
   int ret;
@@ -3133,7 +3132,7 @@ TEST(edgeMeta, setInvalidParam03_n)
 /**
  * @brief Set edge metadata - invalid param.
  */
-TEST(edgeMeta, setInvalidParam04_n)
+TEST (edgeMeta, setInvalidParam04_n)
 {
   nns_edge_metadata_h meta;
   int ret;
@@ -3151,7 +3150,7 @@ TEST(edgeMeta, setInvalidParam04_n)
 /**
  * @brief Set edge metadata - invalid param.
  */
-TEST(edgeMeta, setInvalidParam05_n)
+TEST (edgeMeta, setInvalidParam05_n)
 {
   nns_edge_metadata_h meta;
   int ret;
@@ -3169,7 +3168,7 @@ TEST(edgeMeta, setInvalidParam05_n)
 /**
  * @brief Get edge metadata - invalid param.
  */
-TEST(edgeMeta, getInvalidParam01_n)
+TEST (edgeMeta, getInvalidParam01_n)
 {
   char *value = NULL;
   int ret;
@@ -3181,7 +3180,7 @@ TEST(edgeMeta, getInvalidParam01_n)
 /**
  * @brief Get edge metadata - invalid param.
  */
-TEST(edgeMeta, getInvalidParam02_n)
+TEST (edgeMeta, getInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
   char *value = NULL;
@@ -3200,7 +3199,7 @@ TEST(edgeMeta, getInvalidParam02_n)
 /**
  * @brief Get edge metadata - invalid param.
  */
-TEST(edgeMeta, getInvalidParam03_n)
+TEST (edgeMeta, getInvalidParam03_n)
 {
   nns_edge_metadata_h meta;
   char *value = NULL;
@@ -3219,7 +3218,7 @@ TEST(edgeMeta, getInvalidParam03_n)
 /**
  * @brief Get edge metadata - invalid param.
  */
-TEST(edgeMeta, getInvalidParam04_n)
+TEST (edgeMeta, getInvalidParam04_n)
 {
   nns_edge_metadata_h meta;
   int ret;
@@ -3237,7 +3236,7 @@ TEST(edgeMeta, getInvalidParam04_n)
 /**
  * @brief Copy edge metadata.
  */
-TEST(edgeMeta, copy)
+TEST (edgeMeta, copy)
 {
   nns_edge_metadata_h src, desc;
   char *value = NULL;
@@ -3279,7 +3278,7 @@ TEST(edgeMeta, copy)
 /**
  * @brief Copy edge metadata - invalid param.
  */
-TEST(edgeMeta, copyInvalidParam01_n)
+TEST (edgeMeta, copyInvalidParam01_n)
 {
   nns_edge_metadata_h src;
   int ret;
@@ -3297,7 +3296,7 @@ TEST(edgeMeta, copyInvalidParam01_n)
 /**
  * @brief Copy edge metadata - invalid param.
  */
-TEST(edgeMeta, copyInvalidParam02_n)
+TEST (edgeMeta, copyInvalidParam02_n)
 {
   nns_edge_metadata_h desc;
   int ret;
@@ -3315,7 +3314,7 @@ TEST(edgeMeta, copyInvalidParam02_n)
 /**
  * @brief Serialize edge metadata.
  */
-TEST(edgeMeta, serialize)
+TEST (edgeMeta, serialize)
 {
   nns_edge_metadata_h src, desc;
   char *value;
@@ -3367,7 +3366,7 @@ TEST(edgeMeta, serialize)
 /**
  * @brief Serialize edge metadata - invalid param.
  */
-TEST(edgeMeta, serializeInvalidParam01_n)
+TEST (edgeMeta, serializeInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -3380,7 +3379,7 @@ TEST(edgeMeta, serializeInvalidParam01_n)
 /**
  * @brief Serialize edge metadata - invalid param.
  */
-TEST(edgeMeta, serializeInvalidParam02_n)
+TEST (edgeMeta, serializeInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
   nns_size_t data_len;
@@ -3399,7 +3398,7 @@ TEST(edgeMeta, serializeInvalidParam02_n)
 /**
  * @brief Serialize edge metadata - invalid param.
  */
-TEST(edgeMeta, serializeInvalidParam03_n)
+TEST (edgeMeta, serializeInvalidParam03_n)
 {
   nns_edge_metadata_h meta;
   void *data;
@@ -3418,7 +3417,7 @@ TEST(edgeMeta, serializeInvalidParam03_n)
 /**
  * @brief Deserialize edge metadata - invalid param.
  */
-TEST(edgeMeta, deserializeInvalidParam01_n)
+TEST (edgeMeta, deserializeInvalidParam01_n)
 {
   void *data;
   nns_size_t data_len;
@@ -3438,7 +3437,7 @@ TEST(edgeMeta, deserializeInvalidParam01_n)
 /**
  * @brief Deserialize edge metadata - invalid param.
  */
-TEST(edgeMeta, deserializeInvalidParam02_n)
+TEST (edgeMeta, deserializeInvalidParam02_n)
 {
   nns_edge_metadata_h meta;
   nns_size_t data_len;
@@ -3459,7 +3458,7 @@ TEST(edgeMeta, deserializeInvalidParam02_n)
 /**
  * @brief Deserialize edge metadata - invalid param.
  */
-TEST(edgeMeta, deserializeInvalidParam03_n)
+TEST (edgeMeta, deserializeInvalidParam03_n)
 {
   nns_edge_metadata_h meta;
   void *data;
@@ -3486,21 +3485,21 @@ TEST(edgeMeta, deserializeInvalidParam03_n)
 /**
  * @brief Class to set up and tear down queue testing
  */
-class edgeQueue: public ::testing::Test
+class edgeQueue : public ::testing::Test
 {
   protected:
-    virtual void SetUp() override
-    {
-      EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
-    }
+  virtual void SetUp () override
+  {
+    EXPECT_EQ (nns_edge_queue_create (&queue_h), NNS_EDGE_ERROR_NONE);
+  }
 
-    virtual void TearDown() override
-    {
-      EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
-    }
+  virtual void TearDown () override
+  {
+    EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_NONE);
+  }
 
   protected:
-    nns_edge_queue_h queue_h;
+  nns_edge_queue_h queue_h;
 };
 
 /**
@@ -3524,8 +3523,7 @@ _test_thread_edge_queue_push (void *thread_data)
         ((unsigned int *) data)[j] = i * 10U + j;
     }
 
-    EXPECT_EQ (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free),
-      NNS_EDGE_ERROR_NONE);
+    EXPECT_EQ (nns_edge_queue_push (queue_h, data, dsize, nns_edge_free), NNS_EDGE_ERROR_NONE);
   }
 
   return NULL;
@@ -3534,7 +3532,7 @@ _test_thread_edge_queue_push (void *thread_data)
 /**
  * @brief Push and pop data.
  */
-TEST_F(edgeQueue, pushData)
+TEST_F (edgeQueue, pushData)
 {
   void *data1, *data2, *data3, *result;
   nns_size_t dsize, rsize;
@@ -3612,7 +3610,7 @@ TEST_F(edgeQueue, pushData)
 /**
  * @brief Wait for pushing data.
  */
-TEST_F(edgeQueue, pushDataOnThread)
+TEST_F (edgeQueue, pushDataOnThread)
 {
   pthread_t push_thread;
   pthread_attr_t attr;
@@ -3646,7 +3644,7 @@ TEST_F(edgeQueue, pushDataOnThread)
 /**
  * @brief Create queue - invalid param.
  */
-TEST_F(edgeQueue, createInvalidParam01_n)
+TEST_F (edgeQueue, createInvalidParam01_n)
 {
   EXPECT_EQ (nns_edge_queue_create (NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
@@ -3654,7 +3652,7 @@ TEST_F(edgeQueue, createInvalidParam01_n)
 /**
  * @brief Destroy queue - invalid param.
  */
-TEST_F(edgeQueue, destroyInvalidParam01_n)
+TEST_F (edgeQueue, destroyInvalidParam01_n)
 {
   EXPECT_EQ (nns_edge_queue_destroy (NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
@@ -3662,7 +3660,7 @@ TEST_F(edgeQueue, destroyInvalidParam01_n)
 /**
  * @brief Destroy queue - invalid param.
  */
-TEST_F(edgeQueue, destroyInvalidParam02_n)
+TEST_F (edgeQueue, destroyInvalidParam02_n)
 {
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
   EXPECT_EQ (nns_edge_queue_destroy (queue_h), NNS_EDGE_ERROR_INVALID_PARAMETER);
@@ -3672,7 +3670,7 @@ TEST_F(edgeQueue, destroyInvalidParam02_n)
 /**
  * @brief Get length of queue - invalid param.
  */
-TEST_F(edgeQueue, getLengthInvalidParam01_n)
+TEST_F (edgeQueue, getLengthInvalidParam01_n)
 {
   unsigned int len = 0U;
 
@@ -3682,7 +3680,7 @@ TEST_F(edgeQueue, getLengthInvalidParam01_n)
 /**
  * @brief Get length of queue - invalid param.
  */
-TEST_F(edgeQueue, getLengthInvalidParam02_n)
+TEST_F (edgeQueue, getLengthInvalidParam02_n)
 {
   EXPECT_EQ (nns_edge_queue_get_length (queue_h, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
@@ -3690,7 +3688,7 @@ TEST_F(edgeQueue, getLengthInvalidParam02_n)
 /**
  * @brief Get length of queue - invalid param.
  */
-TEST_F(edgeQueue, getLengthInvalidParam03_n)
+TEST_F (edgeQueue, getLengthInvalidParam03_n)
 {
   unsigned int len = 0U;
 
@@ -3702,7 +3700,7 @@ TEST_F(edgeQueue, getLengthInvalidParam03_n)
 /**
  * @brief Set limit of queue.
  */
-TEST_F(edgeQueue, setLimit)
+TEST_F (edgeQueue, setLimit)
 {
   void *data;
   nns_size_t dsize;
@@ -3726,7 +3724,7 @@ TEST_F(edgeQueue, setLimit)
 /**
  * @brief Set leaky option of queue.
  */
-TEST_F(edgeQueue, setLeaky)
+TEST_F (edgeQueue, setLeaky)
 {
   void *data;
   nns_size_t dsize, rsize;
@@ -3801,25 +3799,27 @@ TEST_F(edgeQueue, setLeaky)
 /**
  * @brief Set limit of queue - invalid param.
  */
-TEST_F(edgeQueue, setLimitInvalidParam01_n)
+TEST_F (edgeQueue, setLimitInvalidParam01_n)
 {
-  EXPECT_EQ (nns_edge_queue_set_limit (NULL, 5U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_set_limit (NULL, 5U, NNS_EDGE_QUEUE_LEAK_NEW),
+      NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
  * @brief Set limit of queue - invalid param.
  */
-TEST_F(edgeQueue, setLimitInvalidParam02_n)
+TEST_F (edgeQueue, setLimitInvalidParam02_n)
 {
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
-  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 5U, NNS_EDGE_QUEUE_LEAK_NEW), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 5U, NNS_EDGE_QUEUE_LEAK_NEW),
+      NNS_EDGE_ERROR_INVALID_PARAMETER);
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
 }
 
 /**
  * @brief Push data into queue - invalid param.
  */
-TEST_F(edgeQueue, pushInvalidParam01_n)
+TEST_F (edgeQueue, pushInvalidParam01_n)
 {
   void *data;
   nns_size_t dsize;
@@ -3836,7 +3836,7 @@ TEST_F(edgeQueue, pushInvalidParam01_n)
 /**
  * @brief Push data into queue - invalid param.
  */
-TEST_F(edgeQueue, pushInvalidParam02_n)
+TEST_F (edgeQueue, pushInvalidParam02_n)
 {
   nns_size_t dsize;
 
@@ -3847,7 +3847,7 @@ TEST_F(edgeQueue, pushInvalidParam02_n)
 /**
  * @brief Push data into queue - invalid param.
  */
-TEST_F(edgeQueue, pushInvalidParam03_n)
+TEST_F (edgeQueue, pushInvalidParam03_n)
 {
   void *data;
 
@@ -3862,7 +3862,7 @@ TEST_F(edgeQueue, pushInvalidParam03_n)
 /**
  * @brief Push data into queue - invalid param.
  */
-TEST_F(edgeQueue, pushInvalidParam04_n)
+TEST_F (edgeQueue, pushInvalidParam04_n)
 {
   void *data;
   nns_size_t dsize;
@@ -3881,7 +3881,7 @@ TEST_F(edgeQueue, pushInvalidParam04_n)
 /**
  * @brief Pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, popInvalidParam01_n)
+TEST_F (edgeQueue, popInvalidParam01_n)
 {
   void *data;
   nns_size_t size;
@@ -3892,7 +3892,7 @@ TEST_F(edgeQueue, popInvalidParam01_n)
 /**
  * @brief Pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, popInvalidParam02_n)
+TEST_F (edgeQueue, popInvalidParam02_n)
 {
   nns_size_t size;
 
@@ -3902,7 +3902,7 @@ TEST_F(edgeQueue, popInvalidParam02_n)
 /**
  * @brief Pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, popInvalidParam03_n)
+TEST_F (edgeQueue, popInvalidParam03_n)
 {
   void *data;
 
@@ -3912,7 +3912,7 @@ TEST_F(edgeQueue, popInvalidParam03_n)
 /**
  * @brief Pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, popInvalidParam04_n)
+TEST_F (edgeQueue, popInvalidParam04_n)
 {
   void *data;
   nns_size_t size;
@@ -3925,7 +3925,7 @@ TEST_F(edgeQueue, popInvalidParam04_n)
 /**
  * @brief Wait and pop data from queue, timed out.
  */
-TEST_F(edgeQueue, waitPopTimedout)
+TEST_F (edgeQueue, waitPopTimedout)
 {
   void *data;
   nns_size_t size;
@@ -3936,7 +3936,7 @@ TEST_F(edgeQueue, waitPopTimedout)
 /**
  * @brief Wait and pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, waitPopInvalidParam01_n)
+TEST_F (edgeQueue, waitPopInvalidParam01_n)
 {
   void *data;
   nns_size_t size;
@@ -3947,40 +3947,43 @@ TEST_F(edgeQueue, waitPopInvalidParam01_n)
 /**
  * @brief Wait and pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, waitPopInvalidParam02_n)
+TEST_F (edgeQueue, waitPopInvalidParam02_n)
 {
   nns_size_t size;
 
-  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, NULL, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, NULL, &size),
+      NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
  * @brief Wait and pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, waitPopInvalidParam03_n)
+TEST_F (edgeQueue, waitPopInvalidParam03_n)
 {
   void *data;
 
-  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, NULL),
+      NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**
  * @brief Wait and pop data from queue - invalid param.
  */
-TEST_F(edgeQueue, waitPopInvalidParam04_n)
+TEST_F (edgeQueue, waitPopInvalidParam04_n)
 {
   void *data;
   nns_size_t size;
 
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
-  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size),
+      NNS_EDGE_ERROR_INVALID_PARAMETER);
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
 }
 
 /**
  * @brief Util to get the version.
  */
-TEST(edgeUtil, getVersion)
+TEST (edgeUtil, getVersion)
 {
   unsigned int major1, minor1, micro1;
   unsigned int major2, minor2, micro2;
