@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
@@ -4693,6 +4694,44 @@ TEST_F (edgeQueue, waitPopTimedout)
   nns_size_t size;
 
   EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 10U, &data, &size), NNS_EDGE_ERROR_IO);
+}
+
+/**
+ * @brief A stopped queue does not wait, whichever order the two threads run in.
+ */
+TEST_F (edgeQueue, stopWaitBeforeWait)
+{
+  void *data;
+  nns_size_t size;
+
+  EXPECT_EQ (nns_edge_queue_stop_wait (queue_h), NNS_EDGE_ERROR_NONE);
+
+  /* Would block forever without the stop, as the timeout of 0 is infinite. */
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &data, &size), NNS_EDGE_ERROR_IO);
+}
+
+/**
+ * @brief Stopping the queue wakes a thread that is already waiting on it.
+ */
+TEST_F (edgeQueue, stopWaitWhileWaiting)
+{
+  std::thread waiter ([&] () {
+    void *data;
+    nns_size_t size;
+    EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &data, &size), NNS_EDGE_ERROR_IO);
+  });
+
+  usleep (100000);
+  EXPECT_EQ (nns_edge_queue_stop_wait (queue_h), NNS_EDGE_ERROR_NONE);
+  waiter.join ();
+}
+
+/**
+ * @brief Stop waiting for new data in queue - invalid param.
+ */
+TEST_F (edgeQueue, stopWaitInvalidParam01_n)
+{
+  EXPECT_EQ (nns_edge_queue_stop_wait (NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**

@@ -1612,6 +1612,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   nns_edge_queue_clear (eh->send_queue);
 
   eh->sending = false;
+  nns_edge_queue_stop_wait (eh->send_queue);
   if (eh->send_thread) {
     pthread_join (eh->send_thread, NULL);
     eh->send_thread = 0;

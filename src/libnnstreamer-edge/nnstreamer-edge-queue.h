@@ -110,6 +110,18 @@ int nns_edge_queue_pop (nns_edge_queue_h handle, void **data, nns_size_t *size);
 int nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout, void **data, nns_size_t *size);
 
 /**
+ * @brief Stop waiting for new data in the queue.
+ * @details Wakes a thread blocked in nns_edge_queue_wait_pop() and makes every
+ *          later call return without waiting, so that a queue can be shut down
+ *          without racing the waiter. The data already in the queue is kept.
+ * @param[in] handle The queue handle.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_queue_stop_wait (nns_edge_queue_h handle);
+
+/**
  * @brief Stop waiting for new data and clear all data in the queue.
  * @details When this function is called, nns_edge_queue_wait_pop() will stop the waiting.
  * @param[in] handle The queue handle.

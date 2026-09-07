@@ -40,6 +40,7 @@ typedef struct
   nns_edge_queue_leak_e leaky;
   unsigned int max_data; /**< Max data in queue (default 0 means unlimited) */
   unsigned int length;
+  bool stopped; /**< No more waiting in nns_edge_queue_wait_pop() */
   nns_edge_queue_data_s *head;
   nns_edge_queue_data_s *tail;
 } nns_edge_queue_s;
@@ -305,13 +306,34 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   *size = 0U;
 
   nns_edge_lock (q);
-  if (q->length == 0U)
+  if (q->length == 0U && !q->stopped)
     nns_edge_cond_wait_until (q, timeout);
 
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
 
   return (popped && *data != NULL) ? NNS_EDGE_ERROR_NONE : NNS_EDGE_ERROR_IO;
+}
+
+/**
+ * @brief Stop waiting for new data in the queue.
+ */
+int
+nns_edge_queue_stop_wait (nns_edge_queue_h handle)
+{
+  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (q);
+  q->stopped = true;
+  nns_edge_cond_signal (q);
+  nns_edge_unlock (q);
+
+  return NNS_EDGE_ERROR_NONE;
 }
 
 /**
