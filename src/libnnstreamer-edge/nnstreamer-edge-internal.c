@@ -1504,6 +1504,11 @@ nns_edge_start (nns_edge_h edge_h)
       if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
         char *msg;
         msg = nns_edge_get_host_string (eh->host, eh->port);
+        if (!msg) {
+          nns_edge_loge ("Failed to allocate the host string.");
+          ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+          goto done;
+        }
 
         ret = nns_edge_mqtt_publish (eh->broker_h, msg, strlen (msg) + 1);
         SAFE_FREE (msg);
