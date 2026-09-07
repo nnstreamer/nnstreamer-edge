@@ -8,6 +8,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <string.h>
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
 #include "nnstreamer-edge-log.h"
@@ -16,6 +19,78 @@
 #include "nnstreamer-edge-queue.h"
 #include "nnstreamer-edge-util.h"
 #include "nnstreamer-edge.h"
+
+/**
+ * @brief Make the calloc() below fail, to reach the out-of-memory paths of the library.
+ * @note The replacement is process-wide, so a test should set this flag around
+ *       the single library call it wants to fail and clear it right after.
+ */
+static bool nns_edge_test_calloc_fails = false;
+
+/**
+ * @brief calloc() replacement that the tests can make fail on demand.
+ * @note The unit test binary is loaded before libnnstreamer-edge, so this
+ *       definition also serves the allocations done inside the library.
+ */
+extern "C" void *
+calloc (size_t nmemb, size_t size) noexcept
+{
+  void *mem;
+
+  if (nns_edge_test_calloc_fails)
+    return NULL;
+
+  if (nmemb > 0 && size > SIZE_MAX / nmemb)
+    return NULL;
+
+  mem = malloc (nmemb * size);
+  if (mem)
+    memset (mem, 0, nmemb * size);
+
+  return mem;
+}
+
+/**
+ * @brief Make the nns_edge_get_host_string() below fail.
+ */
+static bool nns_edge_test_host_string_fails = false;
+
+/**
+ * @brief nns_edge_get_host_string() replacement that the tests can make fail on demand.
+ * @note This shadows the definition in the library for the whole process, the
+ *       same way the calloc() replacement above does.
+ */
+extern "C" char *
+nns_edge_get_host_string (const char *host, const int port)
+{
+  if (nns_edge_test_host_string_fails)
+    return NULL;
+
+  return nns_edge_strdup_printf ("%s:%d", host, port);
+}
+
+/**
+ * @brief Count the file descriptors this process has open.
+ */
+static int
+_get_open_fd_count (void)
+{
+  DIR *dir;
+  struct dirent *entry;
+  int count = 0;
+
+  dir = opendir ("/proc/self/fd");
+  if (!dir)
+    return -1;
+
+  while ((entry = readdir (dir)) != NULL) {
+    if (entry->d_name[0] != '.')
+      count++;
+  }
+
+  closedir (dir);
+  return count;
+}
 
 /**
  * @brief Data struct for unittest.
@@ -332,6 +407,90 @@ TEST (edge, startInvalidParam02_n)
   nns_edge_handle_set_magic (edge_h, NNS_EDGE_MAGIC);
 
   ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Starting an already started handle should be a no-op, not a second listener.
+ */
+TEST (edge, startTwice)
+{
+  nns_edge_h edge_h;
+  int ret, fd_before, fd_after;
+
+  fd_before = _get_open_fd_count ();
+  ASSERT_GE (fd_before, 0);
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_stop (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  fd_after = _get_open_fd_count ();
+  EXPECT_EQ (fd_before, fd_after);
+}
+
+/**
+ * @brief Connect to server - the client cannot allocate its own host string.
+ */
+TEST (edge, connectHostStringAllocFail_n)
+{
+  nns_edge_h server_h, client_h;
+  char *val;
+  int ret, port;
+
+  port = nns_edge_get_available_port ();
+  ASSERT_GT (port, 0);
+  val = nns_edge_strdup_printf ("%d", port);
+
+  ret = nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &server_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_event_callback (server_h, _test_edge_event_cb, NULL);
+  nns_edge_set_info (server_h, "IP", "127.0.0.1");
+  nns_edge_set_info (server_h, "PORT", val);
+  nns_edge_set_info (server_h, "CAPS", "test server");
+  SAFE_FREE (val);
+
+  ret = nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_event_callback (client_h, _test_edge_event_cb, NULL);
+  nns_edge_set_info (client_h, "CAPS", "test client");
+
+  ret = nns_edge_start (server_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  nns_edge_test_host_string_fails = true;
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  nns_edge_test_host_string_fails = false;
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  /* The handle should still be usable after the failed connection. */
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_release_handle (server_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
@@ -1083,6 +1242,49 @@ TEST (edgeData, clearInfoInvalidParam02_n)
   EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
 
   nns_edge_handle_set_magic (data_h, NNS_EDGE_MAGIC);
+
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
+ * @brief Clear info of edge-data - new metadata cannot be allocated.
+ */
+TEST (edgeData, clearInfoAllocFail_n)
+{
+  nns_edge_data_h data_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  nns_edge_test_calloc_fails = true;
+  ret = nns_edge_data_clear_info (data_h);
+  nns_edge_test_calloc_fails = false;
+  EXPECT_EQ (NNS_EDGE_ERROR_OUT_OF_MEMORY, ret);
+
+  /* The old metadata is gone, the handle should not keep pointing at it. */
+  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_NE (NNS_EDGE_ERROR_NONE, ret);
+
+  /* Once memory is available again the handle recovers. */
+  ret = nns_edge_data_clear_info (data_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_set_info (data_h, "temp-key", "temp-value");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_data_get_info (data_h, "temp-key", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_STREQ ("temp-value", value);
+  SAFE_FREE (value);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);

@@ -35,6 +35,12 @@ unsigned int nns_edge_custom_test_close_count;
 int nns_edge_custom_test_close_had_priv;
 
 /**
+ * @brief Number of nns_edge_custom_start() calls, exported so that a test can observe
+ *        that a repeated nns_edge_start() does not restart the custom connection.
+ */
+unsigned int nns_edge_custom_test_start_count;
+
+/**
  * @brief Release the private handle of the test custom connection.
  */
 static int
@@ -95,6 +101,8 @@ nns_edge_custom_create (void **priv)
 static int
 nns_edge_custom_start (void *priv)
 {
+  nns_edge_custom_test_start_count++;
+
   if (!priv) {
     nns_edge_loge ("Invalid param, handle should not be null.");
     return NNS_EDGE_ERROR_INVALID_PARAMETER;

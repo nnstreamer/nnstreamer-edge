@@ -236,6 +236,50 @@ TEST (edgeCustom, liveHandleAfterFailedLoads)
 }
 
 /**
+ * @brief A repeated nns_edge_start() should not restart the custom connection.
+ */
+TEST (edgeCustom, startTwice)
+{
+  nns_edge_h edge_h = NULL;
+  unsigned int *start_count;
+  unsigned int before;
+  void *lib_h;
+  int ret;
+
+  lib_h = dlopen ("libnnstreamer-edge-custom-test.so", RTLD_LAZY);
+  ASSERT_TRUE (lib_h != NULL);
+  start_count = (unsigned int *) dlsym (lib_h, "nns_edge_custom_test_start_count");
+  ASSERT_TRUE (start_count != NULL);
+
+  ret = nns_edge_custom_create_handle ("temp-id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  before = *start_count;
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (before + 1, *start_count);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (before + 1, *start_count);
+
+  ret = nns_edge_stop (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  /* After a stop the handle is startable again. */
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_EQ (before + 2, *start_count);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  dlclose (lib_h);
+}
+
+/**
  * @brief Edge event callback for test.
  */
 static int
