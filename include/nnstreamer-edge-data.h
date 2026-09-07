@@ -215,7 +215,8 @@ int nns_edge_data_serialize (nns_edge_data_h data_h, void **data, nns_size_t *da
 
 /**
  * @brief Deserialize entire edge data (meta data + raw data).
- * @remarks The previous raw data of @a data_h is released, and the handle holds no raw data when the function fails.
+ * @remarks The handle is left untouched if @a data is not a valid serialized edge data.
+ * Otherwise the previous raw data is released, and the handle holds no raw data when the deserialization fails.
  * @param[in] data_h The handle to the edge data.
  * @param[out] data A pointer to deserialized edge data.
  * @param[out] data_len Length of the deserialized edge data.
