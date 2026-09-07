@@ -8,9 +8,11 @@
  */
 
 #include <gtest/gtest.h>
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <thread>
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
@@ -3839,6 +3841,39 @@ TEST (edgeEvent, parseCapability)
 }
 
 /**
+ * @brief Parse capability of edge event - the data is not null-terminated.
+ */
+TEST (edgeEvent, parseCapabilityNotTerminated)
+{
+  const char capability[] = "temp-capability";
+  nns_edge_event_h event_h;
+  char *data, *caps = NULL;
+  size_t len;
+  int ret;
+
+  len = strlen (capability);
+  data = (char *) malloc (len);
+  ASSERT_TRUE (data != NULL);
+  memcpy (data, capability, len);
+
+  ret = nns_edge_event_create (NNS_EDGE_EVENT_CAPABILITY, &event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_event_set_data (event_h, data, len, NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /** The parser is bounded by the length, so it stops at the end of the data. */
+  ret = nns_edge_event_parse_capability (event_h, &caps);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_STREQ (caps, capability);
+  SAFE_FREE (caps);
+
+  ret = nns_edge_event_destroy (event_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  free (data);
+}
+
+/**
  * @brief Parse capability of edge event - invalid param.
  */
 TEST (edgeEvent, parseCapabilityInvalidParam01_n)
@@ -5261,6 +5296,520 @@ TEST (edgeUtil, getVersion)
   ver_string = nns_edge_strdup_printf ("%u.%u.%u", major1, minor1, micro1);
   EXPECT_STREQ (ver_string, VERSION);
   nns_edge_free (ver_string);
+}
+
+/**
+ * @brief Util to parse the host string.
+ */
+TEST (edgeUtil, parseHostString)
+{
+  char *host = NULL;
+  int port = -1;
+
+  nns_edge_parse_host_string ("192.168.0.1:5001", &host, &port);
+  EXPECT_STREQ (host, "192.168.0.1");
+  EXPECT_EQ (port, 5001);
+  nns_edge_free (host);
+
+  /** A string that starts with ':' yields an empty host, not a null one. */
+  nns_edge_parse_host_string (":5001", &host, &port);
+  EXPECT_STREQ (host, "");
+  EXPECT_EQ (port, 5001);
+  nns_edge_free (host);
+}
+
+/**
+ * @brief Util to parse the host string - null string.
+ */
+TEST (edgeUtil, parseHostStringInvalidParam01_n)
+{
+  char *host = (char *) &host;
+  int port = -1;
+
+  nns_edge_parse_host_string (NULL, &host, &port);
+  EXPECT_TRUE (host == NULL);
+  EXPECT_EQ (port, 0);
+}
+
+/**
+ * @brief Util to parse the host string - no port in the string.
+ */
+TEST (edgeUtil, parseHostStringInvalidParam02_n)
+{
+  char *host = (char *) &host;
+  int port = -1;
+
+  nns_edge_parse_host_string ("192.168.0.1", &host, &port);
+  EXPECT_TRUE (host == NULL);
+  EXPECT_EQ (port, 0);
+}
+
+/**
+ * @brief Util to parse the host string - empty string.
+ */
+TEST (edgeUtil, parseHostStringInvalidParam03_n)
+{
+  char *host = (char *) &host;
+  int port = -1;
+
+  nns_edge_parse_host_string ("", &host, &port);
+  EXPECT_TRUE (host == NULL);
+  EXPECT_EQ (port, 0);
+}
+
+/**
+ * @brief Util to parse the host string - one output param at a time.
+ */
+TEST (edgeUtil, parseHostStringPartialOutput)
+{
+  int port = -1;
+  char *host = NULL;
+
+  /** The output param that is given is parsed, whichever one it is. */
+  nns_edge_parse_host_string ("192.168.0.1:5001", NULL, &port);
+  EXPECT_EQ (port, 5001);
+
+  nns_edge_parse_host_string ("192.168.0.1:5001", &host, NULL);
+  EXPECT_STREQ (host, "192.168.0.1");
+  nns_edge_free (host);
+
+  port = -1;
+  nns_edge_parse_host_string ("192.168.0.1", NULL, &port);
+  EXPECT_EQ (port, 0);
+}
+
+/**
+ * @brief Command info on the wire.
+ * @note This should be identical to nns_edge_cmd_info_s in nnstreamer-edge-internal.c. A test sending a raw command fails when the two drift apart.
+ */
+typedef struct {
+  uint32_t magic;
+  uint32_t cmd;
+  uint64_t version;
+  int64_t client_id;
+  uint32_t num;
+  nns_size_t mem_size[NNS_EDGE_DATA_LIMIT];
+  nns_size_t meta_size;
+} ne_test_cmd_info_s;
+
+/**
+ * @brief Command values on the wire, see nns_edge_cmd_e in nnstreamer-edge-internal.c.
+ */
+#define NE_TEST_CMD_ERROR (0)
+#define NE_TEST_CMD_HOST_INFO (2)
+#define NE_TEST_CMD_CAPABILITY (3)
+
+/**
+ * @brief Send the whole buffer to the socket.
+ */
+static bool
+_test_send_all (int fd, const void *data, size_t size)
+{
+  size_t sent = 0;
+  ssize_t rret;
+
+  while (sent < size) {
+    rret = send (fd, (const char *) data + sent, size - sent, MSG_NOSIGNAL);
+    if (rret <= 0)
+      return false;
+    sent += rret;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Receive the whole buffer from the socket.
+ */
+static bool
+_test_recv_all (int fd, void *data, size_t size)
+{
+  size_t received = 0;
+  ssize_t rret;
+
+  while (received < size) {
+    rret = recv (fd, (char *) data + received, size - received, 0);
+    if (rret <= 0)
+      return false;
+    received += rret;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Initialize the command info to send to the peer.
+ */
+static void
+_test_cmd_info_init (ne_test_cmd_info_s *info, uint32_t cmd)
+{
+  memset (info, 0, sizeof (ne_test_cmd_info_s));
+  info->magic = NNS_EDGE_MAGIC;
+  info->cmd = cmd;
+  info->version = nns_edge_generate_version_key ();
+  info->client_id = nns_edge_generate_id ();
+}
+
+/**
+ * @brief Set the timeout of the socket, to fail the test instead of blocking it.
+ */
+static void
+_test_set_socket_timeout (int fd)
+{
+  struct timeval tv;
+
+  tv.tv_sec = 10;
+  tv.tv_usec = 0;
+  setsockopt (fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof (tv));
+  setsockopt (fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof (tv));
+}
+
+/**
+ * @brief Start the query server listening on the given port.
+ */
+static nns_edge_h
+_test_start_query_server (int port)
+{
+  nns_edge_h server_h = NULL;
+  char *val;
+
+  if (nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_TCP,
+          NNS_EDGE_NODE_TYPE_QUERY_SERVER, &server_h)
+      != NNS_EDGE_ERROR_NONE)
+    return NULL;
+
+  val = nns_edge_strdup_printf ("%d", port);
+  nns_edge_set_info (server_h, "IP", "127.0.0.1");
+  nns_edge_set_info (server_h, "PORT", val);
+  nns_edge_set_info (server_h, "CAPS", "test server");
+  SAFE_FREE (val);
+
+  if (nns_edge_start (server_h) != NNS_EDGE_ERROR_NONE) {
+    nns_edge_release_handle (server_h);
+    return NULL;
+  }
+
+  usleep (200000);
+
+  return server_h;
+}
+
+/**
+ * @brief Connect to the query server as a raw client and consume the capability command.
+ */
+static int
+_test_connect_raw_client (int port)
+{
+  struct sockaddr_in saddr = { 0 };
+  ne_test_cmd_info_s info;
+  char *caps;
+  int fd;
+
+  fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (fd < 0)
+    return -1;
+
+  _test_set_socket_timeout (fd);
+
+  saddr.sin_family = AF_INET;
+  saddr.sin_port = htons (port);
+  saddr.sin_addr.s_addr = inet_addr ("127.0.0.1");
+
+  if (connect (fd, (struct sockaddr *) &saddr, sizeof (saddr)) < 0) {
+    close (fd);
+    return -1;
+  }
+
+  if (!_test_recv_all (fd, &info, sizeof (info))
+      || info.cmd != NE_TEST_CMD_CAPABILITY || info.num != 1U) {
+    close (fd);
+    return -1;
+  }
+
+  caps = (char *) malloc (info.mem_size[0]);
+  if (!caps || !_test_recv_all (fd, caps, info.mem_size[0])) {
+    free (caps);
+    close (fd);
+    return -1;
+  }
+
+  free (caps);
+
+  return fd;
+}
+
+/**
+ * @brief Send a raw host info command and check that the server drops the connection.
+ */
+static void
+_test_send_host_info (int port, uint32_t num, const char *host_str, size_t host_len)
+{
+  ne_test_cmd_info_s info;
+  char buf[1];
+  int fd;
+
+  fd = _test_connect_raw_client (port);
+  ASSERT_TRUE (fd >= 0);
+
+  _test_cmd_info_init (&info, NE_TEST_CMD_HOST_INFO);
+  info.num = num;
+  if (num > 0)
+    info.mem_size[0] = host_len;
+
+  EXPECT_TRUE (_test_send_all (fd, &info, sizeof (info)));
+  if (num > 0)
+    EXPECT_TRUE (_test_send_all (fd, host_str, host_len));
+
+  /** The server reports the error and closes instead of parsing the string. */
+  EXPECT_TRUE (_test_recv_all (fd, &info, sizeof (info)));
+  EXPECT_EQ (info.cmd, (uint32_t) NE_TEST_CMD_ERROR);
+  EXPECT_EQ (recv (fd, buf, sizeof (buf), 0), 0);
+
+  close (fd);
+}
+
+/**
+ * @brief Host info command carrying a string that is not null-terminated.
+ */
+TEST (edge, hostInfoNotTerminated_n)
+{
+  nns_edge_h server_h;
+  const char *host_str = "127.0.0.1:1234";
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _test_start_query_server (port);
+  ASSERT_TRUE (server_h != NULL);
+
+  _test_send_host_info (port, 1U, host_str, strlen (host_str));
+
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Host info command carrying no memory at all.
+ */
+TEST (edge, hostInfoNoMemory_n)
+{
+  nns_edge_h server_h;
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _test_start_query_server (port);
+  ASSERT_TRUE (server_h != NULL);
+
+  _test_send_host_info (port, 0U, NULL, 0);
+
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Host info command carrying a string without the port.
+ */
+TEST (edge, hostInfoNoPort_n)
+{
+  nns_edge_h server_h;
+  const char *host_str = "127.0.0.1";
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _test_start_query_server (port);
+  ASSERT_TRUE (server_h != NULL);
+
+  _test_send_host_info (port, 1U, host_str, strlen (host_str) + 1);
+
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Host info command carrying a string with no host in it.
+ */
+TEST (edge, hostInfoEmptyHost_n)
+{
+  nns_edge_h server_h;
+  const char *host_str = ":1234";
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _test_start_query_server (port);
+  ASSERT_TRUE (server_h != NULL);
+
+  _test_send_host_info (port, 1U, host_str, strlen (host_str) + 1);
+
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Host info command carrying a port that does not fit in a port number.
+ */
+TEST (edge, hostInfoInvalidPort_n)
+{
+  nns_edge_h server_h;
+  const char *host_str = "127.0.0.1:70000";
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _test_start_query_server (port);
+  ASSERT_TRUE (server_h != NULL);
+
+  _test_send_host_info (port, 1U, host_str, strlen (host_str) + 1);
+
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Data for the raw server thread.
+ */
+typedef struct {
+  int listener_fd;
+  size_t caps_len;
+  uint32_t expected_cmd;
+} ne_test_raw_server_s;
+
+/**
+ * @brief Raw server thread, sends the capability command to the connected client.
+ */
+static void *
+_test_raw_server_thread (void *data)
+{
+  ne_test_raw_server_s *rs = (ne_test_raw_server_s *) data;
+  ne_test_cmd_info_s info;
+  const char *caps = "test server";
+  int fd;
+
+  fd = accept (rs->listener_fd, NULL, NULL);
+  if (fd < 0)
+    return NULL;
+
+  _test_set_socket_timeout (fd);
+
+  _test_cmd_info_init (&info, NE_TEST_CMD_CAPABILITY);
+  info.num = 1U;
+  info.mem_size[0] = rs->caps_len;
+
+  if (_test_send_all (fd, &info, sizeof (info)) && _test_send_all (fd, caps, rs->caps_len)) {
+    /** The client answers with the host info, or with an error if it refused. */
+    if (_test_recv_all (fd, &info, sizeof (info)))
+      EXPECT_EQ (info.cmd, rs->expected_cmd);
+  }
+
+  close (fd);
+
+  return NULL;
+}
+
+/**
+ * @brief Count the capability events delivered to the application.
+ */
+static int
+_test_capability_event_cb (nns_edge_event_h event_h, void *user_data)
+{
+  nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
+  unsigned int *received = (unsigned int *) user_data;
+  char *caps = NULL;
+
+  if (nns_edge_event_get_type (event_h, &event) != NNS_EDGE_ERROR_NONE)
+    return NNS_EDGE_ERROR_NONE;
+
+  if (event == NNS_EDGE_EVENT_CAPABILITY) {
+    if (nns_edge_event_parse_capability (event_h, &caps) == NNS_EDGE_ERROR_NONE) {
+      *received = *received + 1;
+      SAFE_FREE (caps);
+    }
+  }
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Capability command carrying a string that is not null-terminated.
+ */
+TEST (edge, capabilityNotTerminated_n)
+{
+  nns_edge_h client_h;
+  ne_test_raw_server_s rs;
+  struct sockaddr_in saddr = { 0 };
+  pthread_t server_thread;
+  unsigned int received = 0U;
+  int port, ret;
+
+  port = nns_edge_get_available_port ();
+
+  rs.listener_fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  ASSERT_TRUE (rs.listener_fd >= 0);
+  rs.caps_len = strlen ("test server");
+  rs.expected_cmd = NE_TEST_CMD_ERROR;
+
+  saddr.sin_family = AF_INET;
+  saddr.sin_port = htons (port);
+  saddr.sin_addr.s_addr = inet_addr ("127.0.0.1");
+  ASSERT_EQ (bind (rs.listener_fd, (struct sockaddr *) &saddr, sizeof (saddr)), 0);
+  ASSERT_EQ (listen (rs.listener_fd, 1), 0);
+  ASSERT_EQ (pthread_create (&server_thread, NULL, _test_raw_server_thread, &rs), 0);
+
+  ret = nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_event_callback (client_h, _test_capability_event_cb, &received);
+  nns_edge_set_info (client_h, "CAPS", "test client");
+
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /** The client rejects the command, so it never reports the capability. */
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (received, 0U);
+
+  EXPECT_EQ (nns_edge_release_handle (client_h), NNS_EDGE_ERROR_NONE);
+
+  pthread_join (server_thread, NULL);
+  close (rs.listener_fd);
+}
+
+/**
+ * @brief Capability command carrying a null-terminated string.
+ */
+TEST (edge, capabilityTerminated)
+{
+  nns_edge_h client_h;
+  ne_test_raw_server_s rs;
+  struct sockaddr_in saddr = { 0 };
+  pthread_t server_thread;
+  unsigned int received = 0U;
+  int port, ret;
+
+  port = nns_edge_get_available_port ();
+
+  rs.listener_fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  ASSERT_TRUE (rs.listener_fd >= 0);
+  rs.caps_len = strlen ("test server") + 1;
+  rs.expected_cmd = NE_TEST_CMD_HOST_INFO;
+
+  saddr.sin_family = AF_INET;
+  saddr.sin_port = htons (port);
+  saddr.sin_addr.s_addr = inet_addr ("127.0.0.1");
+  ASSERT_EQ (bind (rs.listener_fd, (struct sockaddr *) &saddr, sizeof (saddr)), 0);
+  ASSERT_EQ (listen (rs.listener_fd, 1), 0);
+  ASSERT_EQ (pthread_create (&server_thread, NULL, _test_raw_server_thread, &rs), 0);
+
+  ret = nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  nns_edge_set_event_callback (client_h, _test_capability_event_cb, &received);
+  nns_edge_set_info (client_h, "CAPS", "test client");
+
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (received, 1U);
+
+  EXPECT_EQ (nns_edge_release_handle (client_h), NNS_EDGE_ERROR_NONE);
+
+  pthread_join (server_thread, NULL);
+  close (rs.listener_fd);
 }
 
 /**
