@@ -106,7 +106,8 @@ _free_test_data (ne_test_data_s *_td)
 
 /**
  * @brief Mirror of the internal header of the serialized edge data.
- * @note Keep this in sync with nns_edge_data_header_s in nnstreamer-edge-data.c. The tests below assert that the size matches the serialized buffer.
+ * @note Keep this in sync with nns_edge_data_header_s in nnstreamer-edge-data.c.
+ * _get_serialized_data () asserts the size and the position of every field, so a mismatch fails there instead of silently checking the wrong bytes.
  */
 typedef struct {
   uint32_t key;
@@ -120,6 +121,7 @@ static volatile unsigned char ne_test_stack_sink;
 
 /**
  * @brief Leave a non-zero pattern on the stack area that the next call will use.
+ * @note Best effort. Whether the pattern lands where the callee places its header depends on the frame layout, so this can let a test pass vacuously but never fail spuriously.
  */
 static void
 _dirty_stack (void)
@@ -137,6 +139,7 @@ static void
 _get_serialized_data (void **data, nns_size_t *data_len, nns_size_t *mem_len)
 {
   nns_edge_data_h data_h;
+  ne_test_data_header_s *header;
   void *mem;
   int ret;
 
@@ -157,6 +160,13 @@ _get_serialized_data (void **data, nns_size_t *data_len, nns_size_t *mem_len)
   ret = nns_edge_data_serialize (data_h, data, data_len);
   ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ASSERT_EQ (*data_len, sizeof (ne_test_data_header_s) + *mem_len);
+
+  /** Reordering the private header would keep its size, so check where the fields landed. */
+  header = (ne_test_data_header_s *) (*data);
+  ASSERT_TRUE (nns_edge_parse_version_key (header->version, NULL, NULL, NULL));
+  ASSERT_EQ (header->num_mem, 1U);
+  ASSERT_EQ (header->data_len[0], *mem_len);
+  ASSERT_EQ (header->meta_len, 0U);
 
   ret = nns_edge_data_destroy (data_h);
   ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -2859,13 +2869,15 @@ TEST (edgeDataSerialize, headerIsCleared)
 {
   nns_edge_data_h data_h;
   void *data = NULL;
+  void *zeros;
   nns_size_t data_len = 0U;
-  nns_size_t i;
+  nns_size_t offset;
   int ret;
 
   ret = nns_edge_data_create (&data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
+  /** The memset in the serializer is what makes this pass, the dirty stack only exposes its absence. */
   _dirty_stack ();
 
   ret = nns_edge_data_serialize (data_h, &data, &data_len);
@@ -2875,8 +2887,14 @@ TEST (edgeDataSerialize, headerIsCleared)
   ASSERT_EQ (data_len, sizeof (ne_test_data_header_s));
 
   /** Only key, version and num_mem are set, the rest including padding is zero. */
-  for (i = offsetof (ne_test_data_header_s, num_mem) + sizeof (uint32_t); i < data_len; i++)
-    EXPECT_EQ (((unsigned char *) data)[i], 0U);
+  offset = offsetof (ne_test_data_header_s, num_mem) + sizeof (uint32_t);
+  zeros = nns_edge_malloc (data_len - offset);
+  ASSERT_TRUE (zeros != NULL);
+  memset (zeros, 0, data_len - offset);
+
+  EXPECT_EQ (0, memcmp ((char *) data + offset, zeros, data_len - offset));
+
+  SAFE_FREE (zeros);
 
   ret = nns_edge_data_destroy (data_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
