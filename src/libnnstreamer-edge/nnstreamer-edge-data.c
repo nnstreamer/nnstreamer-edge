@@ -273,7 +273,6 @@ int
 nns_edge_data_clear (nns_edge_data_h data_h)
 {
   nns_edge_data_s *ed;
-  unsigned int i;
 
   ed = (nns_edge_data_s *) data_h;
   if (!ed) {
@@ -288,14 +287,7 @@ nns_edge_data_clear (nns_edge_data_h data_h)
 
   nns_edge_lock (ed);
 
-  for (i = 0; i < ed->num; i++) {
-    if (ed->data[i].destroy_cb)
-      ed->data[i].destroy_cb (ed->data[i].data);
-    ed->data[i].data = NULL;
-    ed->data[i].data_len = 0;
-    ed->data[i].destroy_cb = NULL;
-  }
-  ed->num = 0;
+  _nns_edge_data_clear_raw_data (ed);
 
   nns_edge_unlock (ed);
 
