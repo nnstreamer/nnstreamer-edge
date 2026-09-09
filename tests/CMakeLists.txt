@@ -8,6 +8,17 @@ ADD_TEST(NAME unittest_nnstreamer-edge COMMAND unittest_nnstreamer-edge)
 # failing it, so bound the tests well above the few seconds they need.
 SET_TESTS_PROPERTIES(unittest_nnstreamer-edge PROPERTIES TIMEOUT 300)
 
+# Concurrency test. It drives one handle from several threads, so it needs
+# pthread for std::thread and a timeout to turn a lock-order deadlock into a
+# test failure instead of a hung CI job.
+FIND_PACKAGE(Threads REQUIRED)
+ADD_EXECUTABLE(unittest_nnstreamer-edge-thread unittest_nnstreamer-edge-thread.cc)
+TARGET_INCLUDE_DIRECTORIES(unittest_nnstreamer-edge-thread PRIVATE ${TEST_REQUIRE_PKGS_INCLUDE_DIRS} ${EDGE_REQUIRE_PKGS_INCLUDE_DIRS} ${INCLUDE_DIR} ${NNS_EDGE_SRC_DIR})
+TARGET_LINK_LIBRARIES(unittest_nnstreamer-edge-thread ${TEST_REQUIRE_PKGS_LDFLAGS} ${NNS_EDGE_LIB_NAME} Threads::Threads)
+INSTALL (TARGETS unittest_nnstreamer-edge-thread DESTINATION ${BIN_INSTALL_DIR})
+ADD_TEST(NAME unittest_nnstreamer-edge-thread COMMAND unittest_nnstreamer-edge-thread)
+SET_TESTS_PROPERTIES(unittest_nnstreamer-edge-thread PROPERTIES TIMEOUT 300)
+
 # Custom connection lib for unit test
 IF(ENABLE_CUSTOM_CONNECTION)
 SET(NNS_EDGE_CUSTOM_TEST_LIB_NAME nnstreamer-edge-custom-test)

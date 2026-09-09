@@ -142,6 +142,7 @@ popd
 
 %if 0%{?unit_test}
 LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge
+LD_LIBRARY_PATH=./src bash %{test_script} ./tests/unittest_nnstreamer-edge-thread
 
 %if 0%{?custom_connection_support}
 LD_LIBRARY_PATH=./src:./tests bash %{test_script} ./tests/unittest_nnstreamer-edge-custom
@@ -201,6 +202,7 @@ rm -rf %{buildroot}
 %manifest nnstreamer-edge.manifest
 %defattr(-,root,root,-)
 %{_bindir}/unittest_nnstreamer-edge
+%{_bindir}/unittest_nnstreamer-edge-thread
 %if 0%{?custom_connection_support}
 %{_bindir}/unittest_nnstreamer-edge-custom
 %{_libdir}/libnnstreamer-edge-custom-test.so*
