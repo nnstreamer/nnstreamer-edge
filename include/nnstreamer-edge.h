@@ -336,6 +336,7 @@ int nns_edge_is_connected (nns_edge_h edge_h);
  * TOPIC                | Topic used to publish/subscribe to/from the broker.
  * QUEUE_SIZE           | Max number of data in the queue, when sending edge data to other node. Default 0 means unlimited. N:<leaky [NEW, OLD]> where leaky 'OLD' drops old buffer (default NEW). (e.g., QUEUE_SIZE=5:OLD drops old buffer and pushes new data when queue size reaches 5.)
  * MAX_TRANSFER_SIZE    | Max total bytes accepted from the connected node in a single transfer, in decimal. The receiver allocates the size announced by the sender before the payload arrives, so this bounds what an untrusted node can make it allocate. Default 268435456 (256 MiB), 0 means unlimited. Each connection takes the value in force when it is created, so set it before nns_edge_start() or nns_edge_connect().
+ * RECV_TIMEOUT         | Max time in milliseconds a receive waits for a connected node that stopped sending, in decimal. This bounds silence, not a transfer: every byte that arrives starts the wait again, so a slow link is unaffected, while a node that announces a transfer and then goes quiet no longer holds the receiving thread. A transfer that times out is treated as a receive error and the connection is closed. Default 10000, 0 waits forever. Each connection takes the value in force when it is created, so set it before nns_edge_start() or nns_edge_connect().
  * ID or CLIENT_ID      | Unique identifier of the edge handle or client ID. (Read-only)
  */
 int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);

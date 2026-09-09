@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include <netdb.h>
 #include <poll.h>
+#include <sys/socket.h>
 #include <time.h>
 
 #include "nnstreamer-edge-data.h"
@@ -51,6 +52,15 @@
 #define NNS_EDGE_MAX_TRANSFER_SIZE (256U * 1024U * 1024U)
 
 /**
+ * @brief The default time (in milliseconds) a receive waits for a peer that went quiet.
+ * @details This bounds silence, not a transfer: every byte that arrives starts the wait
+ *          again, so a slow link is unaffected while a peer that announces a command and
+ *          then stops sending can no longer park the message thread for ever.
+ *          Override it with nns_edge_set_info (h, "RECV_TIMEOUT", ...), zero to wait.
+ */
+#define NNS_EDGE_RECV_TIMEOUT_MS (10000U)
+
+/**
  * @brief Data structure for edge handle.
  */
 typedef struct
@@ -76,6 +86,7 @@ typedef struct
   int64_t client_id;
   char *caps_str;
   nns_size_t max_transfer_size; /**< Max bytes accepted from a peer in one command (0: unlimited). */
+  unsigned int recv_timeout_ms; /**< Max time a receive waits for a quiet peer (0: forever). */
 
   /* list of connection data */
   void *connections;
@@ -157,6 +168,7 @@ typedef struct
   pthread_t msg_thread;
   int sockfd;
   nns_size_t max_transfer_size;
+  unsigned int recv_timeout_ms;
 } nns_edge_conn_s;
 
 /**
@@ -190,13 +202,25 @@ static int _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh,
  * @brief Set socket option. nnstreamer-edge handles TCP connection now.
  */
 static void
-_set_socket_option (int fd)
+_set_socket_option (nns_edge_conn_s * conn)
 {
   int nodelay = 1;
 
   /* setting TCP_NODELAY to true in order to avoid packet batching as known as Nagle's algorithm */
-  if (setsockopt (fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof (int)) < 0)
+  if (setsockopt (conn->sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay,
+          sizeof (int)) < 0)
     nns_edge_logw ("Failed to set TCP delay option.");
+
+  if (conn->recv_timeout_ms > 0) {
+    struct timeval tv;
+
+    tv.tv_sec = conn->recv_timeout_ms / 1000U;
+    tv.tv_usec = (conn->recv_timeout_ms % 1000U) * 1000U;
+
+    if (setsockopt (conn->sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv,
+            sizeof (tv)) < 0)
+      nns_edge_logw ("Failed to set the receive timeout.");
+  }
 }
 
 /**
@@ -268,6 +292,16 @@ _receive_raw_data (nns_edge_conn_s * conn, void *data, nns_size_t size)
 
   while (received < size) {
     rret = recv (conn->sockfd, (char *) data + received, size - received, 0);
+
+    if (rret < 0 && errno == EINTR)
+      continue;
+
+    if (rret < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      nns_edge_loge
+          ("Failed to receive raw data, the connected node sent nothing for %u ms.",
+          conn->recv_timeout_ms);
+      return false;
+    }
 
     if (rret <= 0) {
       nns_edge_loge ("Failed to receive raw data.");
@@ -688,6 +722,15 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
   /* Stop and clear the message thread. */
   conn->running = false;
   if (conn->msg_thread) {
+    /**
+     * Wake the thread if it is blocked in recv(), so that the join waits for
+     * the thread rather than for the peer. Only the read side is closed, which
+     * keeps the descriptor reserved and still lets the error command below go
+     * out on the write side.
+     */
+    if (conn->sockfd >= 0)
+      shutdown (conn->sockfd, SHUT_RD);
+
     pthread_join (conn->msg_thread, NULL);
     conn->msg_thread = 0;
   }
@@ -967,7 +1010,7 @@ _nns_edge_connect_socket (nns_edge_conn_s * conn)
     return false;
   }
 
-  _set_socket_option (conn->sockfd);
+  _set_socket_option (conn);
 
   if (connect (conn->sockfd, (struct sockaddr *) &saddr, saddr_len) < 0) {
     nns_edge_loge ("Failed to connect host %s:%d.", conn->host, conn->port);
@@ -1024,6 +1067,14 @@ _nns_edge_message_handler (void *thread_data)
       _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, client_id);
       ret = _nns_edge_cmd_receive (conn, &cmd);
       if (ret != NNS_EDGE_ERROR_NONE) {
+        /**
+         * The receive also fails when this node is closing the connection and
+         * shut the socket down to wake this thread. That is not the peer going
+         * away, so it must not be reported as a lost connection.
+         */
+        if (!conn->running)
+          break;
+
         nns_edge_loge ("Failed to receive data from the connected node.");
         remove_connection = true;
         break;
@@ -1280,6 +1331,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
   conn->port = port;
   conn->sockfd = -1;
   conn->max_transfer_size = eh->max_transfer_size;
+  conn->recv_timeout_ms = eh->recv_timeout_ms;
 
   if (!_nns_edge_connect_socket (conn)) {
     goto error;
@@ -1385,14 +1437,16 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
     goto error;
   }
 
+  conn->max_transfer_size = eh->max_transfer_size;
+  conn->recv_timeout_ms = eh->recv_timeout_ms;
+
   conn->sockfd = accept (eh->listener_fd, NULL, NULL);
   if (conn->sockfd < 0) {
     nns_edge_loge ("Failed to accept socket.");
     goto error;
   }
 
-  _set_socket_option (conn->sockfd);
-  conn->max_transfer_size = eh->max_transfer_size;
+  _set_socket_option (conn);
 
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
@@ -1634,6 +1688,7 @@ _nns_edge_create_handle (const char *id, nns_edge_node_type_e node_type,
   eh->caps_str = nns_edge_strdup ("");
   eh->custom_connection_h = NULL;
   eh->max_transfer_size = NNS_EDGE_MAX_TRANSFER_SIZE;
+  eh->recv_timeout_ms = NNS_EDGE_RECV_TIMEOUT_MS;
 
   ret = nns_edge_metadata_create (&eh->metadata);
   if (ret != NNS_EDGE_ERROR_NONE) {
@@ -2444,6 +2499,19 @@ nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value)
 
     if (ret == NNS_EDGE_ERROR_NONE)
       nns_edge_queue_set_limit (eh->send_queue, limit, leaky);
+  } else if (0 == strcasecmp (key, "RECV_TIMEOUT")) {
+    unsigned long long timeout;
+
+    errno = 0;
+    timeout = strtoull (value, NULL, 10);
+
+    if (errno != 0 || value[strspn (value, "0123456789")] != '\0'
+        || timeout > UINT_MAX) {
+      nns_edge_loge ("Cannot set the receive timeout (%s).", value);
+      ret = NNS_EDGE_ERROR_INVALID_PARAMETER;
+    } else {
+      eh->recv_timeout_ms = (unsigned int) timeout;
+    }
   } else if (0 == strcasecmp (key, "MAX_TRANSFER_SIZE")) {
     unsigned long long size;
 

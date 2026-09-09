@@ -6548,6 +6548,8 @@ typedef struct {
   nns_size_t meta_size; /**< Announced metadata size. */
   void *meta; /**< Serialized metadata, owned by the caller. */
   nns_size_t meta_actual;
+  unsigned int chunk_delay_ms; /**< Pause between the pieces of a memory. */
+  nns_size_t chunk_size; /**< Bytes per piece, zero to send a memory in one go. */
   unsigned int answer_timeout_ms; /**< Give up waiting for the answer, 0 to wait. */
   bool answer_timed_out;
   bool answered;
@@ -6582,13 +6584,20 @@ _test_peer_byte (unsigned int index, nns_size_t offset)
  * @brief Write a memory of the agreed pattern, in chunks so a large one is cheap to build.
  */
 static bool
-_test_peer_send_pattern (int fd, unsigned int index, nns_size_t size)
+_test_peer_send_pattern (ne_test_peer_s *peer, int fd, unsigned int index, nns_size_t size)
 {
   uint8_t chunk[4096];
-  nns_size_t sent = 0, len, i;
+  nns_size_t sent = 0, len, i, limit;
+
+  limit = peer->chunk_size > 0 ? peer->chunk_size : sizeof (chunk);
+  if (limit > sizeof (chunk))
+    limit = sizeof (chunk);
 
   while (sent < size) {
-    len = (size - sent) < sizeof (chunk) ? (size - sent) : sizeof (chunk);
+    if (sent > 0 && peer->chunk_delay_ms > 0)
+      usleep (peer->chunk_delay_ms * 1000);
+
+    len = (size - sent) < limit ? (size - sent) : limit;
     for (i = 0; i < len; i++)
       chunk[i] = _test_peer_byte (index, sent + i);
 
@@ -6671,7 +6680,7 @@ _test_peer_thread (void *data)
       goto done;
 
     for (i = 0; i < peer->num && i < NE_TEST_PEER_MEMS; i++) {
-      if (!_test_peer_send_pattern (fd, i, peer->mem_actual[i]))
+      if (!_test_peer_send_pattern (peer, fd, i, peer->mem_actual[i]))
         goto done;
     }
 
@@ -7466,6 +7475,188 @@ TEST (edgeTransfer, sendWithinReceiverLimit)
 
   SAFE_FREE (rd_server.meta_value);
   SAFE_FREE (rd_client.meta_value);
+}
+
+/**
+ * @brief A node that announces a transfer and then goes quiet loses the connection.
+ */
+TEST (edgeTransfer, recvTimeoutOnSilentPeer_n)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = 4096U;
+  peer.mem_actual[0] = 0U;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-silent", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 1U);
+
+  _test_peer_stop (&peer);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief The timeout bounds silence, so a slow but progressing transfer still arrives.
+ */
+TEST (edgeTransfer, recvTimeoutAllowsSlowTransfer)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = 4096U;
+  /* Eight pieces 200 ms apart, so the transfer takes far longer than the timeout. */
+  peer.chunk_size = 512U;
+  peer.chunk_delay_ms = 200U;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-slow", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 1U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_EQ (rd.len[0], 4096U);
+  EXPECT_TRUE (rd.payload_ok);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief Releasing a handle does not wait for a node that stopped mid transfer.
+ * @details The receive timeout is left at its default, so a release that waited
+ * for the peer rather than shutting the socket down would take ten seconds.
+ */
+TEST (edgeTransfer, releaseWhilePeerStalled)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  struct timeval start, end;
+  int64_t elapsed_ms;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = 4096U;
+  peer.mem_actual[0] = 16U;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-stalled", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Let the message thread reach the receive that the peer will never finish. */
+  usleep (300000);
+
+  gettimeofday (&start, NULL);
+  ret = nns_edge_release_handle (edge_h);
+  gettimeofday (&end, NULL);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  elapsed_ms = (int64_t) (end.tv_sec - start.tv_sec) * 1000
+               + (int64_t) (end.tv_usec - start.tv_usec) / 1000;
+  EXPECT_LT (elapsed_ms, 2000);
+
+  _test_peer_stop (&peer);
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief Set the receive timeout with the values an application would use.
+ */
+TEST (edgeTransfer, setInfoRecvTimeout)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("set-timeout", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "0");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "recv_timeout", "10000");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief A receive timeout that is not a plain decimal number, or does not fit, is refused.
+ */
+TEST (edgeTransfer, setInfoRecvTimeout_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("set-timeout-bad", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "-1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "abc");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500ms");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "99999999999");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 }
 
 /**
