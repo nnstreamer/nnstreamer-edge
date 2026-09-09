@@ -732,12 +732,32 @@ _nns_edge_close_socket (nns_edge_conn_s * conn)
  *       should keep the connection until that thread is done with it.
  */
 static bool
-_nns_edge_close_connection (nns_edge_conn_s * conn)
+_nns_edge_conn_in_use (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
+{
+  bool in_use;
+
+  nns_edge_conn_lock (eh);
+  in_use = conn->in_use;
+  nns_edge_conn_unlock (eh);
+
+  return in_use;
+}
+
+/**
+ * @brief Close connection.
+ * @return True if the connection is released, or there is nothing to release.
+ * @note The message thread cannot join and release the connection it is
+ *       running on, and the send thread may be transferring on it. In those
+ *       cases only the socket is closed and false is returned, then the caller
+ *       should keep the connection until that thread is done with it.
+ */
+static bool
+_nns_edge_close_connection (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
 {
   if (!conn)
     return true;
 
-  if (_nns_edge_conn_is_self (conn) || conn->in_use) {
+  if (_nns_edge_conn_is_self (conn) || _nns_edge_conn_in_use (eh, conn)) {
     _nns_edge_close_socket (conn);
     return false;
   }
@@ -770,19 +790,20 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
  * @return True if the connection data is released, or there is nothing to release.
  */
 static bool
-_nns_edge_release_connection_data (nns_edge_conn_data_s * cdata)
+_nns_edge_release_connection_data (nns_edge_handle_s * eh,
+    nns_edge_conn_data_s * cdata)
 {
   bool released = true;
 
   if (!cdata)
     return true;
 
-  if (!_nns_edge_close_connection (cdata->src_conn))
+  if (!_nns_edge_close_connection (eh, cdata->src_conn))
     released = false;
   else
     cdata->src_conn = NULL;
 
-  if (!_nns_edge_close_connection (cdata->sink_conn))
+  if (!_nns_edge_close_connection (eh, cdata->sink_conn))
     released = false;
   else
     cdata->sink_conn = NULL;
@@ -900,7 +921,7 @@ _nns_edge_release_closed_connection (nns_edge_handle_s * eh)
     /* Read the next one first, holding it again overwrites the link. */
     next = closed->next;
 
-    if (!_nns_edge_release_connection_data (closed))
+    if (!_nns_edge_release_connection_data (eh, closed))
       _nns_edge_hold_closed_connection (eh, closed);
 
     closed = next;
@@ -989,6 +1010,22 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
 }
 
 /**
+ * @brief Check whether the handle has a connection left.
+ * @note This function takes the connection lock, do not call it with the lock held.
+ */
+static bool
+_nns_edge_has_connection (nns_edge_handle_s * eh)
+{
+  bool remained;
+
+  nns_edge_conn_lock (eh);
+  remained = (eh->connections != NULL);
+  nns_edge_conn_unlock (eh);
+
+  return remained;
+}
+
+/**
  * @brief Remove all connection data.
  * @note This function takes the connection lock, do not call it with the lock held.
  */
@@ -1032,7 +1069,7 @@ _nns_edge_release_old_connection (nns_edge_handle_s * eh,
 {
   nns_edge_conn_data_s *cdata;
 
-  if (_nns_edge_close_connection (conn))
+  if (_nns_edge_close_connection (eh, conn))
     return;
 
   cdata = (nns_edge_conn_data_s *) calloc (1, sizeof (nns_edge_conn_data_s));
@@ -1544,7 +1581,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
 
 error:
   if (!done) {
-    _nns_edge_close_connection (conn);
+    _nns_edge_close_connection (eh, conn);
     return NNS_EDGE_ERROR_CONNECTION_FAILURE;
   }
 
@@ -2175,7 +2212,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   /* A message thread being joined may connect again, drain until it cannot. */
   do {
     _nns_edge_remove_all_connection (eh);
-  } while (eh->connections);
+  } while (_nns_edge_has_connection (eh));
 
   pthread_mutex_lock (&eh->closed_lock);
   if (eh->closed_connections) {
