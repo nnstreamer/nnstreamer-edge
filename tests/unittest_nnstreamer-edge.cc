@@ -384,6 +384,481 @@ TEST (edge, connectLocal)
 }
 
 /**
+ * @brief Data struct to check the connection closed by the peer.
+ */
+typedef struct {
+  nns_edge_h handle;
+  bool disconnect_in_cb;
+  bool disconnect_in_data_cb;
+  unsigned int delay;
+  unsigned int started;
+  unsigned int completed;
+} ne_test_closed_s;
+
+/**
+ * @brief Edge event callback to check the message thread of the closed connection.
+ */
+static int
+_test_closed_event_cb (nns_edge_event_h event_h, void *user_data)
+{
+  ne_test_closed_s *_td = (ne_test_closed_s *) user_data;
+  nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
+  int ret;
+
+  if (!_td)
+    return NNS_EDGE_ERROR_NONE;
+
+  ret = nns_edge_event_get_type (event_h, &event);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  if (event == NNS_EDGE_EVENT_NEW_DATA_RECEIVED && _td->disconnect_in_data_cb) {
+    nns_edge_data_h data_h;
+
+    ret = nns_edge_event_parse_new_data (event_h, &data_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+    nns_edge_data_destroy (data_h);
+
+    /**
+     * @note This is test code, calling edge API in the message thread.
+     * Recommend not to call edge API in event callback.
+     */
+    ret = nns_edge_disconnect (_td->handle);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    _td->started++;
+    _td->completed++;
+    return NNS_EDGE_ERROR_NONE;
+  }
+
+  if (event != NNS_EDGE_EVENT_CONNECTION_CLOSED)
+    return NNS_EDGE_ERROR_NONE;
+
+  if (_td->disconnect_in_cb) {
+    /**
+     * @note This is test code, calling edge API in the message thread.
+     * Recommend not to call edge API in event callback. The test increases
+     * the counter after the call, so that the main thread cannot release the
+     * handle while this thread is waiting for the handle lock.
+     */
+    ret = nns_edge_disconnect (_td->handle);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  }
+
+  _td->started++;
+
+  if (_td->delay > 0U)
+    usleep (_td->delay);
+
+  _td->completed++;
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Prepare server handle to test the closed connection.
+ */
+static void
+_prepare_closed_test_server (ne_test_closed_s *_td, nns_edge_h *server_h, int port)
+{
+  char *val;
+
+  val = nns_edge_strdup_printf ("%d", port);
+
+  nns_edge_create_handle ("temp-server", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, server_h);
+  nns_edge_set_event_callback (*server_h, _test_closed_event_cb, _td);
+  nns_edge_set_info (*server_h, "IP", "127.0.0.1");
+  nns_edge_set_info (*server_h, "PORT", val);
+  nns_edge_set_info (*server_h, "CAPS", "test server");
+  _td->handle = *server_h;
+  SAFE_FREE (val);
+}
+
+/**
+ * @brief Prepare client handle to test the closed connection.
+ */
+static void
+_prepare_closed_test_client (nns_edge_h *client_h)
+{
+  nns_edge_create_handle ("temp-client", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, client_h);
+  nns_edge_set_event_callback (*client_h, _test_closed_event_cb, NULL);
+  nns_edge_set_info (*client_h, "CAPS", "test client");
+}
+
+/**
+ * @brief Wait for the given count of the connection-closed event.
+ */
+static void
+_wait_closed_event (ne_test_closed_s *_td, unsigned int count)
+{
+  unsigned int retry = 0U;
+
+  do {
+    usleep (10000);
+    if (_td->started >= count)
+      break;
+  } while (retry++ < 500U);
+}
+
+/**
+ * @brief The message thread of the closed connection should not outlive the handle.
+ */
+TEST (edge, connectionClosedByPeer)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+  td.delay = 500000U;
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+  _prepare_closed_test_client (&client_h);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  /* Release the peer, then the server starts to close the connection. */
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _wait_closed_event (&td, 1U);
+  ASSERT_GE (td.started, 1U);
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* The message thread should be terminated while releasing the handle. */
+  EXPECT_EQ (td.completed, td.started);
+}
+
+/**
+ * @brief Repeated connection lost should not accumulate the message thread.
+ */
+TEST (edge, connectionClosedByPeerRepeated)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  unsigned int i;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+  td.delay = 300000U;
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  for (i = 1U; i <= 3U; i++) {
+    _prepare_closed_test_client (&client_h);
+
+    ret = nns_edge_start (client_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+    ret = nns_edge_connect (client_h, "127.0.0.1", port);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    usleep (200000);
+
+    ret = nns_edge_release_handle (client_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    _wait_closed_event (&td, i);
+    EXPECT_GE (td.started, i);
+  }
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Every message thread should be terminated while releasing the handle. */
+  EXPECT_GE (td.started, 3U);
+  EXPECT_EQ (td.completed, td.started);
+}
+
+/**
+ * @brief Get the number of the file descriptors this process has open.
+ */
+static unsigned int
+_get_open_fd (void)
+{
+  struct dirent *entry;
+  unsigned int count = 0U;
+  DIR *dir;
+
+  dir = opendir ("/proc/self/fd");
+  if (!dir)
+    return 0U;
+
+  while ((entry = readdir (dir)) != NULL) {
+    if (entry->d_name[0] != '.')
+      count++;
+  }
+
+  closedir (dir);
+  return count;
+}
+
+/**
+ * @brief Disconnecting a node itself should not report a connection closed by the peer.
+ */
+TEST (edge, disconnectWithoutClosedEvent)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+  _prepare_closed_test_client (&client_h);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ASSERT_EQ (nns_edge_is_connected (server_h), NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_disconnect (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (300000);
+
+  /* The peer did not close the connection, this node did. */
+  EXPECT_EQ (td.started, 0U);
+
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief The socket of a lost peer should be closed when the connection is removed.
+ */
+TEST (edge, connectionClosedByPeerClosesSocket)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  unsigned int open_fd;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  open_fd = _get_open_fd ();
+  if (open_fd == 0U) {
+    ret = nns_edge_release_handle (server_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+    GTEST_SKIP () << "Cannot read the open file descriptors of this process.";
+  }
+
+  _prepare_closed_test_client (&client_h);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _wait_closed_event (&td, 1U);
+  ASSERT_GE (td.started, 1U);
+
+  usleep (200000);
+
+  /* The connection data is released later, its sockets are not. */
+  EXPECT_LE (_get_open_fd (), open_fd);
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief The new peer may be gone while the server is still accepting it.
+ */
+TEST (edge, connectionClosedByPeerWhileAccepting)
+{
+  nns_edge_h server_h, client1_h, client2_h;
+  ne_test_closed_s td;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+  td.delay = 300000U;
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  /* Lose the first peer, the server stays in its event callback for a while. */
+  _prepare_closed_test_client (&client1_h);
+  ret = nns_edge_start (client1_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (client1_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_release_handle (client1_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _wait_closed_event (&td, 1U);
+  ASSERT_GE (td.started, 1U);
+
+  /* The second peer is gone before the server completes the connection. */
+  _prepare_closed_test_client (&client2_h);
+  ret = nns_edge_start (client2_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (client2_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* The server is now waiting for the message thread of the first peer. */
+  usleep (100000);
+
+  ret = nns_edge_release_handle (client2_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (500000);
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  EXPECT_EQ (td.completed, td.started);
+}
+
+/**
+ * @brief Disconnect in the data callback should stop the message thread.
+ * @note The API does not allow calling it in the callback, this checks the misuse is handled.
+ */
+TEST (edge, disconnectInDataCb_n)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  nns_edge_data_h data_h;
+  nns_size_t data_len;
+  void *data;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+  td.disconnect_in_data_cb = true;
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+  _prepare_closed_test_client (&client_h);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  data_len = 10U * sizeof (unsigned int);
+  data = malloc (data_len);
+  ASSERT_TRUE (data != NULL);
+
+  ret = nns_edge_data_create (&data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_add (data_h, data, data_len, nns_edge_free);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_send (client_h, data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_data_destroy (data_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _wait_closed_event (&td, 1U);
+  ASSERT_GE (td.started, 1U);
+
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  EXPECT_EQ (td.completed, td.started);
+}
+
+/**
+ * @brief Disconnect in the event callback, the message thread cannot release its own connection.
+ * @note The API does not allow calling it in the callback, this checks the misuse is handled.
+ */
+TEST (edge, connectionClosedByPeerDisconnectInCb_n)
+{
+  nns_edge_h server_h, client_h;
+  ne_test_closed_s td;
+  int ret, port;
+
+  memset (&td, 0, sizeof (ne_test_closed_s));
+  td.disconnect_in_cb = true;
+
+  port = nns_edge_get_available_port ();
+  _prepare_closed_test_server (&td, &server_h, port);
+  _prepare_closed_test_client (&client_h);
+
+  ret = nns_edge_start (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_start (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_connect (client_h, "127.0.0.1", port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  usleep (200000);
+
+  ret = nns_edge_release_handle (client_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _wait_closed_event (&td, 1U);
+  ASSERT_GE (td.started, 1U);
+
+  ret = nns_edge_release_handle (server_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  EXPECT_EQ (td.completed, td.started);
+}
+
+/**
  * @brief Edge event callback rejecting a new connection, for test.
  */
 static int
