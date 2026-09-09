@@ -193,6 +193,8 @@ int nns_edge_stop (nns_edge_h edge_h);
 
 /**
  * @brief Release the given edge handle. All the connections are disconnected.
+ * @remarks This does not return until the event callback of a closed
+ *          connection has returned, so it must not be called in the callback.
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
@@ -203,6 +205,12 @@ int nns_edge_release_handle (nns_edge_h edge_h);
 
 /**
  * @brief Set the event callback to receive the new data or check the capability.
+ * @remarks The callback is invoked from the internal threads of the edge
+ *          handle. Do not call the nnstreamer-edge API of the same handle in
+ *          the callback; the handle may be waiting for the callback to return
+ *          and the call would not be able to acquire the handle. Note also
+ *          that nns_edge_disconnect() and nns_edge_release_handle() do not
+ *          return until the callback of a closed connection has returned.
  * @param[in] edge_h The edge handle.
  * @param[in] cb The edge callbacks for event handling.
  * @param[in] user_data The user's custom data given to callbacks.
@@ -276,6 +284,8 @@ int nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port);
 
 /**
  * @brief Disconnect from the destination node.
+ * @remarks This does not return until the event callback of a closed
+ *          connection has returned, so it must not be called in the callback.
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.
