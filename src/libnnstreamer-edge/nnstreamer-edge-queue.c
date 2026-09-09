@@ -41,6 +41,7 @@ typedef struct
   unsigned int max_data; /**< Max data in queue (default 0 means unlimited) */
   unsigned int length;
   bool stopped; /**< No more waiting in nns_edge_queue_wait_pop() */
+  bool leaked; /**< Data was dropped at least once, to warn only once */
   nns_edge_queue_data_s *head;
   nns_edge_queue_data_s *tail;
 } nns_edge_queue_s;
@@ -207,6 +208,13 @@ nns_edge_queue_push (nns_edge_queue_h handle, void *data, nns_size_t size,
   if (q->max_data > 0U && q->length >= q->max_data) {
     /* Clear old data in queue if leaky option is 'old'. */
     if (q->leaky == NNS_EDGE_QUEUE_LEAK_OLD) {
+      if (!q->leaked) {
+        q->leaked = true;
+        nns_edge_logw
+            ("[Queue] Dropping the oldest data, the queue is full (max %u). "
+            "This is reported once per queue.", q->max_data);
+      }
+
       _pop_data (q, true, NULL, NULL);
     } else {
       nns_edge_logw ("[Queue] Cannot push new data, max data in queue is %u.",
