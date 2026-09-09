@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
+#include <time.h>
 
 #include "nnstreamer-edge-data.h"
 #include "nnstreamer-edge-event.h"
@@ -31,6 +32,13 @@
  * @brief The maximum length of pending connections to accept socket.
  */
 #define N_BACKLOG 10
+
+/**
+ * @brief The timeout (in milliseconds) to wait for an available node when the connection is lost.
+ * @note This bounds how long a thread releasing the connection waits for its
+ *       message thread to notice, it is not a knob to tune the reconnect with.
+ */
+#define RECONNECT_TIMEOUT_MS 100
 
 /**
  * @brief Data structure for edge handle.
@@ -60,6 +68,10 @@ typedef struct
 
   /* list of connection data */
   void *connections;
+
+  /* list of connection data waiting for its message thread to be terminated */
+  void *closed_connections;
+  pthread_mutex_t closed_lock;
 
   /* socket listener */
   bool listening;
@@ -159,7 +171,8 @@ typedef struct
 /**
  * @brief Parse the message received from the MQTT broker and connect to the server directly.
  */
-static int _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh);
+static int _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh,
+    unsigned int timeout);
 
 /**
  * @brief Set socket option. nnstreamer-edge handles TCP connection now.
@@ -581,13 +594,54 @@ _nns_edge_transfer_data (nns_edge_conn_s * conn, nns_edge_data_h data_h,
 }
 
 /**
- * @brief Close connection
+ * @brief Check whether the message thread of the connection is the caller.
+ */
+static bool
+_nns_edge_conn_is_self (nns_edge_conn_s * conn)
+{
+  return (conn && conn->msg_thread
+      && pthread_equal (conn->msg_thread, pthread_self ()) != 0);
+}
+
+/**
+ * @brief Send error command to the connected node and close the socket.
+ */
+static void
+_nns_edge_close_socket (nns_edge_conn_s * conn)
+{
+  nns_edge_cmd_s cmd;
+
+  if (!conn || conn->sockfd < 0)
+    return;
+
+  /* Send error before closing the socket. */
+  nns_edge_logd ("Send error cmd to close connection.");
+  _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, 0);
+  _nns_edge_cmd_send (conn, &cmd);
+
+  if (close (conn->sockfd) < 0)
+    nns_edge_logw ("Failed to close socket.");
+  conn->sockfd = -1;
+}
+
+/**
+ * @brief Close connection.
+ * @return True if the connection is released, or there is nothing to release.
+ * @note The message thread cannot join and release the connection it is
+ *       running on. In that case only the socket is closed and false is
+ *       returned, then the caller should keep the connection until the message
+ *       thread is terminated.
  */
 static bool
 _nns_edge_close_connection (nns_edge_conn_s * conn)
 {
   if (!conn)
+    return true;
+
+  if (_nns_edge_conn_is_self (conn)) {
+    _nns_edge_close_socket (conn);
     return false;
+  }
 
   /* Stop and clear the message thread. */
   conn->running = false;
@@ -596,18 +650,7 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
     conn->msg_thread = 0;
   }
 
-  if (conn->sockfd >= 0) {
-    nns_edge_cmd_s cmd;
-
-    /* Send error before closing the socket. */
-    nns_edge_logd ("Send error cmd to close connection.");
-    _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, 0);
-    _nns_edge_cmd_send (conn, &cmd);
-
-    if (close (conn->sockfd) < 0)
-      nns_edge_logw ("Failed to close socket.");
-    conn->sockfd = -1;
-  }
+  _nns_edge_close_socket (conn);
 
   SAFE_FREE (conn->host);
   SAFE_FREE (conn);
@@ -616,14 +659,143 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
 
 /**
  * @brief Release connection data and its resources.
+ * @return True if the connection data is released, or there is nothing to release.
  */
-static void
+static bool
 _nns_edge_release_connection_data (nns_edge_conn_data_s * cdata)
 {
-  if (cdata) {
-    _nns_edge_close_connection (cdata->src_conn);
-    _nns_edge_close_connection (cdata->sink_conn);
+  bool released = true;
+
+  if (!cdata)
+    return true;
+
+  if (!_nns_edge_close_connection (cdata->src_conn))
+    released = false;
+  else
+    cdata->src_conn = NULL;
+
+  if (!_nns_edge_close_connection (cdata->sink_conn))
+    released = false;
+  else
+    cdata->sink_conn = NULL;
+
+  if (released)
     SAFE_FREE (cdata);
+
+  return released;
+}
+
+/**
+ * @brief Check whether a message thread other than the calling one reads the connection.
+ */
+static bool
+_nns_edge_conn_has_reader (nns_edge_conn_s * conn)
+{
+  return (conn && conn->msg_thread && !_nns_edge_conn_is_self (conn));
+}
+
+/**
+ * @brief Stop the message thread of the connection data and close its sockets.
+ * @note The sockets are closed after the join when a message thread of this
+ *       connection data may still read one of them. Such a thread would poll a
+ *       descriptor the system has given to somebody else, and closing the
+ *       other socket makes the peer answer with an error command, which the
+ *       thread reports as a connection lost by the peer.
+ */
+static void
+_nns_edge_stop_connection (nns_edge_conn_data_s * cdata)
+{
+  bool reading = false;
+
+  if (!cdata)
+    return;
+
+  if (_nns_edge_conn_has_reader (cdata->src_conn)) {
+    cdata->src_conn->running = false;
+    reading = true;
+  }
+
+  if (_nns_edge_conn_has_reader (cdata->sink_conn)) {
+    cdata->sink_conn->running = false;
+    reading = true;
+  }
+
+  if (!reading) {
+    _nns_edge_close_socket (cdata->src_conn);
+    _nns_edge_close_socket (cdata->sink_conn);
+  }
+}
+
+/**
+ * @brief Hold the connection data until its message thread is terminated.
+ * @note The connected node is notified as soon as the connection is removed,
+ *       unless the sockets have to be closed after joining a message thread.
+ *       The list of closed connections has its own lock, it is also touched by
+ *       the listener thread and by the message thread without the handle lock.
+ */
+static void
+_nns_edge_hold_closed_connection (nns_edge_handle_s * eh,
+    nns_edge_conn_data_s * cdata)
+{
+  _nns_edge_stop_connection (cdata);
+
+  pthread_mutex_lock (&eh->closed_lock);
+  cdata->next = (nns_edge_conn_data_s *) eh->closed_connections;
+  eh->closed_connections = cdata;
+  pthread_mutex_unlock (&eh->closed_lock);
+}
+
+/**
+ * @brief Check whether the connection data is handled by the calling thread.
+ */
+static bool
+_nns_edge_conn_data_is_self (nns_edge_conn_data_s * cdata)
+{
+  return (_nns_edge_conn_is_self (cdata->src_conn)
+      || _nns_edge_conn_is_self (cdata->sink_conn));
+}
+
+/**
+ * @brief Release the connection data of the terminated message thread.
+ * @note Only the connection data that this thread can release is taken out of
+ *       the list, so that two threads cannot join and free the same connection
+ *       and the connection of the calling thread stays visible to the owner of
+ *       the handle. The lock is not held while joining the message thread.
+ *       The caller may hold the handle lock, so nothing joined here may take it.
+ */
+static void
+_nns_edge_release_closed_connection (nns_edge_handle_s * eh)
+{
+  nns_edge_conn_data_s *cdata, *next, *closed = NULL, *remained = NULL;
+
+  pthread_mutex_lock (&eh->closed_lock);
+  cdata = (nns_edge_conn_data_s *) eh->closed_connections;
+
+  while (cdata) {
+    next = cdata->next;
+
+    if (_nns_edge_conn_data_is_self (cdata)) {
+      cdata->next = remained;
+      remained = cdata;
+    } else {
+      cdata->next = closed;
+      closed = cdata;
+    }
+
+    cdata = next;
+  }
+
+  eh->closed_connections = remained;
+  pthread_mutex_unlock (&eh->closed_lock);
+
+  while (closed) {
+    /* Read the next one first, holding it again overwrites the link. */
+    next = closed->next;
+
+    if (!_nns_edge_release_connection_data (closed))
+      _nns_edge_hold_closed_connection (eh, closed);
+
+    closed = next;
   }
 }
 
@@ -694,7 +866,8 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
       else
         eh->connections = cdata->next;
 
-      _nns_edge_release_connection_data (cdata);
+      /* The caller may be the message thread of this connection, release it later. */
+      _nns_edge_hold_closed_connection (eh, cdata);
       return;
     }
     prev = cdata;
@@ -717,10 +890,19 @@ _nns_edge_remove_all_connection (nns_edge_handle_s * eh)
   while (cdata) {
     next = cdata->next;
 
-    _nns_edge_release_connection_data (cdata);
+    /* Request the message thread to stop, it may be the calling thread. */
+    if (cdata->src_conn)
+      cdata->src_conn->running = false;
+    if (cdata->sink_conn)
+      cdata->sink_conn->running = false;
+
+    /* Hold it before releasing, it should stay reachable from the handle. */
+    _nns_edge_hold_closed_connection (eh, cdata);
 
     cdata = next;
   }
+
+  _nns_edge_release_closed_connection (eh);
 }
 
 /**
@@ -848,7 +1030,6 @@ _nns_edge_message_handler (void *thread_data)
       _nns_edge_cmd_clear (&cmd);
     }
   }
-  conn->running = false;
 
   /* Received error message from client, remove connection from table. */
   if (remove_connection) {
@@ -859,8 +1040,20 @@ _nns_edge_message_handler (void *thread_data)
     ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
 
     if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
+      struct timespec retry_delay = { RECONNECT_TIMEOUT_MS / 1000,
+        (RECONNECT_TIMEOUT_MS % 1000) * 1000000
+      };
+
       nns_edge_logi ("Connection lost! Reconnect to available node.");
-      ret = _mqtt_hybrid_direct_connection (eh);
+
+      while (conn->running && nns_edge_mqtt_is_connected (eh->broker_h)) {
+        ret = _mqtt_hybrid_direct_connection (eh, RECONNECT_TIMEOUT_MS);
+        if (NNS_EDGE_ERROR_NONE == ret)
+          break;
+
+        /* The wait for a message may return at once, do not retry faster. */
+        nanosleep (&retry_delay, NULL);
+      }
     }
 
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -869,6 +1062,7 @@ _nns_edge_message_handler (void *thread_data)
     }
   }
 
+  conn->running = false;
   return NULL;
 }
 
@@ -895,6 +1089,7 @@ _nns_edge_create_message_thread (nns_edge_handle_s * eh, nns_edge_conn_s * conn,
   thread_data->client_id = client_id;
 
   conn->running = true;
+  /* By the time the thread reaches its own teardown, this id is set. */
   status = pthread_create (&conn->msg_thread, NULL, _nns_edge_message_handler,
       thread_data);
 
@@ -1097,19 +1292,22 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
     }
   }
 
-  if (NNS_EDGE_NODE_TYPE_SUB == eh->node_type) {
-    ret = _nns_edge_create_message_thread (eh, conn, client_id);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to create message handle thread.");
-      goto error;
-    }
-  }
-
   conn_data = _nns_edge_add_connection (eh, client_id);
   if (conn_data) {
     /* Close old connection and set new one. */
     _nns_edge_close_connection (conn_data->sink_conn);
     conn_data->sink_conn = conn;
+
+    if (NNS_EDGE_NODE_TYPE_SUB == eh->node_type) {
+      /* The message thread may remove the connection data, set the connection first. */
+      ret = _nns_edge_create_message_thread (eh, conn, client_id);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to create message handle thread.");
+        conn_data->sink_conn = NULL;
+        goto error;
+      }
+    }
+
     done = true;
   }
 
@@ -1216,13 +1414,15 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   /* Close old connection and set new one for each node type. */
   if (eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_CLIENT ||
       eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_SERVER) {
+    _nns_edge_close_connection (conn_data->src_conn);
+    conn_data->src_conn = conn;
+
+    /* The message thread may remove the connection data, set the connection first. */
     ret = _nns_edge_create_message_thread (eh, conn, client_id);
     if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to create message handle thread.");
       goto error;
     }
-    _nns_edge_close_connection (conn_data->src_conn);
-    conn_data->src_conn = conn;
   } else {
     _nns_edge_close_connection (conn_data->sink_conn);
     conn_data->sink_conn = conn;
@@ -1248,6 +1448,9 @@ error:
 
     _nns_edge_close_connection (conn);
   }
+
+  /* Release the connections of the nodes that are gone, this thread is not one. */
+  _nns_edge_release_closed_connection (eh);
 
   SAFE_FREE (dest_host);
 }
@@ -1369,6 +1572,7 @@ _nns_edge_create_handle (const char *id, nns_edge_node_type_e node_type,
 
   nns_edge_lock_init (eh);
   nns_edge_cond_init (eh);
+  pthread_mutex_init (&eh->closed_lock, NULL);
   nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC);
   eh->id = STR_IS_VALID (id) ? nns_edge_strdup (id) :
       nns_edge_strdup_printf ("%lld", (long long) nns_edge_generate_id ());
@@ -1706,7 +1910,17 @@ nns_edge_release_handle (nns_edge_h edge_h)
     eh->listener_fd = -1;
   }
 
-  _nns_edge_remove_all_connection (eh);
+  /* A message thread being joined may connect again, drain until it cannot. */
+  do {
+    _nns_edge_remove_all_connection (eh);
+  } while (eh->connections);
+
+  pthread_mutex_lock (&eh->closed_lock);
+  if (eh->closed_connections) {
+    nns_edge_loge
+        ("Cannot release the connection of the calling thread, the handle is freed while its message thread runs.");
+  }
+  pthread_mutex_unlock (&eh->closed_lock);
 
   switch (eh->connect_type) {
     case NNS_EDGE_CONNECT_TYPE_HYBRID:
@@ -1746,6 +1960,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   nns_edge_unlock (eh);
   nns_edge_cond_destroy (eh);
   nns_edge_lock_destroy (eh);
+  pthread_mutex_destroy (&eh->closed_lock);
   SAFE_FREE (eh);
 
   return NNS_EDGE_ERROR_NONE;
@@ -1799,9 +2014,10 @@ error:
 
 /**
  * @brief Parse the message received from the MQTT broker and connect to the server directly.
+ * @note Set timeout (in milliseconds) to wait for the message, 0 for infinite timeout.
  */
 static int
-_mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
+_mqtt_hybrid_direct_connection (nns_edge_handle_s * eh, unsigned int timeout)
 {
   int ret;
 
@@ -1813,7 +2029,8 @@ _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh)
     nns_size_t msg_len = 0;
 
     ret =
-        nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len, 0U);
+        nns_edge_mqtt_get_message (eh->broker_h, (void **) &msg, &msg_len,
+        timeout);
     if (ret != NNS_EDGE_ERROR_NONE || !msg || msg_len == 0)
       break;
 
@@ -1898,6 +2115,10 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
   }
 
   nns_edge_lock (eh);
+
+  /* Release the connections of the nodes that are gone, this thread is not one. */
+  _nns_edge_release_closed_connection (eh);
+
   if (!eh->is_started) {
     nns_edge_loge ("Invalid state, the edge handle is not started.");
     nns_edge_unlock (eh);
@@ -1929,7 +2150,7 @@ nns_edge_connect (nns_edge_h edge_h, const char *dest_host, int dest_port)
       goto done;
 
     if (NNS_EDGE_CONNECT_TYPE_HYBRID == eh->connect_type) {
-      ret = _mqtt_hybrid_direct_connection (eh);
+      ret = _mqtt_hybrid_direct_connection (eh, 0U);
     } else {
       ret = nns_edge_mqtt_set_event_callback (eh->broker_h, eh->event_cb,
           eh->user_data);
