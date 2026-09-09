@@ -92,6 +92,7 @@ typedef struct
   unsigned int recv_timeout_ms; /**< Max time a receive waits for a quiet peer (0: forever). */
 
   /* list of connection data */
+  pthread_mutex_t conn_lock;
   void *connections;
 
   /* list of connection data waiting for its message thread to be terminated */
@@ -168,6 +169,7 @@ typedef struct
   char *host;
   int port;
   bool running;
+  bool in_use; /**< The send thread transfers on it, protected by the connection lock. */
   pthread_t msg_thread;
   int sockfd;
   nns_size_t max_transfer_size;
@@ -186,6 +188,15 @@ struct _nns_edge_conn_data_s
 };
 
 /**
+ * @brief Data structure to keep a connection the send thread is using.
+ */
+typedef struct
+{
+  int64_t id;
+  nns_edge_conn_s *conn;
+} nns_edge_conn_ref_s;
+
+/**
  * @brief Structures for thread data of message handling.
  */
 typedef struct
@@ -200,6 +211,15 @@ typedef struct
  */
 static int _mqtt_hybrid_direct_connection (nns_edge_handle_s * eh,
     unsigned int timeout);
+
+/**
+ * @brief Lock to protect the connection list of the edge handle.
+ * @note This is a leaf lock. Do not acquire the handle lock, join a thread, or run network I/O, while holding it. Creating a thread is allowed, the connection has to be in the list before its message thread looks for it.
+ */
+#define nns_edge_conn_lock_init(h) do { pthread_mutex_init (&(h)->conn_lock, NULL); } while (0)
+#define nns_edge_conn_lock_destroy(h) do { pthread_mutex_destroy (&(h)->conn_lock); } while (0)
+#define nns_edge_conn_lock(h) do { pthread_mutex_lock (&(h)->conn_lock); } while (0)
+#define nns_edge_conn_unlock(h) do { pthread_mutex_unlock (&(h)->conn_lock); } while (0)
 
 /**
  * @brief Set socket option. nnstreamer-edge handles TCP connection now.
@@ -707,9 +727,9 @@ _nns_edge_close_socket (nns_edge_conn_s * conn)
  * @brief Close connection.
  * @return True if the connection is released, or there is nothing to release.
  * @note The message thread cannot join and release the connection it is
- *       running on. In that case only the socket is closed and false is
- *       returned, then the caller should keep the connection until the message
- *       thread is terminated.
+ *       running on, and the send thread may be transferring on it. In those
+ *       cases only the socket is closed and false is returned, then the caller
+ *       should keep the connection until that thread is done with it.
  */
 static bool
 _nns_edge_close_connection (nns_edge_conn_s * conn)
@@ -717,7 +737,7 @@ _nns_edge_close_connection (nns_edge_conn_s * conn)
   if (!conn)
     return true;
 
-  if (_nns_edge_conn_is_self (conn)) {
+  if (_nns_edge_conn_is_self (conn) || conn->in_use) {
     _nns_edge_close_socket (conn);
     return false;
   }
@@ -889,7 +909,7 @@ _nns_edge_release_closed_connection (nns_edge_handle_s * eh)
 
 /**
  * @brief Get nnstreamer-edge connection data.
- * @note This function should be called with handle lock.
+ * @note This function should be called with connection lock.
  */
 static nns_edge_conn_data_s *
 _nns_edge_get_connection (nns_edge_handle_s * eh, int64_t client_id)
@@ -909,8 +929,8 @@ _nns_edge_get_connection (nns_edge_handle_s * eh, int64_t client_id)
 }
 
 /**
- * @brief Get nnstreamer-edge connection data.
- * @note This function should be called with handle lock.
+ * @brief Add nnstreamer-edge connection data.
+ * @note This function should be called with connection lock.
  */
 static nns_edge_conn_data_s *
 _nns_edge_add_connection (nns_edge_handle_s * eh, int64_t client_id)
@@ -937,12 +957,14 @@ _nns_edge_add_connection (nns_edge_handle_s * eh, int64_t client_id)
 
 /**
  * @brief Remove nnstreamer-edge connection data.
- * @note This function should be called with handle lock.
+ * @note This function takes the connection lock, do not call it with the lock held.
  */
 static void
 _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
 {
   nns_edge_conn_data_s *cdata, *prev;
+
+  nns_edge_conn_lock (eh);
 
   cdata = (nns_edge_conn_data_s *) eh->connections;
   prev = NULL;
@@ -953,27 +975,32 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
         prev->next = cdata->next;
       else
         eh->connections = cdata->next;
-
-      /* The caller may be the message thread of this connection, release it later. */
-      _nns_edge_hold_closed_connection (eh, cdata);
-      return;
+      break;
     }
     prev = cdata;
     cdata = cdata->next;
   }
+
+  nns_edge_conn_unlock (eh);
+
+  /* The caller may be the message thread of this connection, release it later. */
+  if (cdata)
+    _nns_edge_hold_closed_connection (eh, cdata);
 }
 
 /**
  * @brief Remove all connection data.
- * @note This function should be called with handle lock.
+ * @note This function takes the connection lock, do not call it with the lock held.
  */
 static void
 _nns_edge_remove_all_connection (nns_edge_handle_s * eh)
 {
   nns_edge_conn_data_s *cdata, *next;
 
+  nns_edge_conn_lock (eh);
   cdata = (nns_edge_conn_data_s *) eh->connections;
   eh->connections = NULL;
+  nns_edge_conn_unlock (eh);
 
   while (cdata) {
     next = cdata->next;
@@ -990,6 +1017,96 @@ _nns_edge_remove_all_connection (nns_edge_handle_s * eh)
     cdata = next;
   }
 
+  _nns_edge_release_closed_connection (eh);
+}
+
+/**
+ * @brief Release a connection taken out of its connection data, or park it.
+ * @note A connection its message thread or the send thread is still using
+ *       cannot be released here. It no longer belongs to a connection data, so
+ *       it is parked with one of its own and released with the others later.
+ */
+static void
+_nns_edge_release_old_connection (nns_edge_handle_s * eh,
+    nns_edge_conn_s * conn)
+{
+  nns_edge_conn_data_s *cdata;
+
+  if (_nns_edge_close_connection (conn))
+    return;
+
+  cdata = (nns_edge_conn_data_s *) calloc (1, sizeof (nns_edge_conn_data_s));
+  if (!cdata) {
+    nns_edge_loge ("Failed to allocate memory to hold the old connection.");
+    return;
+  }
+
+  cdata->sink_conn = conn;
+  _nns_edge_hold_closed_connection (eh, cdata);
+}
+
+/**
+ * @brief Mark every sink connection in use and return them.
+ * @note Caller should release the returned list using _nns_edge_put_sink_connection().
+ */
+static unsigned int
+_nns_edge_hold_sink_connection (nns_edge_handle_s * eh,
+    nns_edge_conn_ref_s ** list)
+{
+  nns_edge_conn_data_s *cdata;
+  nns_edge_conn_ref_s *refs = NULL;
+  unsigned int i, n = 0;
+
+  nns_edge_conn_lock (eh);
+
+  for (cdata = (nns_edge_conn_data_s *) eh->connections; cdata;
+      cdata = cdata->next)
+    n++;
+
+  if (n > 0) {
+    refs = (nns_edge_conn_ref_s *) calloc (n, sizeof (nns_edge_conn_ref_s));
+    if (refs) {
+      cdata = (nns_edge_conn_data_s *) eh->connections;
+      for (i = 0; i < n && cdata; i++, cdata = cdata->next) {
+        refs[i].id = cdata->id;
+        refs[i].conn = cdata->sink_conn;
+        if (refs[i].conn)
+          refs[i].conn->in_use = true;
+      }
+    } else {
+      nns_edge_loge ("Failed to allocate memory for the connection list.");
+      n = 0;
+    }
+  }
+
+  nns_edge_conn_unlock (eh);
+
+  *list = refs;
+  return n;
+}
+
+/**
+ * @brief Release the connections taken by _nns_edge_hold_sink_connection().
+ */
+static void
+_nns_edge_put_sink_connection (nns_edge_handle_s * eh,
+    nns_edge_conn_ref_s * list, unsigned int n)
+{
+  unsigned int i;
+
+  if (!list)
+    return;
+
+  nns_edge_conn_lock (eh);
+  for (i = 0; i < n; i++) {
+    if (list[i].conn)
+      list[i].conn->in_use = false;
+  }
+  nns_edge_conn_unlock (eh);
+
+  SAFE_FREE (list);
+
+  /* A connection kept while it was in use is releasable now. */
   _nns_edge_release_closed_connection (eh);
 }
 
@@ -1208,9 +1325,11 @@ _nns_edge_send_thread (void *thread_data)
 {
   nns_edge_handle_s *eh = (nns_edge_handle_s *) thread_data;
   nns_edge_conn_data_s *conn_data;
+  nns_edge_conn_ref_s *conn_list;
   nns_edge_conn_s *conn;
   nns_edge_data_h data_h;
   nns_size_t data_size;
+  unsigned int i, n;
   int64_t client_id;
   char *val;
   int ret;
@@ -1237,26 +1356,36 @@ _nns_edge_send_thread (void *thread_data)
           nns_edge_logd
               ("Cannot find client ID in edge data. Send to all connected nodes.");
 
-          conn_data = (nns_edge_conn_data_s *) eh->connections;
-          while (conn_data) {
-            client_id = conn_data->id;
-            conn = conn_data->sink_conn;
-            ret = _nns_edge_transfer_data (conn, data_h, client_id);
-            conn_data = conn_data->next;
+          n = _nns_edge_hold_sink_connection (eh, &conn_list);
+          for (i = 0; i < n; i++) {
+            client_id = conn_list[i].id;
+            ret = _nns_edge_transfer_data (conn_list[i].conn, data_h, client_id);
 
             if (NNS_EDGE_ERROR_NONE != ret) {
               nns_edge_loge ("Failed to transfer data. Close the connection.");
               _nns_edge_remove_connection (eh, client_id);
             }
           }
+          _nns_edge_put_sink_connection (eh, conn_list, n);
         } else {
           client_id = (int64_t) strtoll (val, NULL, 10);
           SAFE_FREE (val);
 
+          nns_edge_conn_lock (eh);
           conn_data = _nns_edge_get_connection (eh, client_id);
-          if (conn_data) {
-            conn = conn_data->sink_conn;
+          conn = conn_data ? conn_data->sink_conn : NULL;
+          if (conn)
+            conn->in_use = true;
+          nns_edge_conn_unlock (eh);
+
+          if (conn) {
             _nns_edge_transfer_data (conn, data_h, client_id);
+
+            nns_edge_conn_lock (eh);
+            conn->in_use = false;
+            nns_edge_conn_unlock (eh);
+
+            _nns_edge_release_closed_connection (eh);
           } else {
             nns_edge_loge
                 ("Cannot find connection, invalid client ID or connection closed.");
@@ -1318,6 +1447,7 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
     const char *host, int port)
 {
   nns_edge_conn_s *conn = NULL;
+  nns_edge_conn_s *old_conn = NULL;
   nns_edge_conn_data_s *conn_data;
   nns_edge_cmd_s cmd;
   char *host_str;
@@ -1390,24 +1520,27 @@ _nns_edge_connect_to (nns_edge_handle_s * eh, int64_t client_id,
     }
   }
 
+  nns_edge_conn_lock (eh);
   conn_data = _nns_edge_add_connection (eh, client_id);
   if (conn_data) {
-    /* Close old connection and set new one. */
-    _nns_edge_close_connection (conn_data->sink_conn);
+    ret = NNS_EDGE_ERROR_NONE;
+
+    /* Take old connection out and set new one. */
+    old_conn = conn_data->sink_conn;
     conn_data->sink_conn = conn;
 
     if (NNS_EDGE_NODE_TYPE_SUB == eh->node_type) {
       /* The message thread may remove the connection data, set the connection first. */
       ret = _nns_edge_create_message_thread (eh, conn, client_id);
-      if (ret != NNS_EDGE_ERROR_NONE) {
-        nns_edge_loge ("Failed to create message handle thread.");
+      if (ret != NNS_EDGE_ERROR_NONE)
         conn_data->sink_conn = NULL;
-        goto error;
-      }
     }
 
-    done = true;
+    done = (ret == NNS_EDGE_ERROR_NONE);
   }
+  nns_edge_conn_unlock (eh);
+
+  _nns_edge_release_old_connection (eh, old_conn);
 
 error:
   if (!done) {
@@ -1427,9 +1560,11 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   bool done = false;
   bool parsed;
   nns_edge_conn_s *conn;
+  nns_edge_conn_s *old_conn = NULL;
   nns_edge_conn_data_s *conn_data = NULL;
   nns_edge_cmd_s cmd;
   int64_t client_id;
+  char *caps_str = NULL;
   char *dest_host = NULL;
   int dest_port = 0;
   int ret;
@@ -1461,10 +1596,19 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
   /* Send capability and info to check compatibility. */
   if ((NNS_EDGE_NODE_TYPE_QUERY_SERVER == eh->node_type)
       || (NNS_EDGE_NODE_TYPE_PUB == eh->node_type)) {
+    nns_edge_lock (eh);
+    caps_str = nns_edge_strdup (eh->caps_str);
+    nns_edge_unlock (eh);
+
+    if (!caps_str) {
+      nns_edge_loge ("Failed to allocate memory for capability.");
+      goto error;
+    }
+
     _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_CAPABILITY, client_id);
     cmd.info.num = 1;
-    cmd.info.mem_size[0] = strlen (eh->caps_str) + 1;
-    cmd.mem[0] = eh->caps_str;
+    cmd.info.mem_size[0] = strlen (caps_str) + 1;
+    cmd.mem[0] = caps_str;
 
     ret = _nns_edge_cmd_send (conn, &cmd);
     if (ret != NNS_EDGE_ERROR_NONE) {
@@ -1506,27 +1650,33 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
     }
   }
 
+  /* Take old connection out and set new one for each node type. */
+  nns_edge_conn_lock (eh);
   conn_data = _nns_edge_add_connection (eh, client_id);
   if (!conn_data) {
-    nns_edge_loge ("Failed to add client connection.");
-    goto error;
-  }
-
-  /* Close old connection and set new one for each node type. */
-  if (eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_CLIENT ||
+    ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+  } else if (eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_CLIENT ||
       eh->node_type == NNS_EDGE_NODE_TYPE_QUERY_SERVER) {
-    _nns_edge_close_connection (conn_data->src_conn);
+    old_conn = conn_data->src_conn;
     conn_data->src_conn = conn;
 
     /* The message thread may remove the connection data, set the connection first. */
     ret = _nns_edge_create_message_thread (eh, conn, client_id);
-    if (ret != NNS_EDGE_ERROR_NONE) {
-      nns_edge_loge ("Failed to create message handle thread.");
-      goto error;
-    }
+    if (ret != NNS_EDGE_ERROR_NONE)
+      conn_data->src_conn = NULL;
   } else {
-    _nns_edge_close_connection (conn_data->sink_conn);
+    ret = NNS_EDGE_ERROR_NONE;
+    old_conn = conn_data->sink_conn;
     conn_data->sink_conn = conn;
+  }
+  nns_edge_conn_unlock (eh);
+
+  _nns_edge_release_old_connection (eh, old_conn);
+
+  if (ret != NNS_EDGE_ERROR_NONE) {
+    nns_edge_loge ("Failed to set the connection of client (ID: %lld).",
+        (long long) client_id);
+    goto error;
   }
 
   ret = nns_edge_event_invoke_callback (eh->event_cb, eh->user_data,
@@ -1540,19 +1690,22 @@ _nns_edge_accept_socket (nns_edge_handle_s * eh)
 error:
   if (!done) {
     /** Detach the connection before releasing it, to avoid a double free. */
+    nns_edge_conn_lock (eh);
     if (conn_data) {
       if (conn_data->src_conn == conn)
         conn_data->src_conn = NULL;
       if (conn_data->sink_conn == conn)
         conn_data->sink_conn = NULL;
     }
+    nns_edge_conn_unlock (eh);
 
-    _nns_edge_close_connection (conn);
+    _nns_edge_release_old_connection (eh, conn);
   }
 
   /* Release the connections of the nodes that are gone, this thread is not one. */
   _nns_edge_release_closed_connection (eh);
 
+  SAFE_FREE (caps_str);
   SAFE_FREE (dest_host);
 }
 
@@ -1672,6 +1825,7 @@ _nns_edge_create_handle (const char *id, nns_edge_node_type_e node_type,
   }
 
   nns_edge_lock_init (eh);
+  nns_edge_conn_lock_init (eh);
   nns_edge_cond_init (eh);
   pthread_mutex_init (&eh->closed_lock, NULL);
   nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC);
@@ -2003,10 +2157,15 @@ nns_edge_release_handle (nns_edge_h edge_h)
   }
 
   eh->listening = false;
+  nns_edge_unlock (eh);
+
+  /* The listener thread takes the handle lock, do not join it while holding it. */
   if (eh->listener_thread) {
     pthread_join (eh->listener_thread, NULL);
     eh->listener_thread = 0;
   }
+
+  nns_edge_lock (eh);
 
   if (eh->listener_fd >= 0) {
     close (eh->listener_fd);
@@ -2064,6 +2223,7 @@ nns_edge_release_handle (nns_edge_h edge_h)
   nns_edge_cond_destroy (eh);
   nns_edge_lock_destroy (eh);
   pthread_mutex_destroy (&eh->closed_lock);
+  nns_edge_conn_lock_destroy (eh);
   SAFE_FREE (eh);
 
   return NNS_EDGE_ERROR_NONE;
@@ -2321,6 +2481,7 @@ nns_edge_is_connected (nns_edge_h edge_h)
   nns_edge_handle_s *eh = (nns_edge_handle_s *) edge_h;
   nns_edge_conn_data_s *conn_data;
   nns_edge_conn_s *conn;
+  int ret;
 
   if (!eh) {
     nns_edge_loge ("Invalid param, given edge handle is null.");
@@ -2340,16 +2501,21 @@ nns_edge_is_connected (nns_edge_h edge_h)
     return nns_edge_custom_is_connected (eh->custom_connection_h);
   }
 
+  ret = NNS_EDGE_ERROR_CONNECTION_FAILURE;
+
+  nns_edge_conn_lock (eh);
   conn_data = (nns_edge_conn_data_s *) eh->connections;
   while (conn_data) {
     conn = conn_data->sink_conn;
     if (_nns_edge_check_connection (conn)) {
-      return NNS_EDGE_ERROR_NONE;
+      ret = NNS_EDGE_ERROR_NONE;
+      break;
     }
     conn_data = conn_data->next;
   }
+  nns_edge_conn_unlock (eh);
 
-  return NNS_EDGE_ERROR_CONNECTION_FAILURE;
+  return ret;
 }
 
 /**
