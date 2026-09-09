@@ -724,17 +724,15 @@ _nns_edge_close_socket (nns_edge_conn_s * conn)
 }
 
 /**
- * @brief Close connection.
- * @return True if the connection is released, or there is nothing to release.
- * @note The message thread cannot join and release the connection it is
- *       running on, and the send thread may be transferring on it. In those
- *       cases only the socket is closed and false is returned, then the caller
- *       should keep the connection until that thread is done with it.
+ * @brief Check whether the send thread is transferring on the connection.
  */
 static bool
 _nns_edge_conn_in_use (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
 {
   bool in_use;
+
+  if (!conn)
+    return false;
 
   nns_edge_conn_lock (eh);
   in_use = conn->in_use;
@@ -746,10 +744,11 @@ _nns_edge_conn_in_use (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
 /**
  * @brief Close connection.
  * @return True if the connection is released, or there is nothing to release.
- * @note The message thread cannot join and release the connection it is
- *       running on, and the send thread may be transferring on it. In those
- *       cases only the socket is closed and false is returned, then the caller
- *       should keep the connection until that thread is done with it.
+ * @note The message thread cannot join and release the connection it is running
+ *       on, and the send thread may be transferring on it. False is returned in
+ *       both cases and the caller should keep the connection until that thread
+ *       is done with it. The socket of the former is closed to let it notice,
+ *       the socket of the latter is left open until the transfer is over.
  */
 static bool
 _nns_edge_close_connection (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
@@ -757,7 +756,12 @@ _nns_edge_close_connection (nns_edge_handle_s * eh, nns_edge_conn_s * conn)
   if (!conn)
     return true;
 
-  if (_nns_edge_conn_is_self (conn) || _nns_edge_conn_in_use (eh, conn)) {
+  if (_nns_edge_conn_in_use (eh, conn)) {
+    /* Its socket is closed once the send thread is done with it. */
+    return false;
+  }
+
+  if (_nns_edge_conn_is_self (conn)) {
     _nns_edge_close_socket (conn);
     return false;
   }
@@ -825,31 +829,35 @@ _nns_edge_conn_has_reader (nns_edge_conn_s * conn)
 
 /**
  * @brief Stop the message thread of the connection data and close its sockets.
- * @note The sockets are closed after the join when a message thread of this
- *       connection data may still read one of them. Such a thread would poll a
+ * @note The sockets are closed later when a message thread of this connection
+ *       data may still read one of them, or the send thread transfers on one. Such a thread would poll a
  *       descriptor the system has given to somebody else, and closing the
  *       other socket makes the peer answer with an error command, which the
  *       thread reports as a connection lost by the peer.
  */
 static void
-_nns_edge_stop_connection (nns_edge_conn_data_s * cdata)
+_nns_edge_stop_connection (nns_edge_handle_s * eh, nns_edge_conn_data_s * cdata)
 {
-  bool reading = false;
+  bool busy = false;
 
   if (!cdata)
     return;
 
   if (_nns_edge_conn_has_reader (cdata->src_conn)) {
     cdata->src_conn->running = false;
-    reading = true;
+    busy = true;
   }
 
   if (_nns_edge_conn_has_reader (cdata->sink_conn)) {
     cdata->sink_conn->running = false;
-    reading = true;
+    busy = true;
   }
 
-  if (!reading) {
+  if (_nns_edge_conn_in_use (eh, cdata->src_conn)
+      || _nns_edge_conn_in_use (eh, cdata->sink_conn))
+    busy = true;
+
+  if (!busy) {
     _nns_edge_close_socket (cdata->src_conn);
     _nns_edge_close_socket (cdata->sink_conn);
   }
@@ -866,7 +874,7 @@ static void
 _nns_edge_hold_closed_connection (nns_edge_handle_s * eh,
     nns_edge_conn_data_s * cdata)
 {
-  _nns_edge_stop_connection (cdata);
+  _nns_edge_stop_connection (eh, cdata);
 
   pthread_mutex_lock (&eh->closed_lock);
   cdata->next = (nns_edge_conn_data_s *) eh->closed_connections;
