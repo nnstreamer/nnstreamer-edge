@@ -55,7 +55,10 @@
  * @brief The default time (in milliseconds) a receive waits for a peer that went quiet.
  * @details This bounds silence, not a transfer: every byte that arrives starts the wait
  *          again, so a slow link is unaffected while a peer that announces a command and
- *          then stops sending can no longer park the message thread for ever.
+ *          then stops sending can no longer park the message thread for ever. The message
+ *          loop polls before it reads, so there the wait begins only once a command has
+ *          started arriving. The capability and host info reads of the handshake are not
+ *          polled first, so for those it bounds the wait for the first byte as well.
  *          Override it with nns_edge_set_info (h, "RECV_TIMEOUT", ...), zero to wait.
  */
 #define NNS_EDGE_RECV_TIMEOUT_MS (10000U)
