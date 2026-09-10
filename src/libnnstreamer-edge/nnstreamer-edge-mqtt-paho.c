@@ -82,7 +82,14 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
         return TRUE;
       }
 
-      nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
+      ret = nns_edge_data_deserialize (data_h, (void *) msg,
+          (nns_size_t) msg_len);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to deserialize the received message, drop it.");
+        nns_edge_data_destroy (data_h);
+        SAFE_FREE (msg);
+        return TRUE;
+      }
 
       ret = nns_edge_event_invoke_callback (bh->event_cb, bh->user_data,
           NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h, sizeof (nns_edge_data_h),

@@ -1266,8 +1266,16 @@ _nns_edge_message_handler (void *thread_data)
       for (i = 0; i < cmd.info.num; i++)
         nns_edge_data_add (data_h, cmd.mem[i], cmd.info.mem_size[i], NULL);
 
-      if (cmd.info.meta_size > 0)
-        nns_edge_data_deserialize_meta (data_h, cmd.meta, cmd.info.meta_size);
+      if (cmd.info.meta_size > 0) {
+        ret = nns_edge_data_deserialize_meta (data_h, cmd.meta,
+            cmd.info.meta_size);
+        if (ret != NNS_EDGE_ERROR_NONE) {
+          nns_edge_loge ("Failed to deserialize the metadata, drop the data.");
+          nns_edge_data_destroy (data_h);
+          _nns_edge_cmd_clear (&cmd);
+          continue;
+        }
+      }
 
       /* Set client ID in edge data */
       val = nns_edge_strdup_printf ("%lld", (long long) client_id);

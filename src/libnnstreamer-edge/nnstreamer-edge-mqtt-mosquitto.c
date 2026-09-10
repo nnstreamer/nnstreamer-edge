@@ -82,7 +82,14 @@ on_message_callback (struct mosquitto *client, void *data,
         return;
       }
 
-      nns_edge_data_deserialize (data_h, (void *) msg, (nns_size_t) msg_len);
+      ret = nns_edge_data_deserialize (data_h, (void *) msg,
+          (nns_size_t) msg_len);
+      if (ret != NNS_EDGE_ERROR_NONE) {
+        nns_edge_loge ("Failed to deserialize the received message, drop it.");
+        nns_edge_data_destroy (data_h);
+        SAFE_FREE (msg);
+        return;
+      }
 
       ret = nns_edge_event_invoke_callback (bh->event_cb, bh->user_data,
           NNS_EDGE_EVENT_NEW_DATA_RECEIVED, data_h, sizeof (nns_edge_data_h),
