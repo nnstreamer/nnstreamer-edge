@@ -780,6 +780,158 @@ TEST (edgeMqtt, setEventCallbackInvalidParam_n)
 }
 
 /**
+ * @brief What the subscriber saw in the malformed payload test.
+ */
+typedef struct {
+  unsigned int valid; /**< Data events carrying the one memory the test publishes. */
+  unsigned int empty; /**< Data events carrying no memory at all. */
+  bool saw_last; /**< The message published after the malformed one arrived. */
+} ne_test_invalid_payload_s;
+
+/**
+ * @brief Edge event callback sorting the data events of the malformed payload test.
+ */
+static int
+_test_edge_invalid_payload_event_cb (nns_edge_event_h event_h, void *user_data)
+{
+  ne_test_invalid_payload_s *rd = (ne_test_invalid_payload_s *) user_data;
+  nns_edge_event_e event = NNS_EDGE_EVENT_UNKNOWN;
+  nns_edge_data_h data_h;
+  unsigned int count = 0U;
+  char *val = NULL;
+
+  if (!rd || nns_edge_event_get_type (event_h, &event) != NNS_EDGE_ERROR_NONE)
+    return NNS_EDGE_ERROR_NONE;
+
+  if (event != NNS_EDGE_EVENT_NEW_DATA_RECEIVED)
+    return NNS_EDGE_ERROR_NONE;
+
+  if (nns_edge_event_parse_new_data (event_h, &data_h) != NNS_EDGE_ERROR_NONE)
+    return NNS_EDGE_ERROR_NONE;
+
+  nns_edge_data_get_count (data_h, &count);
+  if (count == 0U)
+    rd->empty++;
+  else if (count == 1U)
+    rd->valid++;
+
+  if (nns_edge_data_get_info (data_h, "seq", &val) == NNS_EDGE_ERROR_NONE) {
+    if (strcmp (val, "last") == 0)
+      rd->saw_last = true;
+    SAFE_FREE (val);
+  }
+
+  nns_edge_data_destroy (data_h);
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
+ * @brief Publish a well formed edge data carrying one memory, tagged with the given sequence name.
+ */
+static int
+_test_publish_valid (nns_edge_broker_h broker_h, const char *seq)
+{
+  nns_edge_data_h data_h;
+  unsigned int payload[4] = { 1U, 2U, 3U, 4U };
+  int ret;
+
+  ret = nns_edge_data_create (&data_h);
+  if (ret != NNS_EDGE_ERROR_NONE)
+    return ret;
+
+  ret = nns_edge_data_add (data_h, payload, sizeof (payload), NULL);
+  if (ret == NNS_EDGE_ERROR_NONE)
+    ret = nns_edge_data_set_info (data_h, "seq", seq);
+  if (ret == NNS_EDGE_ERROR_NONE)
+    ret = nns_edge_mqtt_publish_data (broker_h, data_h);
+
+  nns_edge_data_destroy (data_h);
+  return ret;
+}
+
+/**
+ * @brief A malformed MQTT payload is dropped instead of raising a data event
+ * with an empty handle.
+ * @note Publishing is retained, so a subscriber that is not yet subscribed
+ * receives only the last message. A first valid message proves the subscription
+ * is live before the malformed one is sent, and a last one proves the malformed
+ * one was consumed, since one client's messages on one topic are delivered in
+ * order.
+ */
+TEST (edgeMqtt, deserializeInvalidPayload_n)
+{
+  nns_edge_h sub_h;
+  nns_edge_broker_h pub_h;
+  ne_test_invalid_payload_s rd;
+  char *topic;
+  const uint8_t garbage[] = { 0x01, 0x02, 0x03 };
+  char *full_topic;
+  unsigned int retry;
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  memset (&rd, 0, sizeof (rd));
+
+  ret = nns_edge_create_handle ("temp-sub-invalid-payload",
+      NNS_EDGE_CONNECT_TYPE_MQTT, NNS_EDGE_NODE_TYPE_SUB, &sub_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* A topic of its own, so no retained message of an earlier run is delivered here. */
+  topic = nns_edge_strdup_printf ("MQTT_INVALID_PAYLOAD_%d", (int) getpid ());
+
+  ret = nns_edge_set_event_callback (sub_h, _test_edge_invalid_payload_event_cb, &rd);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (sub_h, "TOPIC", topic);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (sub_h, "127.0.0.1", 1883);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* A SUB subscribes to edge/inference/+/<topic>/#, so match that pattern. */
+  full_topic = nns_edge_strdup_printf ("edge/inference/127.0.0.1/%s/1234", topic);
+  ret = nns_edge_mqtt_connect (
+      "temp-pub-invalid-payload", full_topic, "127.0.0.1", 1883, &pub_h);
+  SAFE_FREE (full_topic);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* No ASSERT past this point: the callback holds rd, so the handle must always be released. */
+  if (ret == NNS_EDGE_ERROR_NONE) {
+    EXPECT_EQ (_test_publish_valid (pub_h, "first"), NNS_EDGE_ERROR_NONE);
+
+    retry = 0U;
+    while (rd.valid == 0U && retry++ < 100U)
+      usleep (100000);
+    EXPECT_EQ (rd.valid, 1U);
+
+    /* Shorter than nns_edge_data_header_s, the deserializer must reject it. */
+    ret = nns_edge_mqtt_publish (pub_h, garbage, (int) sizeof (garbage));
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    EXPECT_EQ (_test_publish_valid (pub_h, "last"), NNS_EDGE_ERROR_NONE);
+
+    retry = 0U;
+    while (!rd.saw_last && retry++ < 100U)
+      usleep (100000);
+
+    EXPECT_TRUE (rd.saw_last);
+    EXPECT_EQ (rd.valid, 2U);
+    EXPECT_EQ (rd.empty, 0U);
+
+    ret = nns_edge_mqtt_close (pub_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  }
+
+  ret = nns_edge_release_handle (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (topic);
+}
+
+/**
  * @brief Main gtest
  */
 int

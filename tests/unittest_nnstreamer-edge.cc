@@ -6535,6 +6535,11 @@ TEST (edge, capabilityTerminated)
 #define NE_TEST_PEER_MEMS (4U)
 
 /**
+ * @brief Key-value pair count claimed by a metadata blob that carries fewer pairs.
+ */
+#define NE_TEST_BAD_META_PAIRS (7U)
+
+/**
  * @brief Scripted peer that talks the wire protocol to a real edge handle.
  */
 typedef struct {
@@ -6548,6 +6553,7 @@ typedef struct {
   nns_size_t meta_size; /**< Announced metadata size. */
   void *meta; /**< Serialized metadata, owned by the caller. */
   nns_size_t meta_actual;
+  bool meta_bad_first; /**< Send one command with corrupted metadata before the real one. */
   unsigned int chunk_delay_ms; /**< Pause between the pieces of a memory. */
   nns_size_t chunk_size; /**< Bytes per piece, zero to send a memory in one go. */
   unsigned int answer_timeout_ms; /**< Give up waiting for the answer, 0 to wait. */
@@ -6610,7 +6616,36 @@ _test_peer_send_pattern (ne_test_peer_s *peer, int fd, unsigned int index, nns_s
 }
 
 /**
- * @brief Run the peer: hand out a capability, take the answer, then send one data command.
+ * @brief Send one data command of the scripted peer, carrying the given metadata blob.
+ */
+static bool
+_test_peer_send_data_cmd (ne_test_peer_s *peer, int fd, const void *meta)
+{
+  ne_test_cmd_info_s info;
+  unsigned int i;
+
+  _test_cmd_info_init (&info, NE_TEST_CMD_TRANSFER_DATA);
+  info.num = peer->num;
+  for (i = 0; i < peer->num && i < NE_TEST_PEER_MEMS; i++)
+    info.mem_size[i] = peer->mem_size[i];
+  info.meta_size = peer->meta_size;
+
+  if (!_test_send_all (fd, &info, sizeof (info)))
+    return false;
+
+  for (i = 0; i < peer->num && i < NE_TEST_PEER_MEMS; i++) {
+    if (!_test_peer_send_pattern (peer, fd, i, peer->mem_actual[i]))
+      return false;
+  }
+
+  if (peer->meta_actual > 0 && !_test_send_all (fd, meta, (size_t) peer->meta_actual))
+    return false;
+
+  return true;
+}
+
+/**
+ * @brief Run the peer: hand out a capability, take the answer, then send its data commands.
  */
 static void *
 _test_peer_thread (void *data)
@@ -6670,21 +6705,24 @@ _test_peer_thread (void *data)
   peer->answer_cmd = info.cmd;
 
   if (peer->send_data) {
-    _test_cmd_info_init (&info, NE_TEST_CMD_TRANSFER_DATA);
-    info.num = peer->num;
-    for (i = 0; i < peer->num && i < NE_TEST_PEER_MEMS; i++)
-      info.mem_size[i] = peer->mem_size[i];
-    info.meta_size = peer->meta_size;
+    if (peer->meta_bad_first && peer->meta_actual > 0) {
+      void *bad_meta;
+      bool sent;
 
-    if (!_test_send_all (fd, &info, sizeof (info)))
-      goto done;
+      bad_meta = malloc ((size_t) peer->meta_actual);
+      if (!bad_meta)
+        goto done;
 
-    for (i = 0; i < peer->num && i < NE_TEST_PEER_MEMS; i++) {
-      if (!_test_peer_send_pattern (peer, fd, i, peer->mem_actual[i]))
+      memcpy (bad_meta, peer->meta, (size_t) peer->meta_actual);
+      ((uint32_t *) bad_meta)[0] = NE_TEST_BAD_META_PAIRS;
+      sent = _test_peer_send_data_cmd (peer, fd, bad_meta);
+      free (bad_meta);
+
+      if (!sent)
         goto done;
     }
 
-    if (peer->meta_actual > 0 && !_test_send_all (fd, peer->meta, (size_t) peer->meta_actual))
+    if (!_test_peer_send_data_cmd (peer, fd, peer->meta))
       goto done;
 
     peer->sent_data = true;
@@ -7201,6 +7239,159 @@ TEST (edgeTransfer, dataMetaOverLimit_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief A metadata blob whose key-value count does not match its content is dropped.
+ */
+TEST (edgeTransfer, dataMetaCorrupted_n)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  nns_size_t meta_len = 0;
+  void *meta;
+  int ret;
+
+  meta = _test_build_meta (&meta_len);
+  ASSERT_TRUE (meta != NULL && meta_len >= sizeof (uint32_t));
+
+  /* Claim more key-value pairs than the blob actually holds. */
+  ((uint32_t *) meta)[0] = NE_TEST_BAD_META_PAIRS;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = 16U;
+  peer.meta_size = peer.meta_actual = meta_len;
+  peer.meta = meta;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-meta-corrupt", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_TRUE (rd.meta_value == NULL);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  EXPECT_TRUE (peer.sent_data);
+  SAFE_FREE (rd.meta_value);
+  nns_edge_free (meta);
+}
+
+/**
+ * @brief A metadata blob whose last value string is not null-terminated is dropped.
+ */
+TEST (edgeTransfer, dataMetaNotTerminated_n)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  nns_size_t meta_len = 0;
+  void *meta;
+  int ret;
+
+  meta = _test_build_meta (&meta_len);
+  ASSERT_TRUE (meta != NULL && meta_len > 0);
+
+  /* Overwrite the null terminator that ends the value string. */
+  ((char *) meta)[meta_len - 1] = 'X';
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = 16U;
+  peer.meta_size = peer.meta_actual = meta_len;
+  peer.meta = meta;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-meta-unterminated", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_TRUE (rd.meta_value == NULL);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  EXPECT_TRUE (peer.sent_data);
+  SAFE_FREE (rd.meta_value);
+  nns_edge_free (meta);
+}
+
+/**
+ * @brief A rejected metadata blob drops only that message; the connection still
+ *        delivers the next, well formed data command.
+ */
+TEST (edgeTransfer, dataMetaCorruptedKeepsConnection)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  nns_size_t meta_len = 0;
+  void *meta;
+  int ret;
+
+  meta = _test_build_meta (&meta_len);
+  ASSERT_TRUE (meta != NULL && meta_len >= sizeof (uint32_t));
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.meta_bad_first = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = 16U;
+  peer.meta_size = peer.meta_actual = meta_len;
+  peer.meta = meta;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-meta-keep-conn", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 1U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_TRUE (rd.payload_ok);
+  EXPECT_STREQ (rd.meta_value, "from-peer");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  EXPECT_TRUE (peer.sent_data);
+  SAFE_FREE (rd.meta_value);
+  nns_edge_free (meta);
 }
 
 /**
