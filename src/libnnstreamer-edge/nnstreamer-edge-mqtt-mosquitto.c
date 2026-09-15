@@ -268,19 +268,22 @@ _nns_edge_clear_retained (nns_edge_broker_s * bh)
 
   handle = bh->mqtt_h;
   if (handle) {
+    /* Mosquitto holds its lock calling back, do not set it under bh->lock. */
+    mosquitto_publish_callback_set (handle, _clear_retained_cb);
+
     nns_edge_lock (bh);
     bh->cleared = false;
 
-    mosquitto_publish_callback_set (handle, _clear_retained_cb);
     mosquitto_publish (handle, NULL, bh->topic, 0, NULL, 1, true);
 
     /* Wait up to 10 seconds. */
     while (!bh->cleared && ++wait < 1000U)
       nns_edge_cond_wait_until (bh, 10);
 
-    mosquitto_publish_callback_set (handle, NULL);
     bh->cleared = true;
     nns_edge_unlock (bh);
+
+    mosquitto_publish_callback_set (handle, NULL);
   }
 }
 

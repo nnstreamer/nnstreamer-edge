@@ -8,6 +8,12 @@
  */
 
 #include <gtest/gtest.h>
+#include <chrono>
+#include <dlfcn.h>
+#include <future>
+#include <memory>
+#include <thread>
+#include <vector>
 #include "nnstreamer-edge-log.h"
 #include "nnstreamer-edge-mqtt.h"
 #include "nnstreamer-edge-util.h"
@@ -133,6 +139,71 @@ _check_mqtt_broker ()
   }
 
   return true;
+}
+
+struct mosquitto;
+
+/**
+ * @brief Check whether the MQTT backend is libmosquitto, whose functions are wrapped below.
+ */
+static bool
+_test_is_mosquitto (void)
+{
+  return dlsym (RTLD_DEFAULT, "mosquitto_lib_init") != NULL;
+}
+
+/**
+ * @brief Run the publish callback in another thread whenever it is set or reset.
+ */
+static bool _test_probe_publish_callback = false;
+
+/**
+ * @brief Set when a probed publish callback did not return within 2 seconds.
+ */
+static bool _test_publish_callback_blocked = false;
+
+/**
+ * @brief The threads that ran a probed publish callback, joined by the test.
+ */
+static std::vector<std::thread> _test_probes;
+
+/**
+ * @brief Run a publish callback with message id 0, which libmosquitto never uses.
+ */
+static void
+_test_run_publish_callback (void (*callback) (struct mosquitto *, void *, int),
+    struct mosquitto *mosq, std::shared_ptr<std::promise<void>> ran)
+{
+  callback (mosq, NULL, 0);
+  ran->set_value ();
+}
+
+/**
+ * @brief Wrap mosquitto_publish_callback_set() to check that the callback can run while it is set or reset.
+ */
+extern "C" void
+mosquitto_publish_callback_set (
+    struct mosquitto *mosq, void (*on_publish) (struct mosquitto *, void *, int))
+{
+  using callback_f = void (*) (struct mosquitto *, void *, int);
+  using set_f = void (*) (struct mosquitto *, callback_f);
+  static set_f real_set = (set_f) dlsym (RTLD_NEXT, "mosquitto_publish_callback_set");
+  static callback_f last = NULL;
+  callback_f callback = on_publish ? on_publish : last;
+
+  if (_test_probe_publish_callback && callback) {
+    auto ran = std::make_shared<std::promise<void>> ();
+    std::future<void> done = ran->get_future ();
+
+    _test_probes.emplace_back (_test_run_publish_callback, callback, mosq, ran);
+
+    if (done.wait_for (std::chrono::seconds (2)) != std::future_status::ready)
+      _test_publish_callback_blocked = true;
+  }
+
+  if (on_publish)
+    last = on_publish;
+  real_set (mosq, on_publish);
 }
 
 /**
@@ -570,6 +641,39 @@ TEST (edgeMqttHybrid, messageQueueLimit)
 
   ret = nns_edge_mqtt_close (broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Closing a publisher sets and resets its publish callback without holding a lock the callback takes.
+ */
+TEST (edgeMqttHybrid, closeSetsPublishCallbackUnlocked)
+{
+  nns_edge_broker_h broker_h;
+  const char published[] = "temp-retained";
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+  if (!_test_is_mosquitto ())
+    GTEST_SKIP () << "The test wraps libmosquitto, the MQTT backend is not mosquitto.";
+
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-pub", "temp-mqtt-probe-topic", "127.0.0.1", 1883, &broker_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_publish (broker_h, published, (int) sizeof (published));
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_publish_callback_blocked = false;
+  _test_probe_publish_callback = true;
+  ret = nns_edge_mqtt_close (broker_h);
+  _test_probe_publish_callback = false;
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  for (auto &probe : _test_probes)
+    probe.join ();
+  EXPECT_EQ (_test_probes.size (), 2U);
+  _test_probes.clear ();
+  EXPECT_FALSE (_test_publish_callback_blocked);
 }
 
 /**
