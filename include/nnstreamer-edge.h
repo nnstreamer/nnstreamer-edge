@@ -195,6 +195,9 @@ int nns_edge_stop (nns_edge_h edge_h);
  * @brief Release the given edge handle. All the connections are disconnected.
  * @remarks This does not return until the event callback of a closed
  *          connection has returned, so it must not be called in the callback.
+ *          With the MQTT or hybrid connection, a query server or a publisher
+ *          first removes the message it retained on the broker, and waits up
+ *          to 10 seconds for the broker to acknowledge it.
  * @param[in] edge_h The edge handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.

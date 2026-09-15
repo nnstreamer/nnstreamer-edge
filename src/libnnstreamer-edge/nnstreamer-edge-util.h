@@ -75,6 +75,10 @@ extern "C" {
       gettimeofday (&now, NULL); \
       ts.tv_sec = now.tv_sec + (ms) / 1000; \
       ts.tv_nsec = now.tv_usec * 1000 + ((ms) % 1000) * 1000000; \
+      if (ts.tv_nsec >= 1000000000L) { \
+        ts.tv_sec++; \
+        ts.tv_nsec -= 1000000000L; \
+      } \
       pthread_cond_timedwait (&(h)->cond, &(h)->lock, &ts); \
     } else { \
       pthread_cond_wait (&(h)->cond, &(h)->lock); \

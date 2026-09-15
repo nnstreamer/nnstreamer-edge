@@ -5911,6 +5911,97 @@ TEST_F (edgeQueue, waitPopTimedout)
 }
 
 /**
+ * @brief Get the monotonic time in milliseconds.
+ */
+static int64_t
+_test_get_time_ms (void)
+{
+  struct timespec ts;
+
+  clock_gettime (CLOCK_MONOTONIC, &ts);
+  return (int64_t) ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/**
+ * @brief Sleep until the wall clock is 900 to 950 ms into a second.
+ * @note nns_edge_cond_wait_until() builds its deadline from the wall clock.
+ */
+static void
+_test_wait_end_of_second (void)
+{
+  struct timeval now;
+  unsigned int retry = 0U;
+
+  do {
+    gettimeofday (&now, NULL);
+    if (now.tv_usec >= 900000 && now.tv_usec < 950000)
+      return;
+    usleep (1000);
+  } while (retry++ < 3000U);
+}
+
+/**
+ * @brief Wait and pop data from queue, timed out with a deadline in the next second.
+ */
+TEST_F (edgeQueue, waitPopTimedoutAcrossSecond_n)
+{
+  void *data;
+  nns_size_t size;
+  int64_t start, elapsed;
+
+  _test_wait_end_of_second ();
+
+  start = _test_get_time_ms ();
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 200U, &data, &size), NNS_EDGE_ERROR_IO);
+  elapsed = _test_get_time_ms () - start;
+
+  EXPECT_GE (elapsed, 150);
+  EXPECT_LT (elapsed, 1000);
+}
+
+/**
+ * @brief Thread to push one data into queue after 50 ms.
+ */
+static void *
+_test_thread_edge_queue_push_once (void *thread_data)
+{
+  nns_edge_queue_h queue_h = thread_data;
+  void *data;
+
+  usleep (50000);
+
+  data = malloc (4U);
+  EXPECT_TRUE (data != NULL);
+  EXPECT_EQ (nns_edge_queue_push (queue_h, data, 4U, nns_edge_free), NNS_EDGE_ERROR_NONE);
+
+  return NULL;
+}
+
+/**
+ * @brief Data pushed while waiting with a deadline in the next second is popped before the deadline.
+ */
+TEST_F (edgeQueue, waitPopAcrossSecond)
+{
+  pthread_t push_thread;
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int64_t start, elapsed;
+
+  _test_wait_end_of_second ();
+
+  start = _test_get_time_ms ();
+  ASSERT_EQ (pthread_create (&push_thread, NULL, _test_thread_edge_queue_push_once, queue_h), 0);
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 900U, &data, &size), NNS_EDGE_ERROR_NONE);
+  elapsed = _test_get_time_ms () - start;
+  pthread_join (push_thread, NULL);
+
+  EXPECT_TRUE (data != NULL);
+  EXPECT_EQ (size, 4U);
+  EXPECT_LT (elapsed, 800);
+  SAFE_FREE (data);
+}
+
+/**
  * @brief A stopped queue does not wait, whichever order the two threads run in.
  */
 TEST_F (edgeQueue, stopWaitBeforeWait)
@@ -6015,6 +6106,40 @@ TEST (edgeUtil, getVersion)
   ver_string = nns_edge_strdup_printf ("%u.%u.%u", major1, minor1, micro1);
   EXPECT_STREQ (ver_string, VERSION);
   nns_edge_free (ver_string);
+}
+
+/**
+ * @brief Lock and condition for the wait tests.
+ */
+typedef struct {
+  pthread_mutex_t lock;
+  pthread_cond_t cond;
+} test_cond_s;
+
+/**
+ * @brief Wait longer than a second with a deadline whose sub-second part also carries into the next second.
+ */
+TEST (edgeUtil, condWaitUntilAcrossSecond)
+{
+  test_cond_s c;
+  int64_t start, elapsed;
+
+  nns_edge_lock_init (&c);
+  nns_edge_cond_init (&c);
+
+  _test_wait_end_of_second ();
+
+  nns_edge_lock (&c);
+  start = _test_get_time_ms ();
+  nns_edge_cond_wait_until (&c, 1100);
+  elapsed = _test_get_time_ms () - start;
+  nns_edge_unlock (&c);
+
+  EXPECT_GE (elapsed, 1050);
+  EXPECT_LT (elapsed, 2000);
+
+  nns_edge_cond_destroy (&c);
+  nns_edge_lock_destroy (&c);
 }
 
 /**
