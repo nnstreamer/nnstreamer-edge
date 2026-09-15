@@ -43,6 +43,7 @@ typedef struct
   pthread_cond_t cond;
   bool cleared;
   bool retained; /**< Set by publish, read by close; never run concurrently. */
+  int clear_mid;
 } nns_edge_broker_s;
 
 /**
@@ -180,6 +181,7 @@ _nns_edge_mqtt_init_client (const char *id, const char *topic, const char *host,
   bh->user_data = NULL;
   bh->cleared = false;
   bh->retained = false;
+  bh->clear_mid = 0;
   nns_edge_lock_init (bh);
   nns_edge_cond_init (bh);
 
@@ -247,12 +249,14 @@ _clear_retained_cb (struct mosquitto *mosq, void *obj, int mid)
 
   bh = (nns_edge_broker_s *) mosquitto_userdata (mosq);
 
-  if (!bh || bh->cleared)
+  if (!bh)
     return;
 
   nns_edge_lock (bh);
-  bh->cleared = true;
-  nns_edge_cond_signal (bh);
+  if (!bh->cleared && mid == bh->clear_mid) {
+    bh->cleared = true;
+    nns_edge_cond_signal (bh);
+  }
   nns_edge_unlock (bh);
 }
 
@@ -277,7 +281,8 @@ _nns_edge_clear_retained (nns_edge_broker_s * bh)
     nns_edge_lock (bh);
     bh->cleared = false;
 
-    mret = mosquitto_publish (handle, NULL, bh->topic, 0, NULL, 1, true);
+    mret = mosquitto_publish (handle, &bh->clear_mid, bh->topic, 0, NULL, 1,
+        true);
     if (mret != MOSQ_ERR_SUCCESS) {
       nns_edge_logw ("Failed to clear the retained message (Topic:%s).",
           bh->topic);

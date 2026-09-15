@@ -774,6 +774,56 @@ TEST (edgeMqttHybrid, publishToTopicFilter_n)
 }
 
 /**
+ * @brief A publisher clears its retained message when it closes, also right after a burst of messages.
+ */
+TEST (edgeMqttHybrid, closeClearsRetained)
+{
+  nns_edge_broker_h pub_h, sub_h;
+  char published[32];
+  void *msg = NULL;
+  nns_size_t msg_len;
+  unsigned int i;
+  int64_t start;
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+  if (!_test_is_mosquitto ())
+    GTEST_SKIP () << "The test wraps libmosquitto, the MQTT backend is not mosquitto.";
+
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-pub", "temp-mqtt-clear-topic", "127.0.0.1", 1883, &pub_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* The acknowledgements of these are still arriving while the close waits for its own. */
+  for (i = 0; i < 100U; i++) {
+    snprintf (published, sizeof (published), "msg-%u", i);
+    ret = nns_edge_mqtt_publish (pub_h, published, (int) strlen (published) + 1);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  }
+
+  _test_clearing_publishes = 0U;
+  start = _test_get_time_ms ();
+  ret = nns_edge_mqtt_close (pub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_LT (_test_get_time_ms () - start, 5000);
+  EXPECT_EQ (_test_clearing_publishes, 1U);
+
+  ret = nns_edge_mqtt_connect (
+      "temp-mqtt-sub", "temp-mqtt-clear-topic", "127.0.0.1", 1883, &sub_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_subscribe (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_mqtt_get_message (sub_h, &msg, &msg_len, 1000U);
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (msg);
+
+  ret = nns_edge_mqtt_close (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief A handle that has published nothing leaves the retained message of another node on its topic.
  */
 TEST (edgeMqttHybrid, closeKeepsRetainedOfOthers)
