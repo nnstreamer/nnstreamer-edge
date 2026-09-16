@@ -59,6 +59,7 @@ int nns_edge_event_get_type (nns_edge_event_h event_h, nns_edge_event_e *event);
 /**
  * @brief Parse edge event (NNS_EDGE_EVENT_NEW_DATA_RECEIVED) and get received data.
  * @remarks If the function succeeds, @a data_h should be released using nns_edge_data_destroy().
+ * @note A received message whose data or metadata the library cannot deserialize is dropped and raises no event.
  * @param[in] event_h The edge event handle.
  * @param[out] data_h Handle of received data.
  * @return 0 on success. Otherwise a negative error value.
