@@ -39,6 +39,27 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure --no-tests=error
 
+    # ThreadSanitizer over the concurrency test, in this job for the same reason
+    # as AddressSanitizer below. Any report makes the binary exit non-zero, so a
+    # flag or field shared between the library threads without a lock or an
+    # atomic type fails the check. The runner kernel randomizes mmap with more
+    # bits than TSan supports, so the test runs without address space
+    # randomization, which holds whatever number of bits a kernel uses.
+    - name: Configure CMake with ThreadSanitizer
+      run: >
+        cmake -B ${{github.workspace}}/build-tsan -DCMAKE_BUILD_TYPE=Debug -DENABLE_TEST=ON
+        -DCMAKE_C_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+        -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+        -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=thread"
+
+    - name: Build with ThreadSanitizer
+      run: cmake --build ${{github.workspace}}/build-tsan --target unittest_nnstreamer-edge-thread
+
+    - name: Test with ThreadSanitizer
+      working-directory: ${{github.workspace}}/build-tsan
+      run: setarch "$(uname -m)" -R ctest -R '^unittest_nnstreamer-edge-thread$' --output-on-failure --no-tests=error
+
     # The AddressSanitizer run lives in this job rather than a job of its own so
     # that it is covered by the "build" required status check; a leak detected
     # here blocks the merge instead of only turning a non-required job red.
