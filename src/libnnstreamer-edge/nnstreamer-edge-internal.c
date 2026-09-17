@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include <netdb.h>
 #include <poll.h>
+#include <stdatomic.h>
 #include <sys/socket.h>
 #include <time.h>
 
@@ -100,12 +101,12 @@ typedef struct
   pthread_mutex_t closed_lock;
 
   /* socket listener */
-  bool listening;
+  atomic_bool listening; /**< Read by the listener thread without the handle lock. */
   int listener_fd;
   pthread_t listener_thread;
 
   /* thread and queue to send data */
-  bool sending;
+  atomic_bool sending; /**< Read by the send thread without the handle lock. */
   nns_edge_queue_h send_queue;
   pthread_t send_thread;
 
@@ -168,7 +169,7 @@ typedef struct
 {
   char *host;
   int port;
-  bool running;
+  atomic_bool running; /**< Lowered by the owner without a lock while the message thread reads it. */
   bool in_use; /**< The send thread transfers on it, protected by the connection lock. */
   pthread_t msg_thread;
   int sockfd;
