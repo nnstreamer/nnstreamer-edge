@@ -179,6 +179,33 @@ nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit,
 }
 
 /**
+ * @brief Get the max length and the leaky option of the queue.
+ */
+int
+nns_edge_queue_get_limit (nns_edge_queue_h handle, unsigned int *limit,
+    nns_edge_queue_leak_e *leaky)
+{
+  nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+
+  if (!nns_edge_handle_is_valid (q)) {
+    nns_edge_loge ("[Queue] Invalid param, queue is invalid.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  if (!limit || !leaky) {
+    nns_edge_loge ("[Queue] Invalid param, limit or leaky is null.");
+    return NNS_EDGE_ERROR_INVALID_PARAMETER;
+  }
+
+  nns_edge_lock (q);
+  *limit = q->max_data;
+  *leaky = q->leaky;
+  nns_edge_unlock (q);
+
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Add new data into queue.
  */
 int

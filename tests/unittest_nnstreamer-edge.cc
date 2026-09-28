@@ -1861,6 +1861,202 @@ TEST (edge, getInfo)
 }
 
 /**
+ * @brief Read back a tunable of the handle and compare it with the expected string.
+ */
+static void
+_expect_info (nns_edge_h edge_h, const char *key, const char *expected)
+{
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_get_info (edge_h, key, &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << key;
+  EXPECT_STREQ (value, expected) << key;
+  SAFE_FREE (value);
+}
+
+/**
+ * @brief Read back a tunable and check that set_info() accepts what get_info() returned.
+ */
+static void
+_expect_info_round_trip (nns_edge_h edge_h, const char *key)
+{
+  char *value = NULL;
+  char *again = NULL;
+  int ret;
+
+  ret = nns_edge_get_info (edge_h, key, &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << key;
+  ASSERT_TRUE (value != NULL) << key;
+  EXPECT_STRNE (value, "") << key;
+  EXPECT_EQ (strspn (value, "0123456789"), strlen (value)) << key << "=" << value;
+
+  ret = nns_edge_set_info (edge_h, key, value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << key;
+  ret = nns_edge_get_info (edge_h, key, &again);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << key;
+  EXPECT_STREQ (again, value) << key;
+
+  SAFE_FREE (again);
+  SAFE_FREE (value);
+}
+
+/**
+ * @brief Get info - the tunables report their defaults before they are set.
+ */
+TEST (edge, getInfoTunablesDefault)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _expect_info (edge_h, "QUEUE_SIZE", "0:NEW");
+  _expect_info (edge_h, "RECV_TIMEOUT", "10000");
+  /* The default transfer limit is a tunable of the library, so assert the form rather than the number. */
+  _expect_info_round_trip (edge_h, "MAX_TRANSFER_SIZE");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - every tunable reads back the value set, in the form set_info accepts.
+ */
+TEST (edge, getInfoTunables)
+{
+  nns_edge_h edge_h;
+  char *value = NULL;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "5:OLD");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "QUEUE_SIZE", "5:OLD");
+  _expect_info (edge_h, "queue_size", "5:OLD");
+
+  /* A size without a leaky option resets it to the default. */
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "7");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "QUEUE_SIZE", "7:NEW");
+
+  ret = nns_edge_set_info (edge_h, "MAX_TRANSFER_SIZE", "0");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "MAX_TRANSFER_SIZE", "0");
+  ret = nns_edge_set_info (edge_h, "MAX_TRANSFER_SIZE", "18446744073709551615");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "max_transfer_size", "18446744073709551615");
+
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "0");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "RECV_TIMEOUT", "0");
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "4294967295");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "recv_timeout", "4294967295");
+
+  /* What get_info returns is accepted back by set_info unchanged. */
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "3:OLD");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_get_info (edge_h, "QUEUE_SIZE", &value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "1:NEW");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", value);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  SAFE_FREE (value);
+  _expect_info (edge_h, "QUEUE_SIZE", "3:OLD");
+
+  /* The tunables are handle fields and leave the application metadata alone. */
+  ret = nns_edge_set_info (edge_h, "user-key", "user-value");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _expect_info (edge_h, "user-key", "user-value");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - a rejected set leaves the tunable at its previous value.
+ */
+TEST (edge, getInfoTunablesAfterInvalidSet_n)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "5:OLD");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "15:INVALID_LEAKY");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  _expect_info (edge_h, "QUEUE_SIZE", "5:OLD");
+
+  ret = nns_edge_set_info (edge_h, "MAX_TRANSFER_SIZE", "1024");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "MAX_TRANSFER_SIZE", "-1");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  ret = nns_edge_set_info (edge_h, "MAX_TRANSFER_SIZE", "99999999999999999999999");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  _expect_info (edge_h, "MAX_TRANSFER_SIZE", "1024");
+
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500ms");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "99999999999");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_INVALID_PARAMETER);
+  _expect_info (edge_h, "RECV_TIMEOUT", "500");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Get info - every key set_info keeps on the handle can be read back.
+ */
+TEST (edge, getInfoEverySettableKey)
+{
+  nns_edge_h edge_h;
+  char *value = NULL;
+  int ret;
+  size_t i;
+  const char *keys[][2] = {
+    { "CAPS", "caps" },
+    { "HOST", "127.0.0.1" },
+    { "PORT", "3000" },
+    { "DEST_HOST", "127.0.0.1" },
+    { "DEST_PORT", "3001" },
+    { "TOPIC", "topic" },
+    { "QUEUE_SIZE", "2:OLD" },
+    { "MAX_TRANSFER_SIZE", "2048" },
+    { "RECV_TIMEOUT", "300" },
+  };
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  for (i = 0; i < sizeof (keys) / sizeof (keys[0]); i++) {
+    ret = nns_edge_set_info (edge_h, keys[i][0], keys[i][1]);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << keys[i][0];
+    ret = nns_edge_get_info (edge_h, keys[i][0], &value);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE) << keys[i][0];
+    EXPECT_STREQ (value, keys[i][1]) << keys[i][0];
+    SAFE_FREE (value);
+  }
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief Get info - invalid param.
  */
 TEST (edge, getInfoInvalidParam01_n)
@@ -5791,6 +5987,60 @@ TEST_F (edgeQueue, setLimitInvalidParam02_n)
   EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 5U, NNS_EDGE_QUEUE_LEAK_NEW),
       NNS_EDGE_ERROR_INVALID_PARAMETER);
   nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
+}
+
+/**
+ * @brief Get limit of queue.
+ */
+TEST_F (edgeQueue, getLimit)
+{
+  unsigned int limit = 1U;
+  nns_edge_queue_leak_e leaky = NNS_EDGE_QUEUE_LEAK_OLD;
+
+  EXPECT_EQ (nns_edge_queue_get_limit (queue_h, &limit, &leaky), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (limit, 0U);
+  EXPECT_EQ (leaky, NNS_EDGE_QUEUE_LEAK_NEW);
+
+  EXPECT_EQ (nns_edge_queue_set_limit (queue_h, 3U, NNS_EDGE_QUEUE_LEAK_OLD), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (nns_edge_queue_get_limit (queue_h, &limit, &leaky), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (limit, 3U);
+  EXPECT_EQ (leaky, NNS_EDGE_QUEUE_LEAK_OLD);
+}
+
+/**
+ * @brief Get limit of queue - invalid param.
+ */
+TEST_F (edgeQueue, getLimitInvalidParam01_n)
+{
+  unsigned int limit;
+  nns_edge_queue_leak_e leaky;
+
+  EXPECT_EQ (nns_edge_queue_get_limit (NULL, &limit, &leaky), NNS_EDGE_ERROR_INVALID_PARAMETER);
+}
+
+/**
+ * @brief Get limit of queue - invalid param.
+ */
+TEST_F (edgeQueue, getLimitInvalidParam02_n)
+{
+  unsigned int limit;
+  nns_edge_queue_leak_e leaky;
+
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC_DEAD);
+  EXPECT_EQ (nns_edge_queue_get_limit (queue_h, &limit, &leaky), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  nns_edge_handle_set_magic (queue_h, NNS_EDGE_MAGIC);
+}
+
+/**
+ * @brief Get limit of queue - invalid param.
+ */
+TEST_F (edgeQueue, getLimitInvalidParam03_n)
+{
+  unsigned int limit;
+  nns_edge_queue_leak_e leaky;
+
+  EXPECT_EQ (nns_edge_queue_get_limit (queue_h, NULL, &leaky), NNS_EDGE_ERROR_INVALID_PARAMETER);
+  EXPECT_EQ (nns_edge_queue_get_limit (queue_h, &limit, NULL), NNS_EDGE_ERROR_INVALID_PARAMETER);
 }
 
 /**

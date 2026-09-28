@@ -2819,6 +2819,20 @@ nns_edge_get_info (nns_edge_h edge_h, const char *key, char **value)
     } else {
       *value = nns_edge_strdup_printf ("%lld", (long long) eh->client_id);
     }
+  } else if (0 == strcasecmp (key, "QUEUE_SIZE")) {
+    unsigned int limit;
+    nns_edge_queue_leak_e leaky;
+
+    ret = nns_edge_queue_get_limit (eh->send_queue, &limit, &leaky);
+    if (ret == NNS_EDGE_ERROR_NONE) {
+      *value = nns_edge_strdup_printf ("%u:%s", limit,
+          (leaky == NNS_EDGE_QUEUE_LEAK_OLD) ? "OLD" : "NEW");
+    }
+  } else if (0 == strcasecmp (key, "RECV_TIMEOUT")) {
+    *value = nns_edge_strdup_printf ("%u", eh->recv_timeout_ms);
+  } else if (0 == strcasecmp (key, "MAX_TRANSFER_SIZE")) {
+    *value = nns_edge_strdup_printf ("%llu",
+        (unsigned long long) eh->max_transfer_size);
   } else {
     ret = nns_edge_metadata_get (eh->metadata, key, value);
   }
