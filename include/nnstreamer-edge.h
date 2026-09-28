@@ -341,13 +341,17 @@ int nns_edge_is_connected (nns_edge_h edge_h);
  * MAX_TRANSFER_SIZE    | Max total bytes accepted from the connected node in a single transfer, in decimal. The receiver allocates the size announced by the sender before the payload arrives, so this bounds what an untrusted node can make it allocate. A transfer that announces more is refused and the connection to that node is closed. Default 268435456 (256 MiB), 0 means unlimited. Each connection takes the value in force when it is created, so set it before nns_edge_start() or nns_edge_connect().
  * RECV_TIMEOUT         | Max time in milliseconds a receive waits for a connected node that stopped sending, in decimal. This bounds silence, not a transfer: every byte that arrives starts the wait again, so a slow link is unaffected, while a node that announces a transfer and then goes quiet no longer holds the receiving thread. That holds once a transfer is under way. The capability and the host info exchanged while a connection is set up are read without waiting for the socket first, so for those the timeout also bounds the wait for the very first byte, and a low value shortens how long a handshake tolerates a slow peer as well. A receive that times out is treated as an error and the connection is closed. Default 10000, 0 waits forever. Each connection takes the value in force when it is created, so set it before nns_edge_start() or nns_edge_connect().
  * ID or CLIENT_ID      | Unique identifier of the edge handle or client ID. (Read-only)
+ *
+ * @note nns_edge_get_info() returns QUEUE_SIZE with both of its parts, e.g. 5:OLD or 0:NEW.
+ *
+ * @note QUEUE_SIZE does not bound what a node receives from the broker. A message that arrives while no receive callback is installed is kept in an internal queue that holds at most 100 and drops the oldest, and that bound cannot be changed; a Hybrid node reads the server advertisements it connects to from that queue. Ordinary MQTT reception does not go through it, because the connection installs a callback that is handed each message as it arrives.
  */
 int nns_edge_set_info (nns_edge_h edge_h, const char *key, const char *value);
 
 /**
  * @brief Get nnstreamer edge info.
  * @remarks If the function succeeds, @a value should be released using free().
- * @note The param key is case-insensitive.
+ * @note The param key is case-insensitive. The keys are those of the edge info table in nns_edge_set_info(), plus any other key an application has stored with nns_edge_set_info(). QUEUE_SIZE, MAX_TRANSFER_SIZE and RECV_TIMEOUT return the value in force, the default until it is set, in the form nns_edge_set_info() accepts.
  * @param[in] edge_h The edge handle.
  * @param[in] key Identifiers to determine which value to get.
  * @param[out] value The values that match the key.

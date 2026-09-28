@@ -72,6 +72,17 @@ int nns_edge_queue_get_length (nns_edge_queue_h handle, unsigned int *length);
 int nns_edge_queue_set_limit (nns_edge_queue_h handle, unsigned int limit, nns_edge_queue_leak_e leaky);
 
 /**
+ * @brief Get the max length and the leaky option of the queue.
+ * @param[in] handle The queue handle.
+ * @param[out] limit The max data in queue, 0 means unlimited.
+ * @param[out] leaky The queue leaky option.
+ * @return 0 on success. Otherwise a negative error value.
+ * @retval #NNS_EDGE_ERROR_NONE Successful.
+ * @retval #NNS_EDGE_ERROR_INVALID_PARAMETER Given parameter is invalid.
+ */
+int nns_edge_queue_get_limit (nns_edge_queue_h handle, unsigned int *limit, nns_edge_queue_leak_e *leaky);
+
+/**
  * @brief Add new data into queue.
  * @param[in] handle The queue handle.
  * @param[in] data The data to be added.

@@ -304,6 +304,44 @@ _test_edge_event_cb (nns_edge_event_h event_h, void *user_data)
 }
 
 /**
+ * @brief A custom handle reads back the tunables it keeps itself, which the library does not know.
+ */
+TEST (edgeCustom, getInfoTunables)
+{
+  int ret;
+  nns_edge_h edge_h = NULL;
+  char *value = NULL;
+
+  ret = nns_edge_custom_create_handle ("temp_id", "libnnstreamer-edge-custom-test.so",
+      NNS_EDGE_NODE_TYPE_QUERY_SERVER, &edge_h);
+  ASSERT_EQ (NNS_EDGE_ERROR_NONE, ret);
+
+  ret = nns_edge_set_info (edge_h, "QUEUE_SIZE", "4:OLD");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_get_info (edge_h, "QUEUE_SIZE", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_STREQ ("4:OLD", value);
+  SAFE_FREE (value);
+
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "250");
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  ret = nns_edge_get_info (edge_h, "RECV_TIMEOUT", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_STREQ ("250", value);
+  SAFE_FREE (value);
+
+  ret = nns_edge_get_info (edge_h, "MAX_TRANSFER_SIZE", &value);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+  EXPECT_TRUE (value != NULL);
+  if (value)
+    EXPECT_EQ (strspn (value, "0123456789"), strlen (value)) << value;
+  SAFE_FREE (value);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (NNS_EDGE_ERROR_NONE, ret);
+}
+
+/**
  * @brief Check the return value of custom connection.
  */
 TEST (edgeCustom, expectedReturn)
