@@ -70,7 +70,6 @@ typedef struct
 {
   uint32_t magic;
   pthread_mutex_t lock;
-  pthread_cond_t cond;
   char *id;
   char *topic;
   nns_edge_connect_type_e connect_type;
@@ -1385,11 +1384,6 @@ _nns_edge_send_thread (void *thread_data)
   char *val;
   int ret;
 
-  nns_edge_lock (eh);
-  eh->sending = true;
-  nns_edge_cond_signal (eh);
-  nns_edge_unlock (eh);
-
   while (eh->sending &&
       NNS_EDGE_ERROR_NONE == nns_edge_queue_wait_pop (eh->send_queue, 0U,
           &data_h, &data_size)) {
@@ -1475,6 +1469,7 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
   if (eh->send_thread)
     return NNS_EDGE_ERROR_NONE;
 
+  eh->sending = true;
   status = pthread_create (&eh->send_thread, NULL, _nns_edge_send_thread, eh);
 
   if (status != 0) {
@@ -1483,9 +1478,6 @@ _nns_edge_create_send_thread (nns_edge_handle_s * eh)
     eh->sending = false;
     return NNS_EDGE_ERROR_IO;
   }
-
-  /* Wait for starting thread. */
-  nns_edge_cond_wait (eh);
 
   return NNS_EDGE_ERROR_NONE;
 }
@@ -1768,11 +1760,6 @@ _nns_edge_socket_listener_thread (void *thread_data)
 {
   nns_edge_handle_s *eh = (nns_edge_handle_s *) thread_data;
 
-  nns_edge_lock (eh);
-  eh->listening = true;
-  nns_edge_cond_signal (eh);
-  nns_edge_unlock (eh);
-
   while (eh->listening) {
     struct pollfd poll_fd;
 
@@ -1835,6 +1822,7 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
     goto error;
   }
 
+  eh->listening = true;
   status = pthread_create (&eh->listener_thread, NULL,
       _nns_edge_socket_listener_thread, eh);
 
@@ -1844,9 +1832,6 @@ _nns_edge_create_socket_listener (nns_edge_handle_s * eh)
     eh->listener_thread = 0;
     goto error;
   }
-
-  /* Wait for the listener thread to be started */
-  nns_edge_cond_wait (eh);
 
   done = true;
 
@@ -1877,7 +1862,6 @@ _nns_edge_create_handle (const char *id, nns_edge_node_type_e node_type,
 
   nns_edge_lock_init (eh);
   nns_edge_conn_lock_init (eh);
-  nns_edge_cond_init (eh);
   pthread_mutex_init (&eh->closed_lock, NULL);
   nns_edge_handle_set_magic (eh, NNS_EDGE_MAGIC);
   eh->id = STR_IS_VALID (id) ? nns_edge_strdup (id) :
@@ -2271,7 +2255,6 @@ nns_edge_release_handle (nns_edge_h edge_h)
   SAFE_FREE (eh->caps_str);
 
   nns_edge_unlock (eh);
-  nns_edge_cond_destroy (eh);
   nns_edge_lock_destroy (eh);
   pthread_mutex_destroy (&eh->closed_lock);
   nns_edge_conn_lock_destroy (eh);
