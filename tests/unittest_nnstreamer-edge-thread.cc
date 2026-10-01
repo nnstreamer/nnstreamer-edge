@@ -454,6 +454,28 @@ TEST (edgeThread, disconnectBeforeThreadRuns)
 }
 
 /**
+ * @brief Release the handle right after nns_edge_start(), before the listener and send threads may have run.
+ * @note This covers the start-up order, not the lost start-up wait itself, which needs a spurious wake-up to reproduce.
+ */
+TEST (edgeThread, releaseRightAfterStart)
+{
+  unsigned int i;
+
+  for (i = 0; i < 40U; i++) {
+    ne_thread_test_data_s server_td = {};
+    nns_edge_h server_h;
+    char *id = nns_edge_strdup_printf ("start-release-%u", i);
+    int port = nns_edge_get_available_port ();
+
+    server_h = _start_test_server (id, port, &server_td);
+    SAFE_FREE (id);
+    ASSERT_TRUE (server_h != NULL);
+
+    EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+  }
+}
+
+/**
  * @brief Send data to a connected peer selected by its client ID.
  */
 TEST (edgeThread, sendClientId)
@@ -562,6 +584,42 @@ TEST (edgeThread, sendNoConnection_n)
   EXPECT_EQ (nns_edge_is_connected (server_h), NNS_EDGE_ERROR_CONNECTION_FAILURE);
 
   nns_edge_data_destroy (data_h);
+  EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Send right after start and connect, before the send thread may have run.
+ * @note This covers the start-up order, not the lost start-up wait itself, which needs a spurious wake-up to reproduce.
+ */
+TEST (edgeThread, sendImmediatelyAfterConnect)
+{
+  ne_thread_test_data_s server_td = {};
+  ne_thread_test_data_s client_td = {};
+  nns_edge_h server_h, client_h;
+  nns_edge_data_h data_h;
+  unsigned int retry;
+  int port;
+
+  port = nns_edge_get_available_port ();
+  server_h = _start_test_server ("imm-server", port, &server_td);
+  ASSERT_TRUE (server_h != NULL);
+
+  client_h = _start_test_client ("imm-client", port, &client_td);
+  ASSERT_TRUE (client_h != NULL);
+
+  data_h = _create_test_data ();
+  ASSERT_TRUE (data_h != NULL);
+  EXPECT_EQ (nns_edge_send (client_h, data_h), NNS_EDGE_ERROR_NONE);
+  nns_edge_data_destroy (data_h);
+
+  for (retry = 0U; retry < 200U; retry++) {
+    if (server_td.received.load () > 0U)
+      break;
+    usleep (10000);
+  }
+  EXPECT_GT (server_td.received.load (), 0U);
+
+  EXPECT_EQ (nns_edge_release_handle (client_h), NNS_EDGE_ERROR_NONE);
   EXPECT_EQ (nns_edge_release_handle (server_h), NNS_EDGE_ERROR_NONE);
 }
 
