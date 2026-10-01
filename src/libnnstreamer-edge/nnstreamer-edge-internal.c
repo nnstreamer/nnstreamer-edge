@@ -1315,7 +1315,7 @@ _nns_edge_message_handler (void *thread_data)
         if (NNS_EDGE_ERROR_NONE == ret)
           break;
 
-        /* The wait for a message may return at once, do not retry faster. */
+        /* Do not retry faster than the wait for a message itself. */
         nanosleep (&retry_delay, NULL);
       }
     }

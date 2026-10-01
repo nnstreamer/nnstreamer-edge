@@ -33,6 +33,23 @@ nns_edge_generate_id (void)
 }
 
 /**
+ * @brief Get the absolute time, as pthread_cond_timedwait() takes it, that is the given milliseconds from now.
+ */
+void
+nns_edge_get_deadline (unsigned int timeout_ms, struct timespec *ts)
+{
+  struct timeval now;
+
+  gettimeofday (&now, NULL);
+  ts->tv_sec = now.tv_sec + timeout_ms / 1000;
+  ts->tv_nsec = now.tv_usec * 1000 + (timeout_ms % 1000) * 1000000;
+  if (ts->tv_nsec >= 1000000000L) {
+    ts->tv_sec++;
+    ts->tv_nsec -= 1000000000L;
+  }
+}
+
+/**
  * @brief Get the version of nnstreamer-edge.
  */
 void

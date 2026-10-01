@@ -120,7 +120,7 @@ nns_edge_queue_destroy (nns_edge_queue_h handle)
     return NNS_EDGE_ERROR_INVALID_PARAMETER;
   }
 
-  /* Stop waiting and clear all data. */
+  /* Clear all data. */
   nns_edge_queue_clear (handle);
 
   nns_edge_handle_set_magic (q, NNS_EDGE_MAGIC_DEAD);
@@ -292,6 +292,7 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
     void **data, nns_size_t * size)
 {
   nns_edge_queue_s *q = (nns_edge_queue_s *) handle;
+  struct timespec deadline;
   bool popped = false;
 
   if (!nns_edge_handle_is_valid (q)) {
@@ -313,9 +314,16 @@ nns_edge_queue_wait_pop (nns_edge_queue_h handle, unsigned int timeout,
   *data = NULL;
   *size = 0U;
 
+  if (timeout > 0U)
+    nns_edge_get_deadline (timeout, &deadline);
+
   nns_edge_lock (q);
-  if (q->length == 0U && !q->stopped)
-    nns_edge_cond_wait_until (q, timeout);
+  while (q->length == 0U && !q->stopped) {
+    if (timeout == 0U)
+      nns_edge_cond_wait (q);
+    else if (pthread_cond_timedwait (&q->cond, &q->lock, &deadline) != 0)
+      break;
+  }
 
   popped = _pop_data (q, false, data, size);
   nns_edge_unlock (q);
@@ -346,7 +354,7 @@ nns_edge_queue_stop_wait (nns_edge_queue_h handle)
 
 /**
  * @brief Clear all data in the queue.
- * @note This only signals a waiter that already holds the queue lock. Use nns_edge_queue_stop_wait() to shut a queue down.
+ * @note This wakes a waiter in nns_edge_queue_wait_pop() but does not end its wait. Use nns_edge_queue_stop_wait() to shut a queue down.
  */
 int
 nns_edge_queue_clear (nns_edge_queue_h handle)
@@ -359,11 +367,11 @@ nns_edge_queue_clear (nns_edge_queue_h handle)
   }
 
   nns_edge_lock (q);
-  nns_edge_cond_signal (q);
 
   while (q->length > 0U)
     _pop_data (q, true, NULL, NULL);
 
+  nns_edge_cond_signal (q);
   nns_edge_unlock (q);
   return NNS_EDGE_ERROR_NONE;
 }
