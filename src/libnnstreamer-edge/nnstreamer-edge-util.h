@@ -71,14 +71,7 @@ extern "C" {
 #define nns_edge_cond_wait_until(h,ms) do { \
     if ((ms) > 0) { \
       struct timespec ts; \
-      struct timeval now; \
-      gettimeofday (&now, NULL); \
-      ts.tv_sec = now.tv_sec + (ms) / 1000; \
-      ts.tv_nsec = now.tv_usec * 1000 + ((ms) % 1000) * 1000000; \
-      if (ts.tv_nsec >= 1000000000L) { \
-        ts.tv_sec++; \
-        ts.tv_nsec -= 1000000000L; \
-      } \
+      nns_edge_get_deadline ((ms), &ts); \
       pthread_cond_timedwait (&(h)->cond, &(h)->lock, &ts); \
     } else { \
       pthread_cond_wait (&(h)->cond, &(h)->lock); \
@@ -94,6 +87,11 @@ typedef struct {
   nns_size_t data_len;
   nns_edge_data_destroy_cb destroy_cb;
 } nns_edge_raw_data_s;
+
+/**
+ * @brief Get the absolute time, as pthread_cond_timedwait() takes it, that is the given milliseconds from now.
+ */
+void nns_edge_get_deadline (unsigned int timeout_ms, struct timespec *ts);
 
 /**
  * @brief Generate client ID.

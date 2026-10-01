@@ -633,6 +633,39 @@ TEST (edgeMqttHybrid, getMessageWithinTimeout_n)
 }
 
 /**
+ * @brief Getting a message from an empty queue with a timeout waits out roughly that timeout, not less.
+ */
+TEST (edgeMqttHybrid, getMessageTimedout_n)
+{
+  int ret = -1;
+  nns_edge_broker_h broker_h;
+  void *msg = NULL;
+  nns_size_t msg_len;
+  std::chrono::steady_clock::time_point start;
+  int64_t elapsed_ms;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_mqtt_connect ("temp-mqtt-id-timedout",
+      "temp-mqtt-topic-timedout", "127.0.0.1", 1883, &broker_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  start = std::chrono::steady_clock::now ();
+  ret = nns_edge_mqtt_get_message (broker_h, &msg, &msg_len, 500U);
+  elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds> (
+      std::chrono::steady_clock::now () - start)
+                   .count ();
+
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_GE (elapsed_ms, 400);
+  EXPECT_LT (elapsed_ms, 3000);
+
+  ret = nns_edge_mqtt_close (broker_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
  * @brief The message queue of a broker handle stays bounded while nothing drains it.
  */
 TEST (edgeMqttHybrid, messageQueueLimit)

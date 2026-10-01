@@ -134,10 +134,10 @@ int nns_edge_queue_stop_wait (nns_edge_queue_h handle);
 
 /**
  * @brief Clear all data in the queue.
- * @details This signals a thread that is already blocked in
- *          nns_edge_queue_wait_pop(), but a thread that has not reached the
- *          queue lock yet misses that signal and waits anyway. Call
- *          nns_edge_queue_stop_wait() to shut a queue down.
+ * @details This wakes a thread waiting in nns_edge_queue_wait_pop(), but
+ *          does not end its wait: the waiter finds the queue empty and keeps
+ *          waiting for data. Call nns_edge_queue_stop_wait() to shut a queue
+ *          down.
  * @param[in] handle The queue handle.
  * @return 0 on success. Otherwise a negative error value.
  * @retval #NNS_EDGE_ERROR_NONE Successful.

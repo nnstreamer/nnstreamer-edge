@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <arpa/inet.h>
+#include <atomic>
 #include <dirent.h>
 #include <inttypes.h>
 #include <poll.h>
@@ -6282,6 +6283,193 @@ TEST_F (edgeQueue, stopWaitWhileWaiting)
 }
 
 /**
+ * @brief Clearing an empty queue does not end an untimed wait; new data does.
+ */
+TEST_F (edgeQueue, waitPopClearWhileWaiting)
+{
+  std::atomic<bool> returned (false);
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int ret = NNS_EDGE_ERROR_UNKNOWN;
+  void *push_data;
+
+  std::thread waiter ([&] () {
+    ret = nns_edge_queue_wait_pop (queue_h, 0U, &data, &size);
+    returned = true;
+  });
+
+  usleep (100000);
+  EXPECT_EQ (nns_edge_queue_clear (queue_h), NNS_EDGE_ERROR_NONE);
+
+  usleep (100000);
+  EXPECT_FALSE (returned.load ());
+
+  push_data = malloc (4U);
+  ASSERT_TRUE (push_data != NULL);
+  EXPECT_EQ (nns_edge_queue_push (queue_h, push_data, 4U, nns_edge_free), NNS_EDGE_ERROR_NONE);
+
+  waiter.join ();
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (data, push_data);
+  EXPECT_EQ (size, 4U);
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief A timed wait woken by clearing an empty queue keeps waiting for data within its deadline.
+ */
+TEST_F (edgeQueue, waitPopTimedClearWhileWaiting)
+{
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int ret = NNS_EDGE_ERROR_UNKNOWN;
+  int64_t start, elapsed;
+  void *push_data;
+
+  start = _test_get_time_ms ();
+  std::thread waiter (
+      [&] () { ret = nns_edge_queue_wait_pop (queue_h, 5000U, &data, &size); });
+
+  usleep (100000);
+  EXPECT_EQ (nns_edge_queue_clear (queue_h), NNS_EDGE_ERROR_NONE);
+
+  usleep (100000);
+  push_data = malloc (4U);
+  ASSERT_TRUE (push_data != NULL);
+  EXPECT_EQ (nns_edge_queue_push (queue_h, push_data, 4U, nns_edge_free), NNS_EDGE_ERROR_NONE);
+
+  waiter.join ();
+  elapsed = _test_get_time_ms () - start;
+
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (data, push_data);
+  EXPECT_EQ (size, 4U);
+  EXPECT_LT (elapsed, 2000);
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief A timed wait woken by clearing an empty queue still waits out its own deadline when no data ever arrives.
+ */
+TEST_F (edgeQueue, waitPopTimedClearWhileWaiting_n)
+{
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int ret = NNS_EDGE_ERROR_UNKNOWN;
+  int64_t start, elapsed;
+
+  start = _test_get_time_ms ();
+  std::thread waiter (
+      [&] () { ret = nns_edge_queue_wait_pop (queue_h, 500U, &data, &size); });
+
+  usleep (100000);
+  EXPECT_EQ (nns_edge_queue_clear (queue_h), NNS_EDGE_ERROR_NONE);
+
+  waiter.join ();
+  elapsed = _test_get_time_ms () - start;
+
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_IO);
+  EXPECT_TRUE (data == NULL);
+  EXPECT_GE (elapsed, 450);
+  EXPECT_LT (elapsed, 2000);
+}
+
+/**
+ * @brief A timed wait woken again and again by clearing an empty queue keeps the deadline it started with.
+ */
+TEST_F (edgeQueue, waitPopTimedClearRepeatedly_n)
+{
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int ret = NNS_EDGE_ERROR_UNKNOWN;
+  int64_t start, elapsed;
+  unsigned int i;
+
+  start = _test_get_time_ms ();
+  std::thread waiter (
+      [&] () { ret = nns_edge_queue_wait_pop (queue_h, 1000U, &data, &size); });
+
+  for (i = 0; i < 9U; i++) {
+    usleep (100000);
+    EXPECT_EQ (nns_edge_queue_clear (queue_h), NNS_EDGE_ERROR_NONE);
+  }
+
+  waiter.join ();
+  elapsed = _test_get_time_ms () - start;
+
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_IO);
+  EXPECT_TRUE (data == NULL);
+  EXPECT_GE (elapsed, 950);
+  EXPECT_LT (elapsed, 1450);
+}
+
+/**
+ * @brief Clearing an empty queue does not end an untimed wait, but stopping it still does.
+ */
+TEST_F (edgeQueue, waitPopClearThenStopWait_n)
+{
+  std::atomic<bool> returned (false);
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int ret = NNS_EDGE_ERROR_UNKNOWN;
+
+  std::thread waiter ([&] () {
+    ret = nns_edge_queue_wait_pop (queue_h, 0U, &data, &size);
+    returned = true;
+  });
+
+  usleep (100000);
+  EXPECT_EQ (nns_edge_queue_clear (queue_h), NNS_EDGE_ERROR_NONE);
+
+  usleep (100000);
+  EXPECT_FALSE (returned.load ());
+
+  EXPECT_EQ (nns_edge_queue_stop_wait (queue_h), NNS_EDGE_ERROR_NONE);
+  waiter.join ();
+
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_IO);
+  EXPECT_TRUE (data == NULL);
+}
+
+/**
+ * @brief A stopped queue still returns the data that was left in it.
+ */
+TEST_F (edgeQueue, waitPopStoppedWithData)
+{
+  void *push_data, *data = NULL;
+  nns_size_t size = 0U;
+
+  push_data = malloc (4U);
+  ASSERT_TRUE (push_data != NULL);
+  EXPECT_EQ (nns_edge_queue_push (queue_h, push_data, 4U, nns_edge_free), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (nns_edge_queue_stop_wait (queue_h), NNS_EDGE_ERROR_NONE);
+
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &data, &size), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (data, push_data);
+  EXPECT_EQ (size, 4U);
+  SAFE_FREE (data);
+}
+
+/**
+ * @brief A stopped, empty queue returns immediately without waiting.
+ */
+TEST_F (edgeQueue, waitPopStoppedNoData_n)
+{
+  void *data = NULL;
+  nns_size_t size = 0U;
+  int64_t start, elapsed;
+
+  EXPECT_EQ (nns_edge_queue_stop_wait (queue_h), NNS_EDGE_ERROR_NONE);
+
+  start = _test_get_time_ms ();
+  EXPECT_EQ (nns_edge_queue_wait_pop (queue_h, 0U, &data, &size), NNS_EDGE_ERROR_IO);
+  elapsed = _test_get_time_ms () - start;
+
+  EXPECT_TRUE (data == NULL);
+  EXPECT_LT (elapsed, 100);
+}
+
+/**
  * @brief Stop waiting for new data in queue - invalid param.
  */
 TEST_F (edgeQueue, stopWaitInvalidParam01_n)
@@ -6390,6 +6578,73 @@ TEST (edgeUtil, condWaitUntilAcrossSecond)
 
   nns_edge_cond_destroy (&c);
   nns_edge_lock_destroy (&c);
+}
+
+/**
+ * @brief Convert a timeval to microseconds since the epoch.
+ */
+static int64_t
+_test_timeval_to_us (const struct timeval *tv)
+{
+  return (int64_t) tv->tv_sec * 1000000 + tv->tv_usec;
+}
+
+/**
+ * @brief Convert a timespec to microseconds since the epoch.
+ */
+static int64_t
+_test_timespec_to_us (const struct timespec *ts)
+{
+  return (int64_t) ts->tv_sec * 1000000 + ts->tv_nsec / 1000;
+}
+
+/**
+ * @brief The deadline is normalized and lands between the wall clock right before and right after the call, plus the timeout.
+ */
+TEST (edgeUtil, getDeadline)
+{
+  const unsigned int timeouts[] = { 0U, 1U, 999U, 1000U, 1001U, 1999U, 60000U };
+  size_t i;
+
+  for (i = 0; i < sizeof (timeouts) / sizeof (timeouts[0]); i++) {
+    struct timeval before, after;
+    struct timespec deadline;
+
+    gettimeofday (&before, NULL);
+    nns_edge_get_deadline (timeouts[i], &deadline);
+    gettimeofday (&after, NULL);
+
+    EXPECT_GE (deadline.tv_nsec, 0L);
+    EXPECT_LT (deadline.tv_nsec, 1000000000L);
+
+    EXPECT_GE (_test_timespec_to_us (&deadline),
+        _test_timeval_to_us (&before) + (int64_t) timeouts[i] * 1000);
+    EXPECT_LE (_test_timespec_to_us (&deadline),
+        _test_timeval_to_us (&after) + (int64_t) timeouts[i] * 1000);
+  }
+}
+
+/**
+ * @brief A deadline computed just before a second boundary still normalizes tv_nsec and carries tv_sec.
+ */
+TEST (edgeUtil, getDeadlineAcrossSecond)
+{
+  const unsigned int timeouts[] = { 999U, 1500U };
+  size_t i;
+
+  for (i = 0; i < sizeof (timeouts) / sizeof (timeouts[0]); i++) {
+    struct timeval before;
+    struct timespec deadline;
+
+    _test_wait_end_of_second ();
+
+    gettimeofday (&before, NULL);
+    nns_edge_get_deadline (timeouts[i], &deadline);
+
+    EXPECT_GE (deadline.tv_nsec, 0L);
+    EXPECT_LT (deadline.tv_nsec, 1000000000L);
+    EXPECT_GT (deadline.tv_sec, before.tv_sec);
+  }
 }
 
 /**
