@@ -229,7 +229,12 @@ static unsigned int _test_clearing_publishes = 0U;
 static bool _test_fail_clearing_publish = false;
 
 /**
- * @brief Wrap mosquitto_publish() to count and optionally fail the publish that clears a retained message.
+ * @brief Make every publish that carries a payload fail.
+ */
+static bool _test_fail_publish = false;
+
+/**
+ * @brief Wrap mosquitto_publish() to count and optionally fail the publish that clears a retained message, or any other.
  */
 extern "C" int
 mosquitto_publish (struct mosquitto *mosq, int *mid, const char *topic,
@@ -243,9 +248,32 @@ mosquitto_publish (struct mosquitto *mosq, int *mid, const char *topic,
     _test_clearing_publishes++;
     if (_test_fail_clearing_publish)
       return 4; /* MOSQ_ERR_NO_CONN */
+  } else if (_test_fail_publish) {
+    return 4; /* MOSQ_ERR_NO_CONN */
   }
 
   return real_publish (mosq, mid, topic, payloadlen, payload, qos, retain);
+}
+
+/**
+ * @brief Wrap MQTTAsync_send() to count and optionally fail the publish that clears a retained message, or any other.
+ */
+extern "C" int
+MQTTAsync_send (void *handle, const char *destinationName, int payloadlen,
+    const void *payload, int qos, int retained, void *response)
+{
+  using send_f = int (*) (void *, const char *, int, const void *, int, int, void *);
+  static send_f real_send = (send_f) dlsym (RTLD_NEXT, "MQTTAsync_send");
+
+  if (payloadlen == 0) {
+    _test_clearing_publishes++;
+    if (_test_fail_clearing_publish)
+      return -3; /* MQTTASYNC_DISCONNECTED */
+  } else if (_test_fail_publish) {
+    return -3; /* MQTTASYNC_DISCONNECTED */
+  }
+
+  return real_send (handle, destinationName, payloadlen, payload, qos, retained, response);
 }
 
 /**
@@ -774,10 +802,12 @@ TEST (edgeMqttHybrid, closeSubscriber)
   ret = nns_edge_mqtt_subscribe (broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
+  _test_clearing_publishes = 0U;
   start = _test_get_time_ms ();
   ret = nns_edge_mqtt_close (broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_LT (_test_get_time_ms () - start, 2000);
+  EXPECT_EQ (_test_clearing_publishes, 0U);
 }
 
 /**
@@ -800,10 +830,12 @@ TEST (edgeMqttHybrid, publishToTopicFilter_n)
   ret = nns_edge_mqtt_publish (broker_h, msg, (int) sizeof (msg));
   EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
 
+  _test_clearing_publishes = 0U;
   start = _test_get_time_ms ();
   ret = nns_edge_mqtt_close (broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   EXPECT_LT (_test_get_time_ms () - start, 2000);
+  EXPECT_EQ (_test_clearing_publishes, 0U);
 }
 
 /**
@@ -821,8 +853,6 @@ TEST (edgeMqttHybrid, closeClearsRetained)
 
   if (!_check_mqtt_broker ())
     return;
-  if (!_test_is_mosquitto ())
-    GTEST_SKIP () << "The test wraps libmosquitto, the MQTT backend is not mosquitto.";
 
   ret = nns_edge_mqtt_connect (
       "temp-mqtt-pub", "temp-mqtt-clear-topic", "127.0.0.1", 1883, &pub_h);
@@ -869,8 +899,6 @@ TEST (edgeMqttHybrid, closeKeepsRetainedOfOthers)
 
   if (!_check_mqtt_broker ())
     return;
-  if (!_test_is_mosquitto ())
-    GTEST_SKIP () << "The test wraps libmosquitto, the MQTT backend is not mosquitto.";
 
   ret = nns_edge_mqtt_connect (
       "temp-mqtt-pub", "temp-mqtt-keep-topic", "127.0.0.1", 1883, &pub_h);
@@ -915,8 +943,6 @@ TEST (edgeMqttHybrid, closeClearingPublishFails_n)
 
   if (!_check_mqtt_broker ())
     return;
-  if (!_test_is_mosquitto ())
-    GTEST_SKIP () << "The test wraps libmosquitto, the MQTT backend is not mosquitto.";
 
   ret = nns_edge_mqtt_connect (
       "temp-mqtt-pub", "temp-mqtt-fail-topic", "127.0.0.1", 1883, &broker_h);
@@ -941,6 +967,33 @@ TEST (edgeMqttHybrid, closeClearingPublishFails_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
   ret = nns_edge_mqtt_close (broker_h);
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief A handle whose only publish failed has published nothing, so its close clears nothing.
+ */
+TEST (edgeMqttHybrid, closeAfterFailedPublish_n)
+{
+  nns_edge_broker_h broker_h;
+  const char published[] = "temp-retained";
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+
+  ret = nns_edge_mqtt_connect ("temp-mqtt-pub", "temp-mqtt-failed-pub-topic",
+      "127.0.0.1", 1883, &broker_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_fail_publish = true;
+  ret = nns_edge_mqtt_publish (broker_h, published, (int) sizeof (published));
+  _test_fail_publish = false;
+  EXPECT_NE (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_clearing_publishes = 0U;
+  ret = nns_edge_mqtt_close (broker_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (_test_clearing_publishes, 0U);
 }
 
 /**
