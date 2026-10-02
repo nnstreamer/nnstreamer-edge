@@ -183,6 +183,12 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
   bh->mqtt_h = handle;
   bh->event_cb = NULL;
   bh->user_data = NULL;
+  if (!bh->id || !bh->topic || !bh->host) {
+    nns_edge_loge ("Failed to allocate memory for broker handle.");
+    ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+    goto error;
+  }
+
   ret = nns_edge_queue_create (&bh->message_queue);
   if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to create message queue.");
@@ -342,6 +348,13 @@ nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data,
 
   if (!MQTTAsync_isConnected (handle)) {
     nns_edge_loge ("Failed to publish message, MQTT is not connected.");
+    return NNS_EDGE_ERROR_IO;
+  }
+
+  /* Paho sends a topic filter as is, and the broker drops the connection for it. */
+  if (strpbrk (bh->topic, "+#")) {
+    nns_edge_loge ("Cannot publish to a topic filter (ID:%s, Topic:%s).",
+        bh->id, bh->topic);
     return NNS_EDGE_ERROR_IO;
   }
 
