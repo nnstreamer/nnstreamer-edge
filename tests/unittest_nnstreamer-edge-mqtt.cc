@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <atomic>
 #include <chrono>
 #include <dlfcn.h>
 #include <future>
@@ -256,6 +257,60 @@ mosquitto_publish (struct mosquitto *mosq, int *mid, const char *topic,
 }
 
 /**
+ * @brief Check whether the MQTT backend is Paho, whose functions are wrapped below.
+ */
+static bool
+_test_is_paho (void)
+{
+  return dlsym (RTLD_DEFAULT, "MQTTAsync_create") != NULL;
+}
+
+/**
+ * @brief Count the messages and the topics released through Paho while set.
+ */
+static std::atomic<bool> _test_count_releases (false);
+
+/**
+ * @brief The number of MQTTAsync_freeMessage() calls counted.
+ */
+static std::atomic<unsigned int> _test_released_messages (0U);
+
+/**
+ * @brief The number of MQTTAsync_free() calls counted.
+ */
+static std::atomic<unsigned int> _test_released_topics (0U);
+
+/**
+ * @brief Wrap MQTTAsync_freeMessage() to count the received messages released.
+ * @note The Paho wrappers take Paho types as void pointers, so MQTTAsync.h must not be included here.
+ */
+extern "C" void
+MQTTAsync_freeMessage (void **message)
+{
+  using free_message_f = void (*) (void **);
+  static free_message_f real_free_message
+      = (free_message_f) dlsym (RTLD_NEXT, "MQTTAsync_freeMessage");
+
+  if (_test_count_releases)
+    _test_released_messages++;
+  real_free_message (message);
+}
+
+/**
+ * @brief Wrap MQTTAsync_free() to count the topics of received messages released.
+ */
+extern "C" void
+MQTTAsync_free (void *memory)
+{
+  using free_f = void (*) (void *);
+  static free_f real_free = (free_f) dlsym (RTLD_NEXT, "MQTTAsync_free");
+
+  if (_test_count_releases)
+    _test_released_topics++;
+  real_free (memory);
+}
+
+/**
  * @brief Wrap MQTTAsync_send() to count and optionally fail the publish that clears a retained message, or any other.
  */
 extern "C" int
@@ -274,6 +329,30 @@ MQTTAsync_send (void *handle, const char *destinationName, int payloadlen,
   }
 
   return real_send (handle, destinationName, payloadlen, payload, qos, retained, response);
+}
+
+/**
+ * @brief Start counting the releases through Paho from zero.
+ */
+static void
+_test_start_counting_releases (void)
+{
+  _test_released_messages = 0U;
+  _test_released_topics = 0U;
+  _test_count_releases = true;
+}
+
+/**
+ * @brief Wait up to 5 seconds until both release counts reach the given number.
+ */
+static void
+_test_wait_releases (unsigned int expected)
+{
+  unsigned int retry = 0U;
+
+  while ((_test_released_messages < expected || _test_released_topics < expected)
+         && retry++ < 50U)
+    usleep (100000);
 }
 
 /**
@@ -997,6 +1076,67 @@ TEST (edgeMqttHybrid, closeAfterFailedPublish_n)
 }
 
 /**
+ * @brief Paho hands every message a subscriber queues over to it, and the subscriber releases each one, the empty one that clears a retained message included.
+ */
+TEST (edgeMqttHybrid, receivedMessagesReleased)
+{
+  nns_edge_broker_h pub_h, sub_h;
+  char topic[64], published[32];
+  void *msg = NULL;
+  nns_size_t msg_len;
+  unsigned int i;
+  const unsigned int count = 10U;
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+  if (!_test_is_paho ())
+    GTEST_SKIP () << "The test wraps Paho, the MQTT backend is not Paho.";
+
+  /* A topic of its own, so no retained message of an earlier run is delivered here. */
+  snprintf (topic, sizeof (topic), "temp-mqtt-release-topic-%d", (int) getpid ());
+
+  ret = nns_edge_mqtt_connect ("temp-mqtt-sub", topic, "127.0.0.1", 1883, &sub_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_subscribe (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _test_start_counting_releases ();
+
+  /* No ASSERT past this point, so the subscriber is always closed. */
+  ret = nns_edge_mqtt_connect ("temp-mqtt-pub", topic, "127.0.0.1", 1883, &pub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  if (ret == NNS_EDGE_ERROR_NONE) {
+    /* Receiving each message before the next is published keeps the subscription live for all of them. */
+    for (i = 0; i < count; i++) {
+      snprintf (published, sizeof (published), "msg-%u", i);
+      ret = nns_edge_mqtt_publish (pub_h, published, (int) strlen (published) + 1);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+      ret = nns_edge_mqtt_get_message (sub_h, &msg, &msg_len, 5000U);
+      EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+      if (ret == NNS_EDGE_ERROR_NONE)
+        EXPECT_STREQ ((char *) msg, published);
+      SAFE_FREE (msg);
+    }
+
+    /* The publisher clears its retained message, which reaches the subscriber with no payload. */
+    ret = nns_edge_mqtt_close (pub_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    _test_wait_releases (count + 1U);
+  }
+
+  /* A closed subscriber is called back no more, so the counts are final after this. */
+  ret = nns_edge_mqtt_close (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_count_releases = false;
+  EXPECT_EQ (_test_released_messages.load (), count + 1U);
+  EXPECT_EQ (_test_released_topics.load (), count + 1U);
+}
+
+/**
  * @brief Edge event callback for test MQTT data transmission.
  */
 static int
@@ -1204,13 +1344,13 @@ TEST (edgeMqtt, setEventCallbackInvalidParam_n)
 }
 
 /**
- * @brief What the subscriber saw in the malformed payload test.
+ * @brief What the subscriber saw in the malformed payload test, written by the callback thread.
  */
-typedef struct {
-  unsigned int valid; /**< Data events carrying the one memory the test publishes. */
-  unsigned int empty; /**< Data events carrying no memory at all. */
-  bool saw_last; /**< The message published after the malformed one arrived. */
-} ne_test_invalid_payload_s;
+struct ne_test_invalid_payload_s {
+  std::atomic<unsigned int> valid{ 0U }; /**< Data events carrying the one memory the test publishes. */
+  std::atomic<unsigned int> empty{ 0U }; /**< Data events carrying no memory at all. */
+  std::atomic<bool> saw_last{ false }; /**< The message published after the malformed one arrived. */
+};
 
 /**
  * @brief Edge event callback sorting the data events of the malformed payload test.
@@ -1296,8 +1436,6 @@ TEST (edgeMqtt, deserializeInvalidPayload_n)
   if (!_check_mqtt_broker ())
     return;
 
-  memset (&rd, 0, sizeof (rd));
-
   ret = nns_edge_create_handle ("temp-sub-invalid-payload",
       NNS_EDGE_CONNECT_TYPE_MQTT, NNS_EDGE_NODE_TYPE_SUB, &sub_h);
   ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1329,7 +1467,7 @@ TEST (edgeMqtt, deserializeInvalidPayload_n)
     retry = 0U;
     while (rd.valid == 0U && retry++ < 100U)
       usleep (100000);
-    EXPECT_EQ (rd.valid, 1U);
+    EXPECT_EQ (rd.valid.load (), 1U);
 
     /* Shorter than nns_edge_data_header_s, the deserializer must reject it. */
     ret = nns_edge_mqtt_publish (pub_h, garbage, (int) sizeof (garbage));
@@ -1341,9 +1479,9 @@ TEST (edgeMqtt, deserializeInvalidPayload_n)
     while (!rd.saw_last && retry++ < 100U)
       usleep (100000);
 
-    EXPECT_TRUE (rd.saw_last);
-    EXPECT_EQ (rd.valid, 2U);
-    EXPECT_EQ (rd.empty, 0U);
+    EXPECT_TRUE (rd.saw_last.load ());
+    EXPECT_EQ (rd.valid.load (), 2U);
+    EXPECT_EQ (rd.empty.load (), 0U);
 
     ret = nns_edge_mqtt_close (pub_h);
     EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
@@ -1353,6 +1491,74 @@ TEST (edgeMqtt, deserializeInvalidPayload_n)
   EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
 
   SAFE_FREE (topic);
+}
+
+/**
+ * @brief A subscriber with an event callback releases every message Paho hands
+ * over to it: delivered, rejected by the deserializer, or empty.
+ */
+TEST (edgeMqtt, receivedDataReleased)
+{
+  nns_edge_broker_h pub_h, sub_h;
+  ne_test_invalid_payload_s rd;
+  char topic[64];
+  const uint8_t garbage[] = { 0x01, 0x02, 0x03 };
+  unsigned int retry;
+  int ret;
+
+  if (!_check_mqtt_broker ())
+    return;
+  if (!_test_is_paho ())
+    GTEST_SKIP () << "The test wraps Paho, the MQTT backend is not Paho.";
+
+  /* A topic of its own, so no retained message of an earlier run is delivered here. */
+  snprintf (topic, sizeof (topic), "temp-mqtt-release-data-%d", (int) getpid ());
+
+  ret = nns_edge_mqtt_connect ("temp-mqtt-sub", topic, "127.0.0.1", 1883, &sub_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_set_event_callback (sub_h, _test_edge_invalid_payload_event_cb, &rd);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_mqtt_subscribe (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  _test_start_counting_releases ();
+
+  /* No ASSERT past this point: the callback holds rd, so the subscriber must always be closed. */
+  ret = nns_edge_mqtt_connect ("temp-mqtt-pub", topic, "127.0.0.1", 1883, &pub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  if (ret == NNS_EDGE_ERROR_NONE) {
+    EXPECT_EQ (_test_publish_valid (pub_h, "first"), NNS_EDGE_ERROR_NONE);
+
+    retry = 0U;
+    while (rd.valid == 0U && retry++ < 50U)
+      usleep (100000);
+    EXPECT_EQ (rd.valid.load (), 1U);
+
+    ret = nns_edge_mqtt_publish (pub_h, garbage, (int) sizeof (garbage));
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+    EXPECT_EQ (_test_publish_valid (pub_h, "last"), NNS_EDGE_ERROR_NONE);
+
+    retry = 0U;
+    while (!rd.saw_last && retry++ < 50U)
+      usleep (100000);
+    EXPECT_TRUE (rd.saw_last.load ());
+
+    /* The publisher clears its retained message, which reaches the subscriber with no payload. */
+    ret = nns_edge_mqtt_close (pub_h);
+    EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+    _test_wait_releases (4U);
+  }
+
+  /* A closed subscriber is called back no more, so the counts are final after this. */
+  ret = nns_edge_mqtt_close (sub_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_count_releases = false;
+  EXPECT_EQ (_test_released_messages.load (), 4U);
+  EXPECT_EQ (_test_released_topics.load (), 4U);
+  EXPECT_EQ (rd.valid.load (), 2U);
+  EXPECT_EQ (rd.empty.load (), 0U);
 }
 
 /**
