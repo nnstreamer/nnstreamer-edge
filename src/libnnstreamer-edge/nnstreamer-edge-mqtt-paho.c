@@ -44,6 +44,7 @@ typedef struct
 /**
  * @brief Callback function to be called when a message is arrived.
  * @return Return TRUE to prevent delivering the message again.
+ * @note Returning TRUE leaves the message and the topic to this callback to free.
  */
 static int
 mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
@@ -54,18 +55,17 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   nns_size_t msg_len;
   int ret;
 
-  UNUSED (topic);
   UNUSED (topic_len);
   bh = (nns_edge_broker_s *) context;
 
   if (!bh) {
     nns_edge_loge ("Invalid param, given broker handle is invalid.");
-    return TRUE;
+    goto done;
   }
 
   if (0 >= message->payloadlen) {
     nns_edge_logw ("Invalid payload length: %d", message->payloadlen);
-    return TRUE;
+    goto done;
   }
 
   nns_edge_logd ("MQTT message is arrived (ID:%s, Topic:%s).",
@@ -81,7 +81,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
       if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
         nns_edge_loge ("Failed to create data handle in msg thread.");
         SAFE_FREE (msg);
-        return TRUE;
+        goto done;
       }
 
       ret = nns_edge_data_deserialize (data_h, (void *) msg,
@@ -90,7 +90,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
         nns_edge_loge ("Failed to deserialize the received message, drop it.");
         nns_edge_data_destroy (data_h);
         SAFE_FREE (msg);
-        return TRUE;
+        goto done;
       }
 
       ret = nns_edge_event_invoke_callback (bh->event_cb, bh->user_data,
@@ -112,6 +112,10 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
     }
   }
 
+done:
+  /* Every path must end here, or the message leaks. */
+  MQTTAsync_freeMessage (&message);
+  MQTTAsync_free (topic);
   return TRUE;
 }
 
