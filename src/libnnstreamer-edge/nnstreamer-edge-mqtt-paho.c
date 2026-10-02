@@ -37,6 +37,8 @@ typedef struct
   /* event callback for new message */
   nns_edge_event_cb event_cb;
   void *user_data;
+
+  bool retained; /**< Set by publish, read by close; never run concurrently. */
 } nns_edge_broker_s;
 
 /**
@@ -255,9 +257,11 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     nns_edge_logd ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
         bh->id, bh->host, bh->port);
 
-    /* Clear retained message and wait up to 10 seconds before removing the message. */
-    MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
-    MQTTAsync_waitForCompletion (handle, ropts.token, 10000U);
+    /* Clear the retained message this handle has published, waiting up to 10 seconds. */
+    if (bh->retained) {
+      MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
+      MQTTAsync_waitForCompletion (handle, ropts.token, 10000U);
+    }
 
     /* Wait for message transfer, 10 milliseconds. */
     dopts.timeout = 10;
@@ -366,6 +370,7 @@ nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data,
     return NNS_EDGE_ERROR_IO;
   }
 
+  bh->retained = true;
   return NNS_EDGE_ERROR_NONE;
 }
 
