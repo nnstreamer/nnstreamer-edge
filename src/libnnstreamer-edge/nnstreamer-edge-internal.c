@@ -94,10 +94,11 @@ typedef struct
   /* list of connection data */
   pthread_mutex_t conn_lock;
   void *connections;
+  unsigned int detached; /**< Connection data taken out of the list and not held yet, under the connection lock. */
 
   /* list of connection data waiting for its message thread to be terminated */
   void *closed_connections;
-  pthread_mutex_t closed_lock;
+  pthread_mutex_t closed_lock; /**< Taken inside the connection lock, never the other way round. */
 
   /* socket listener */
   atomic_bool listening; /**< Read by the listener thread without the handle lock. */
@@ -712,6 +713,7 @@ _nns_edge_close_socket (nns_edge_conn_s * conn)
     return;
 
   /* Send error before closing the socket. */
+  /* tests/unittest_nnstreamer-edge-thread.cc matches the text of this log. */
   nns_edge_logd ("Send error cmd to close connection.");
   _nns_edge_cmd_init (&cmd, _NNS_EDGE_CMD_ERROR, 0);
   _nns_edge_cmd_send (conn, &cmd);
@@ -867,6 +869,9 @@ _nns_edge_stop_connection (nns_edge_handle_s * eh, nns_edge_conn_data_s * cdata)
  *       unless the sockets have to be closed after joining a message thread.
  *       The list of closed connections has its own lock, it is also touched by
  *       the listener thread and by the message thread without the handle lock.
+ * @note The connection is stopped before the lock of the closed connections
+ *       is taken, because stopping it takes the connection lock and
+ *       _nns_edge_has_connection() nests the two locks the other way round.
  */
 static void
 _nns_edge_hold_closed_connection (nns_edge_handle_s * eh,
@@ -897,6 +902,10 @@ _nns_edge_conn_data_is_self (nns_edge_conn_data_s * cdata)
  *       and the connection of the calling thread stays visible to the owner of
  *       the handle. The lock is not held while joining the message thread.
  *       The caller may hold the handle lock, so nothing joined here may take it.
+ * @note The connection data taken out of the list is on no list until it is
+ *       released or held again. nns_edge_release_handle() cannot miss it: the
+ *       send thread and the listener thread, which call this, are joined before
+ *       its drain, and every other caller holds the handle lock or is the drain.
  */
 static void
 _nns_edge_release_closed_connection (nns_edge_handle_s * eh)
@@ -932,6 +941,33 @@ _nns_edge_release_closed_connection (nns_edge_handle_s * eh)
 
     closed = next;
   }
+}
+
+/**
+ * @brief Check whether a connection data of another thread waits to be released.
+ * @note This function takes the lock of the closed connections, do not call it
+ *       with the lock held. _nns_edge_has_connection() calls it with the
+ *       connection lock held, so nothing in here may take the connection lock.
+ *       The connection data of the calling thread is not counted, no thread
+ *       can join itself and it would never be released.
+ */
+static bool
+_nns_edge_has_closed_connection (nns_edge_handle_s * eh)
+{
+  nns_edge_conn_data_s *cdata;
+  bool remained = false;
+
+  pthread_mutex_lock (&eh->closed_lock);
+  for (cdata = (nns_edge_conn_data_s *) eh->closed_connections; cdata;
+      cdata = cdata->next) {
+    if (!_nns_edge_conn_data_is_self (cdata)) {
+      remained = true;
+      break;
+    }
+  }
+  pthread_mutex_unlock (&eh->closed_lock);
+
+  return remained;
 }
 
 /**
@@ -1002,6 +1038,7 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
         prev->next = cdata->next;
       else
         eh->connections = cdata->next;
+      eh->detached++;
       break;
     }
     prev = cdata;
@@ -1011,13 +1048,24 @@ _nns_edge_remove_connection (nns_edge_handle_s * eh, int64_t client_id)
   nns_edge_conn_unlock (eh);
 
   /* The caller may be the message thread of this connection, release it later. */
-  if (cdata)
+  if (cdata) {
     _nns_edge_hold_closed_connection (eh, cdata);
+
+    nns_edge_conn_lock (eh);
+    eh->detached--;
+    nns_edge_conn_unlock (eh);
+  }
 }
 
 /**
- * @brief Check whether the handle has a connection left.
- * @note This function takes the connection lock, do not call it with the lock held.
+ * @brief Check whether the handle has a connection left, including one being taken out or waiting to be released.
+ * @note This function takes the connection lock and, inside it, the lock of the
+ *       closed connections. Do not call it with either of them held.
+ * @note A message thread removing its connection takes the connection data out
+ *       and raises the count in one section under the connection lock, and
+ *       lowers the count under it again after parking the data. Holding that
+ *       lock while looking, this function finds the data on the list, counted
+ *       or parked, whatever the order of the reads.
  */
 static bool
 _nns_edge_has_connection (nns_edge_handle_s * eh)
@@ -1025,7 +1073,8 @@ _nns_edge_has_connection (nns_edge_handle_s * eh)
   bool remained;
 
   nns_edge_conn_lock (eh);
-  remained = (eh->connections != NULL);
+  remained = (eh->connections != NULL || eh->detached > 0U
+      || _nns_edge_has_closed_connection (eh));
   nns_edge_conn_unlock (eh);
 
   return remained;
@@ -1034,6 +1083,10 @@ _nns_edge_has_connection (nns_edge_handle_s * eh)
 /**
  * @brief Remove all connection data.
  * @note This function takes the connection lock, do not call it with the lock held.
+ * @note The connection data is on neither list while it is held, as it is in
+ *       _nns_edge_remove_connection(). It needs no count of its own because
+ *       every caller holds the handle lock, which nns_edge_release_handle()
+ *       holds across its drain, so no other thread runs this during the drain.
  */
 static void
 _nns_edge_remove_all_connection (nns_edge_handle_s * eh)
@@ -1068,6 +1121,11 @@ _nns_edge_remove_all_connection (nns_edge_handle_s * eh)
  * @note A connection its message thread or the send thread is still using
  *       cannot be released here. It no longer belongs to a connection data, so
  *       it is parked with one of its own and released with the others later.
+ * @note The connection is on neither list until it is parked, and it is not
+ *       counted like in _nns_edge_remove_connection(). No release can miss it:
+ *       the listener thread is joined before the drain, nns_edge_connect()
+ *       holds the handle lock, and the connection data of a message thread
+ *       that connects again is held already, so the release joins it first.
  */
 static void
 _nns_edge_release_old_connection (nns_edge_handle_s * eh,
@@ -2165,7 +2223,9 @@ done:
 int
 nns_edge_release_handle (nns_edge_h edge_h)
 {
+  const struct timespec drain_delay = { 0, 1000000 };
   nns_edge_handle_s *eh;
+  bool waited = false;
 
   eh = (nns_edge_handle_s *) edge_h;
   if (!eh) {
@@ -2208,10 +2268,23 @@ nns_edge_release_handle (nns_edge_h edge_h)
     eh->listener_fd = -1;
   }
 
-  /* A message thread being joined may connect again, drain until it cannot. */
-  do {
+  /**
+   * A message thread being joined may connect again, drain until it cannot.
+   * A message thread removing its connection is waited for as well, until its
+   * connection data is parked and the drain has joined it. Why the check below
+   * cannot miss that data is in the note of _nns_edge_has_connection().
+   */
+  _nns_edge_remove_all_connection (eh);
+  while (_nns_edge_has_connection (eh)) {
+    if (!waited) {
+      /* tests/unittest_nnstreamer-edge-thread.cc matches the text of this log. */
+      nns_edge_logi ("Wait for the connections its message threads are closing.");
+      waited = true;
+    }
+
+    nanosleep (&drain_delay, NULL);
     _nns_edge_remove_all_connection (eh);
-  } while (_nns_edge_has_connection (eh));
+  }
 
   pthread_mutex_lock (&eh->closed_lock);
   if (eh->closed_connections) {
