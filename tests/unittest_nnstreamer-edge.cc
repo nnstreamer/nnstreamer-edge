@@ -7569,7 +7569,7 @@ TEST (edgeTransfer, capabilityWithinLimit)
 }
 
 /**
- * @brief Data and metadata from a well behaved peer arrive intact under the default limit.
+ * @brief Data and metadata from a well behaved peer arrive intact when no limit is set.
  */
 TEST (edgeTransfer, dataWithinLimit)
 {
@@ -7624,9 +7624,9 @@ TEST (edgeTransfer, dataWithinLimit)
 }
 
 /**
- * @brief A payload far larger than any realistic frame still passes the default limit.
+ * @brief A payload far larger than any realistic frame arrives when no limit is set.
  */
-TEST (edgeTransfer, defaultLimitAcceptsLargeData)
+TEST (edgeTransfer, largeDataWithoutLimit)
 {
   ne_test_peer_s peer;
   ne_test_recv_s rd;
@@ -7772,7 +7772,7 @@ TEST (edgeTransfer, capabilityOverLimit_n)
   peer.answer_timeout_ms = 3000U;
   ASSERT_TRUE (_test_peer_start (&peer));
 
-  edge_h = _test_sub_create ("sub-cap-over", &rd, NULL);
+  edge_h = _test_sub_create ("sub-cap-over", &rd, "1024");
   ASSERT_TRUE (edge_h != NULL);
 
   ret = nns_edge_start (edge_h);
