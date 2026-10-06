@@ -45,12 +45,19 @@
 #define RECONNECT_TIMEOUT_MS 100
 
 /**
- * @brief The default limit for the total bytes a peer may announce in a single command.
- * @details A peer chooses the sizes in nns_edge_cmd_info_s and the receiver allocates them
- *          before any payload arrives, so an unbounded value is a remote denial of service.
- *          Override it with nns_edge_set_info (h, "MAX_TRANSFER_SIZE", ...), zero for no limit.
+ * @brief The default limit for the total bytes a peer may announce in a single command, zero for no limit.
+ * @details A peer chooses the sizes in nns_edge_cmd_info_s, but the receiver grows its buffers
+ *          as the bytes arrive, so announcing a size costs the peer as much as sending it.
+ *          The ML service offloading moves whole model files in one transfer, so there is no
+ *          default limit.
+ *          Set one with nns_edge_set_info (h, "MAX_TRANSFER_SIZE", ...) to refuse large transfers.
  */
-#define NNS_EDGE_MAX_TRANSFER_SIZE (256U * 1024U * 1024U)
+#define NNS_EDGE_MAX_TRANSFER_SIZE (0U)
+
+/**
+ * @brief The size of the buffer a receive starts with before it grows to the announced size.
+ */
+#define NNS_EDGE_RECV_ALLOC_SIZE (1024U * 1024U)
 
 /**
  * @brief The default time (in milliseconds) a receive waits for a peer that went quiet.
@@ -561,6 +568,61 @@ _nns_edge_parse_peer_host (const char *str, nns_size_t len, char **host,
 }
 
 /**
+ * @brief Allocate a buffer of the size the peer announced and fill it from the socket.
+ * @details The buffer starts at the smaller of the announced size and NNS_EDGE_RECV_ALLOC_SIZE,
+ *          and doubles each time it is filled until it reaches the announced size. Whatever the
+ *          peer announced, the buffer is never larger than that first buffer or twice what the
+ *          peer has really sent. A realloc() that has to copy keeps the old block until the copy
+ *          is done, so growing can briefly need about three times the bytes received.
+ */
+static int
+_receive_alloc_data (nns_edge_conn_s * conn, nns_size_t size, void **data)
+{
+  nns_size_t received = 0;
+  nns_size_t alloc_size;
+  char *buf, *grown;
+
+  *data = NULL;
+
+  if (size == 0U) {
+    nns_edge_loge ("Invalid command, the peer announced an empty memory.");
+    return NNS_EDGE_ERROR_IO;
+  }
+
+  alloc_size =
+      (size < NNS_EDGE_RECV_ALLOC_SIZE) ? size : NNS_EDGE_RECV_ALLOC_SIZE;
+  buf = nns_edge_malloc (alloc_size);
+  if (!buf)
+    return NNS_EDGE_ERROR_OUT_OF_MEMORY;
+
+  while (true) {
+    if (!_receive_raw_data (conn, buf + received, alloc_size - received)) {
+      SAFE_FREE (buf);
+      return NNS_EDGE_ERROR_IO;
+    }
+
+    received = alloc_size;
+    if (received == size)
+      break;
+
+    alloc_size = (size - alloc_size > alloc_size) ? alloc_size * 2 : size;
+    /* nns_edge_malloc() is malloc(), so realloc() may grow the block it returned. */
+    /* nns_size_t is 64 bit, so the size check only does work where size_t is 32 bit. */
+    grown =
+        (alloc_size <= SIZE_MAX) ? realloc (buf, (size_t) alloc_size) : NULL;
+    if (!grown) {
+      nns_edge_loge ("Failed to allocate memory (%" PRIu64 ").", alloc_size);
+      SAFE_FREE (buf);
+      return NNS_EDGE_ERROR_OUT_OF_MEMORY;
+    }
+    buf = grown;
+  }
+
+  *data = buf;
+  return NNS_EDGE_ERROR_NONE;
+}
+
+/**
  * @brief Receive edge command from connected device.
  * @note Before calling this function, you should initialize edge-cmd by using _nns_edge_cmd_init().
  */
@@ -598,31 +660,17 @@ _nns_edge_cmd_receive (nns_edge_conn_s * conn, nns_edge_cmd_s * cmd)
   }
 
   for (n = 0; n < cmd->info.num; n++) {
-    cmd->mem[n] = nns_edge_malloc (cmd->info.mem_size[n]);
-    if (!cmd->mem[n]) {
-      nns_edge_loge ("Failed to allocate memory to receive data from socket.");
-      ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
-      goto error;
-    }
-
-    if (!_receive_raw_data (conn, cmd->mem[n], cmd->info.mem_size[n])) {
-      nns_edge_loge ("Failed to receive %uth memory from socket.", n++);
-      ret = NNS_EDGE_ERROR_IO;
+    ret = _receive_alloc_data (conn, cmd->info.mem_size[n], &cmd->mem[n]);
+    if (ret != NNS_EDGE_ERROR_NONE) {
+      nns_edge_loge ("Failed to receive %uth memory from socket.", n);
       goto error;
     }
   }
 
   if (cmd->info.meta_size > 0) {
-    cmd->meta = nns_edge_malloc (cmd->info.meta_size);
-    if (!cmd->meta) {
-      nns_edge_loge ("Failed to allocate memory to receive meta from socket.");
-      ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
-      goto error;
-    }
-
-    if (!_receive_raw_data (conn, cmd->meta, cmd->info.meta_size)) {
+    ret = _receive_alloc_data (conn, cmd->info.meta_size, &cmd->meta);
+    if (ret != NNS_EDGE_ERROR_NONE) {
       nns_edge_loge ("Failed to receive metadata from socket.");
-      ret = NNS_EDGE_ERROR_IO;
       goto error;
     }
   }
