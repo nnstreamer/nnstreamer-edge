@@ -7664,6 +7664,332 @@ TEST (edgeTransfer, largeDataWithoutLimit)
 }
 
 /**
+ * @brief A new handle has no transfer limit, which is what lets a model file through.
+ */
+TEST (edgeTransfer, noLimitByDefault)
+{
+  nns_edge_h edge_h;
+  int ret;
+
+  ret = nns_edge_create_handle ("temp-id", NNS_EDGE_CONNECT_TYPE_TCP,
+      NNS_EDGE_NODE_TYPE_QUERY_CLIENT, &edge_h);
+  ASSERT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _expect_info (edge_h, "MAX_TRANSFER_SIZE", "0");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+}
+
+/**
+ * @brief Metadata larger than the first step of the receive buffer arrives intact.
+ */
+TEST (edgeTransfer, metaAcrossAllocSteps)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  nns_edge_data_h data_h;
+  const size_t value_len = 1024U * 1024U + 3U;
+  nns_size_t meta_len = 0;
+  void *meta = NULL;
+  char *value;
+  int ret;
+
+  value = (char *) malloc (value_len + 1U);
+  ASSERT_TRUE (value != NULL);
+  memset (value, 'm', value_len);
+  value[value_len] = '\0';
+
+  ASSERT_EQ (nns_edge_data_create (&data_h), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (nns_edge_data_set_info (data_h, "test-meta", value), NNS_EDGE_ERROR_NONE);
+  EXPECT_EQ (nns_edge_data_serialize_meta (data_h, &meta, &meta_len), NNS_EDGE_ERROR_NONE);
+  nns_edge_data_destroy (data_h);
+  ASSERT_TRUE (meta != NULL && meta_len > value_len);
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = 16U;
+  peer.meta_size = peer.meta_actual = meta_len;
+  peer.meta = meta;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-meta-steps", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 1U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_TRUE (rd.payload_ok);
+  EXPECT_STREQ (rd.meta_value, value);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  SAFE_FREE (rd.meta_value);
+  nns_edge_free (meta);
+  free (value);
+}
+
+/**
+ * @brief Let a peer announce a memory no receiver could allocate, send part of it, and expect the node to wait for the rest.
+ * @details Allocating the announced size fails, which closes the connection at once.
+ */
+static void
+_test_announce_huge (const char *id, nns_size_t sent)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  unsigned int retry;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = 1ULL << 62;
+  peer.mem_actual[0] = sent;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create (id, &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  /* Count from the moment the node has what the peer sends, a failed allocation closes at once. */
+  for (retry = 0U; !peer.sent_data && retry < 400U; retry++)
+    usleep (10000);
+  EXPECT_TRUE (peer.sent_data);
+
+  /* Well within the default receive timeout, so the connection is still waiting for data. */
+  usleep (1000000);
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 0U);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief A size no receiver could allocate is not allocated up front, the node waits for the bytes.
+ */
+TEST (edgeTransfer, announcedSizeNotAllocatedUpfront)
+{
+  _test_announce_huge ("sub-huge-announce", 16U);
+}
+
+/**
+ * @brief Past its first step the receive buffer follows the bytes that arrived, not the announced size.
+ */
+TEST (edgeTransfer, announcedSizeNotAllocatedAfterFirstStep)
+{
+  _test_announce_huge ("sub-huge-grow", 1024U * 1024U + 1U);
+}
+
+/**
+ * @brief Memories on either side of each step the receive buffer grows by arrive intact.
+ */
+TEST (edgeTransfer, dataAcrossAllocSteps)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  nns_size_t meta_len = 0;
+  void *meta;
+  const nns_size_t mib = 1024U * 1024U;
+  int ret;
+
+  meta = _test_build_meta (&meta_len);
+  ASSERT_TRUE (meta != NULL && meta_len > 0);
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 4U;
+  peer.mem_size[0] = peer.mem_actual[0] = 1U;
+  peer.mem_size[1] = peer.mem_actual[1] = mib;
+  peer.mem_size[2] = peer.mem_actual[2] = mib + 1U;
+  peer.mem_size[3] = peer.mem_actual[3] = 3U * mib + 7U;
+  peer.meta_size = peer.meta_actual = meta_len;
+  peer.meta = meta;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-alloc-steps", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 1U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_EQ (rd.count, 4U);
+  EXPECT_EQ (rd.len[0], 1U);
+  EXPECT_EQ (rd.len[1], mib);
+  EXPECT_EQ (rd.len[2], mib + 1U);
+  EXPECT_EQ (rd.len[3], 3U * mib + 7U);
+  EXPECT_TRUE (rd.payload_ok);
+  EXPECT_STREQ (rd.meta_value, "from-peer");
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  EXPECT_TRUE (peer.sent_data);
+  SAFE_FREE (rd.meta_value);
+  nns_edge_free (meta);
+}
+
+/**
+ * @brief A transfer that grows the receive buffer several times is accepted at exactly the limit.
+ */
+TEST (edgeTransfer, dataAcrossAllocStepsAtLimit)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  const nns_size_t size = 3U * 1024U * 1024U + 7U;
+  char *limit;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = peer.mem_actual[0] = size;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  limit = nns_edge_strdup_printf ("%" PRIu64, (uint64_t) size);
+  edge_h = _test_sub_create ("sub-steps-at-limit", &rd, limit);
+  nns_edge_free (limit);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 1U);
+  EXPECT_EQ (rd.closed, 0U);
+  EXPECT_EQ (rd.len[0], size);
+  EXPECT_TRUE (rd.payload_ok);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_peer_stop (&peer);
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief A memory announced with no bytes is refused, as no sender can build one.
+ */
+TEST (edgeTransfer, dataEmptyMemory_n)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 2U;
+  peer.mem_size[0] = peer.mem_actual[0] = 16U;
+  peer.mem_size[1] = peer.mem_actual[1] = 0U;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-empty-mem", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 1U);
+
+  _test_peer_stop (&peer);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
+ * @brief A node that stops after the receive buffer has grown loses the connection.
+ * @details The buffer grown so far is released on that error path, which LeakSanitizer checks.
+ */
+TEST (edgeTransfer, dataStopsAfterAllocGrew_n)
+{
+  ne_test_peer_s peer;
+  ne_test_recv_s rd;
+  nns_edge_h edge_h;
+  int ret;
+
+  memset (&peer, 0, sizeof (peer));
+  memset (&rd, 0, sizeof (rd));
+  peer.port = nns_edge_get_available_port ();
+  peer.send_data = true;
+  peer.num = 1U;
+  peer.mem_size[0] = 8U * 1024U * 1024U;
+  peer.mem_actual[0] = 3U * 1024U * 1024U + 5U;
+  ASSERT_TRUE (_test_peer_start (&peer));
+
+  edge_h = _test_sub_create ("sub-grew-stop", &rd, NULL);
+  ASSERT_TRUE (edge_h != NULL);
+  ret = nns_edge_set_info (edge_h, "RECV_TIMEOUT", "500");
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  ret = nns_edge_start (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+  ret = nns_edge_connect (edge_h, "127.0.0.1", peer.port);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  _test_wait_event (&rd);
+
+  EXPECT_EQ (rd.received, 0U);
+  EXPECT_EQ (rd.closed, 1U);
+
+  _test_peer_stop (&peer);
+
+  ret = nns_edge_release_handle (edge_h);
+  EXPECT_EQ (ret, NNS_EDGE_ERROR_NONE);
+
+  SAFE_FREE (rd.meta_value);
+}
+
+/**
  * @brief A command whose announced total is exactly the limit is accepted.
  */
 TEST (edgeTransfer, dataAtLimit)
