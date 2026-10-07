@@ -22,7 +22,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install required packages
-      run: sudo add-apt-repository ppa:nnstreamer/ppa && sudo apt update && sudo apt install libpaho-mqtt-dev libglib2.0-dev libgtest-dev
+      run: sudo add-apt-repository ppa:nnstreamer/ppa && sudo apt update && sudo apt install libpaho-mqtt-dev libglib2.0-dev libgtest-dev mosquitto
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -79,6 +79,88 @@ jobs:
       env:
         ASAN_OPTIONS: detect_leaks=1
       run: ctest --output-on-failure --no-tests=error
+
+    # No other job builds the Paho MQTT backend, which Android uses: CMake takes
+    # libmosquitto whenever it finds it. This job installs the broker but not
+    # libmosquitto-dev, so CMake falls back to Paho here.
+    - name: Configure CMake with Paho MQTT and AddressSanitizer
+      shell: bash
+      run: |
+        # The version comes with the runner image, so show which one these steps test.
+        dpkg-query -W -f='Paho MQTT C under test: ${Version}\n' libpaho-mqtt-dev
+        cmake -B ${{github.workspace}}/build-paho -DCMAKE_BUILD_TYPE=Debug -DENABLE_TEST=ON -DMQTT_SUPPORT=ON \
+          -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer" \
+          -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+          -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address" 2>&1 | tee paho-configure.log
+        # Should libmosquitto-dev ever come in, fail instead of testing mosquitto twice.
+        if ! grep -q "Found Paho MQTT" paho-configure.log; then
+          echo "::error::CMake did not select the Paho MQTT backend"
+          exit 1
+        fi
+
+    - name: Build with Paho MQTT and AddressSanitizer
+      run: cmake --build ${{github.workspace}}/build-paho
+
+    - name: Start the MQTT broker
+      run: |
+        # Installing the package normally starts the broker as a service already.
+        pgrep -x mosquitto > /dev/null || mosquitto -d -p 1883
+        for _ in $(seq 1 30); do
+          if (exec 3<>/dev/tcp/127.0.0.1/1883) 2>/dev/null; then
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "::error::the MQTT broker did not start"
+        exit 1
+
+    # Paho records every block it allocates, and the test binary keeps one Paho
+    # client for its whole run (see its main()), so LeakSanitizer sees here only
+    # what the library itself allocates. Memory that Paho owns, like the received
+    # messages of #273, is checked by Paho: with its trace on, it lists what is
+    # not freed when its last client is closed.
+    # Limits of that check: it needs a Paho built with heap tracking, as the
+    # Ubuntu package is; it says nothing when it finds nothing, and it finds
+    # nothing in a client that is never destroyed or in 20 bytes or less.
+    # Paho can also fail it on its own: a packet it has read for a client that
+    # is destroyed meanwhile is not freed. Such a report lists only blocks from
+    # MQTTPacket*.c and LinkedList.c, was seen once in 80 loaded runs, and goes
+    # away on a rerun.
+    - name: MQTT unit test on Paho with AddressSanitizer
+      working-directory: ${{github.workspace}}/build-paho
+      env:
+        ASAN_OPTIONS: detect_leaks=1
+        MQTT_C_CLIENT_TRACE: "ON"
+        MQTT_C_CLIENT_TRACE_LEVEL: ERROR
+      shell: bash
+      run: |
+        LD_LIBRARY_PATH=./src ./tests/unittest_nnstreamer-edge-mqtt 2>&1 | tee mqtt-test.log
+        # A test that does not see the broker returns early and still reports OK.
+        if grep -q "MQTT broker is not running" mqtt-test.log; then
+          echo "::error::the MQTT tests did not see the broker"
+          exit 1
+        fi
+        if grep -q "Failed to keep a Paho client" mqtt-test.log; then
+          echo "::error::the MQTT tests ran without the kept Paho client"
+          exit 1
+        fi
+        # Paho prints this header when its trace is on, which the check below needs.
+        if ! grep -q "Trace Output" mqtt-test.log; then
+          echo "::error::the trace of Paho is not on"
+          exit 1
+        fi
+        if grep -q "Some memory not freed at shutdown" mqtt-test.log; then
+          echo "::error::Paho reports memory it owns that was not freed"
+          exit 1
+        fi
+        # The Paho tests skip themselves on another backend, so check that they ran.
+        for t in edgeMqttHybrid.receivedMessagesReleased edgeMqtt.receivedDataReleased; do
+          if ! grep -q "\[       OK \] $t " mqtt-test.log; then
+            echo "::error::$t did not run and pass on the Paho backend"
+            exit 1
+          fi
+        done
 
   build-ubuntu-26-04:
     # Ubuntu 26.04 ships gcc 15, which compiles C as C23 by default. There

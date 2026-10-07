@@ -37,11 +37,14 @@ typedef struct
   /* event callback for new message */
   nns_edge_event_cb event_cb;
   void *user_data;
+
+  bool retained; /**< Set by publish, read by close; never run concurrently. */
 } nns_edge_broker_s;
 
 /**
  * @brief Callback function to be called when a message is arrived.
  * @return Return TRUE to prevent delivering the message again.
+ * @note Returning TRUE leaves the message and the topic to this callback to free.
  */
 static int
 mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
@@ -52,18 +55,17 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
   nns_size_t msg_len;
   int ret;
 
-  UNUSED (topic);
   UNUSED (topic_len);
   bh = (nns_edge_broker_s *) context;
 
   if (!bh) {
     nns_edge_loge ("Invalid param, given broker handle is invalid.");
-    return TRUE;
+    goto done;
   }
 
   if (0 >= message->payloadlen) {
     nns_edge_logw ("Invalid payload length: %d", message->payloadlen);
-    return TRUE;
+    goto done;
   }
 
   nns_edge_logd ("MQTT message is arrived (ID:%s, Topic:%s).",
@@ -79,7 +81,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
       if (nns_edge_data_create (&data_h) != NNS_EDGE_ERROR_NONE) {
         nns_edge_loge ("Failed to create data handle in msg thread.");
         SAFE_FREE (msg);
-        return TRUE;
+        goto done;
       }
 
       ret = nns_edge_data_deserialize (data_h, (void *) msg,
@@ -88,7 +90,7 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
         nns_edge_loge ("Failed to deserialize the received message, drop it.");
         nns_edge_data_destroy (data_h);
         SAFE_FREE (msg);
-        return TRUE;
+        goto done;
       }
 
       ret = nns_edge_event_invoke_callback (bh->event_cb, bh->user_data,
@@ -110,6 +112,10 @@ mqtt_cb_message_arrived (void *context, char *topic, int topic_len,
     }
   }
 
+done:
+  /* Every path must end here, or the message leaks. */
+  MQTTAsync_freeMessage (&message);
+  MQTTAsync_free (topic);
   return TRUE;
 }
 
@@ -183,6 +189,12 @@ nns_edge_mqtt_connect (const char *id, const char *topic, const char *host,
   bh->mqtt_h = handle;
   bh->event_cb = NULL;
   bh->user_data = NULL;
+  if (!bh->id || !bh->topic || !bh->host) {
+    nns_edge_loge ("Failed to allocate memory for broker handle.");
+    ret = NNS_EDGE_ERROR_OUT_OF_MEMORY;
+    goto error;
+  }
+
   ret = nns_edge_queue_create (&bh->message_queue);
   if (NNS_EDGE_ERROR_NONE != ret) {
     nns_edge_loge ("Failed to create message queue.");
@@ -249,9 +261,11 @@ nns_edge_mqtt_close (nns_edge_broker_h broker_h)
     nns_edge_logd ("Trying to disconnect MQTT (ID:%s, URL:%s:%d).",
         bh->id, bh->host, bh->port);
 
-    /* Clear retained message and wait up to 10 seconds before removing the message. */
-    MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
-    MQTTAsync_waitForCompletion (handle, ropts.token, 10000U);
+    /* Clear the retained message this handle has published, waiting up to 10 seconds. */
+    if (bh->retained) {
+      MQTTAsync_send (handle, bh->topic, 0, NULL, 1, 1, &ropts);
+      MQTTAsync_waitForCompletion (handle, ropts.token, 10000U);
+    }
 
     /* Wait for message transfer, 10 milliseconds. */
     dopts.timeout = 10;
@@ -345,6 +359,13 @@ nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data,
     return NNS_EDGE_ERROR_IO;
   }
 
+  /* Paho sends a topic filter as is, and the broker drops the connection for it. */
+  if (strpbrk (bh->topic, "+#")) {
+    nns_edge_loge ("Cannot publish to a topic filter (ID:%s, Topic:%s).",
+        bh->id, bh->topic);
+    return NNS_EDGE_ERROR_IO;
+  }
+
   /* Publish a message (default QoS 1 - at least once and retained true). */
   ret = MQTTAsync_send (handle, bh->topic, length, data, 1, 1, NULL);
   if (ret != MQTTASYNC_SUCCESS) {
@@ -353,6 +374,7 @@ nns_edge_mqtt_publish (nns_edge_broker_h broker_h, const void *data,
     return NNS_EDGE_ERROR_IO;
   }
 
+  bh->retained = true;
   return NNS_EDGE_ERROR_NONE;
 }
 
