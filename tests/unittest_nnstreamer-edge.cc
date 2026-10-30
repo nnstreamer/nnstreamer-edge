@@ -7355,11 +7355,12 @@ _test_peer_thread (void *data)
     if (!_test_peer_send_data_cmd (peer, fd, peer->meta))
       goto done;
 
-    peer->sent_data = true;
+    /* A test may poll this while the peer runs. */
+    __atomic_store_n (&peer->sent_data, true, __ATOMIC_RELEASE);
   }
 
 done:
-  while (!peer->stop)
+  while (!__atomic_load_n (&peer->stop, __ATOMIC_ACQUIRE))
     usleep (10000);
 
   if (fd >= 0)
@@ -7409,7 +7410,7 @@ _test_peer_start (ne_test_peer_s *peer)
 static void
 _test_peer_stop (ne_test_peer_s *peer)
 {
-  peer->stop = true;
+  __atomic_store_n (&peer->stop, true, __ATOMIC_RELEASE);
   pthread_join (peer->thread, NULL);
   close (peer->listen_fd);
   peer->listen_fd = -1;
@@ -7461,10 +7462,11 @@ _test_recv_event_cb (nns_edge_event_h event_h, void *user_data)
       }
 
       nns_edge_data_destroy (data_h);
-      rd->received++;
+      /* Publishes the fields above to _test_wait_event(), which polls from the test thread. */
+      __atomic_add_fetch (&rd->received, 1U, __ATOMIC_RELEASE);
       break;
     case NNS_EDGE_EVENT_CONNECTION_CLOSED:
-      rd->closed++;
+      __atomic_add_fetch (&rd->closed, 1U, __ATOMIC_RELEASE);
       break;
     default:
       break;
@@ -7505,7 +7507,8 @@ _test_wait_event (ne_test_recv_s *rd)
 
   do {
     usleep (20000);
-    if (rd->received > 0 || rd->closed > 0)
+    if (__atomic_load_n (&rd->received, __ATOMIC_ACQUIRE) > 0
+        || __atomic_load_n (&rd->closed, __ATOMIC_ACQUIRE) > 0)
       break;
   } while (retry++ < 200U);
 
@@ -8280,11 +8283,11 @@ TEST (edgeTransfer, sendWithinReceiverLimit)
   retry = 0U;
   do {
     usleep (100000);
-    if (rd_server.received > 0)
+    if (__atomic_load_n (&rd_server.received, __ATOMIC_ACQUIRE) > 0)
       break;
   } while (retry++ < 50U);
 
-  EXPECT_EQ (rd_server.received, 1U);
+  EXPECT_EQ (__atomic_load_n (&rd_server.received, __ATOMIC_ACQUIRE), 1U);
   EXPECT_EQ (rd_server.len[0], 4096U);
 
   ret = nns_edge_data_destroy (data_h);
